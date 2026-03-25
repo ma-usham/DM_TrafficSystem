@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
 {
-    public enum AIVehicleType
+    public enum VehicleType
     {
         Car,
     }
