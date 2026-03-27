@@ -10,6 +10,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private SplineRouteCreator routeCreator;
         private bool initialized;
+        private bool editMode;
         private Editor_DMWindow windowCtx;
 
         private enum DrawEnd { Start, End }
@@ -26,6 +27,17 @@ namespace Darkmatter.TrafficSystem.Editor
         private const float PointScreenRadius = 10f;
         private const float EndpointScreenRadius = 16f;
         private const float InsertScreenThreshold = 25f;
+
+        public CreateRoadPage() { }
+
+        public CreateRoadPage(SplineRouteCreator existingRoad)
+        {
+            routeCreator = existingRoad;
+            initialized = true;
+            editMode = true;
+            isActive = true;
+            Selection.activeGameObject = existingRoad.gameObject;
+        }
 
         // ───────────────── Initialization ─────────────────
 
@@ -49,7 +61,8 @@ namespace Darkmatter.TrafficSystem.Editor
             EnsureInitialized();
 
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField("Create Road", EditorStyles.boldLabel);
+            string title = editMode ? $"Edit Road — {routeCreator.gameObject.name}" : "Create Road";
+            EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
 
             EditorGUILayout.HelpBox(

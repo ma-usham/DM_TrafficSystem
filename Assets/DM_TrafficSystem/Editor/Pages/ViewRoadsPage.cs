@@ -39,7 +39,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 {
                     SplineRouteCreator road = visibleRoads[i];
                     if (road == null) continue;
-                    DrawRoadEntry(road);
+                    DrawRoadEntry(road, ctx);
                 }
 
                 EditorGUILayout.EndScrollView();
@@ -47,9 +47,8 @@ namespace Darkmatter.TrafficSystem.Editor
 
             GUILayout.FlexibleSpace();
 
-
             RefreshVisibility(SceneView.lastActiveSceneView);
-            DrawVisibleRoadGizmos();
+            SceneView.RepaintAll();
 
             EditorGUILayout.Space(4);
 
@@ -57,12 +56,23 @@ namespace Darkmatter.TrafficSystem.Editor
                 ctx.pageStack.Pop();
         }
 
-        private void DrawRoadEntry(SplineRouteCreator road)
+        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
+        {
+            RefreshVisibility(sceneView);
+            DrawVisibleRoadGizmos();
+            ctx.Repaint();
+
+        }
+
+        private void DrawRoadEntry(SplineRouteCreator road, Editor_DMWindow ctx)
         {
             EditorGUILayout.BeginVertical("box");
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(road.gameObject.name, EditorStyles.boldLabel);
+
+            if (GUILayout.Button("Edit", GUILayout.Width(40)))
+                ctx.pageStack.Push(new CreateRoadPage(road));
 
             if (GUILayout.Button("Select", GUILayout.Width(50)))
                 Selection.activeGameObject = road.gameObject;
@@ -72,6 +82,16 @@ namespace Darkmatter.TrafficSystem.Editor
                 Selection.activeGameObject = road.gameObject;
                 Bounds b = ComputeRoadBounds(road);
                 SceneView.lastActiveSceneView?.Frame(b, false);
+            }
+
+            if (GUILayout.Button("Delete", GUILayout.Width(50)))
+            {
+                if (EditorUtility.DisplayDialog("Delete Road",
+                        $"Are you sure you want to delete '{road.gameObject.name}'?",
+                        "Delete", "Cancel"))
+                {
+                    Undo.DestroyObjectImmediate(road.gameObject);
+                }
             }
 
             EditorGUILayout.EndHorizontal();
@@ -84,12 +104,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.EndVertical();
         }
 
-        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
-        {
-            RefreshVisibility(sceneView);
-            DrawVisibleRoadGizmos();
-            ctx.Repaint();
-        }
+
 
         private void RefreshVisibility(SceneView sceneView)
         {
@@ -97,7 +112,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (sceneView == null || sceneView.camera == null) return;
 
             Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(sceneView.camera);
-            SplineRouteCreator[] allRoads = Object.FindObjectsByType<SplineRouteCreator>(FindObjectsSortMode.None);
+            SplineRouteCreator[] allRoads = Object.FindObjectsByType<SplineRouteCreator>(FindObjectsInactive.Include);
 
             foreach (SplineRouteCreator road in allRoads)
             {
