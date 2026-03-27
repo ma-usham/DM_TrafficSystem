@@ -6,6 +6,7 @@ namespace Darkmatter.TrafficSystem.Editor
     public class CreateRoadPage : IPage
     {
         public static bool isActive;
+        public static int roadCount = 0;
 
         private SplineRouteCreator routeCreator;
         private bool initialized;
@@ -32,7 +33,7 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             if (initialized && routeCreator != null) return;
 
-            GameObject go = new GameObject("Road_Route");
+            GameObject go = new GameObject("Road_Route_"+ (++roadCount));
             routeCreator = go.AddComponent<SplineRouteCreator>();
             Selection.activeGameObject = go;
             Undo.RegisterCreatedObjectUndo(go, "Create Road Route");
