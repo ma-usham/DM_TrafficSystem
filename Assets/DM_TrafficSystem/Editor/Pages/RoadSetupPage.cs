@@ -16,6 +16,10 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 ctx.pageStack.Push((IPage)new ConnectRoadPage());
             }
+            if(GUILayout.Button("View Roads",GUILayout.Height(20)))
+            {
+                ctx.pageStack.Push((IPage)new ViewRoadsPage());
+            }
 
             GUILayout.Space(10);
             if (GUILayout.Button("Back", GUILayout.Width(100)))
