@@ -6,17 +6,16 @@ namespace Darkmatter.TrafficSystem.Editor
     /// <summary>
 
     /// </summary>
-    public class ConnectRoadPage : IPage
+    public class TrafficManagerPage : IPage
     {
         public void OnGUI(Editor_DMWindow ctx)
         {
-            EditorGUILayout.LabelField("Connect Roads",EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Traffic Manager",EditorStyles.boldLabel);
         }
 
         public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
         {
             
         }
-
     }
 }

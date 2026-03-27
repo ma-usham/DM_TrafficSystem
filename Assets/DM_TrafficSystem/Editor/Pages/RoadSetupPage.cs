@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Darkmatter.TrafficSystem
+namespace Darkmatter.TrafficSystem.Editor
 {
     public class RoadSetupPage : IPage
     {

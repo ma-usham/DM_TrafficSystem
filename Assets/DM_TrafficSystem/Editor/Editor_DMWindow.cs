@@ -2,43 +2,52 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Darkmatter.TrafficSystem
+namespace Darkmatter.TrafficSystem.Editor
 {
     public class Editor_DMWindow : EditorWindow
     {
-        //---------NAVIGATION VARIABLES---------
         public Stack<IPage> pageStack = new Stack<IPage>();
-
-        //--SHARED DATA VARIABLES---------
         public static Editor_DMWindow editorWindow;
-
-
-        #region Initialization
 
         [MenuItem("Tools/DarkMatter Traffic System Tool", false, 2)]
         public static void ShowWindow()
         {
             Editor_DMWindow window = (Editor_DMWindow)GetWindow(typeof(Editor_DMWindow));
-            window.minSize = new Vector2(300, 200);
+            window.minSize = new Vector2(320, 240);
             window.titleContent.text = "DarkMatter Traffic System";
             window.Show();
         }
 
         private void OnEnable()
         {
-            Debug.LogWarning("Opening Main Page");
+            editorWindow = this;
             pageStack.Clear();
-            pageStack.Push((IPage)new MainPage());
+            pageStack.Push(new MainPage());
+            SceneView.duringSceneGui += OnSceneGUI;
         }
 
-        #endregion
+        private void OnDisable()
+        {
+            CreateRoadPage.isActive = false;
+            SceneView.duringSceneGui -= OnSceneGUI;
+        }
 
         private void OnGUI()
         {
-            if(pageStack.Count > 0)
+            if (pageStack.Count > 0)
+                pageStack.Peek().OnGUI(this);
+        }
+
+        private void OnSceneGUI(SceneView sceneView)
+        {
+            if (pageStack.Count > 0)
             {
-                pageStack.Peek().OnGUI(this); // Draw the current page
-                pageStack.Peek().OnSceneGUI(SceneView.lastActiveSceneView, this); // Draw the current page's scene GUI
+                CreateRoadPage.isActive = pageStack.Peek() is CreateRoadPage;
+                pageStack.Peek().OnSceneGUI(sceneView, this);
+            }
+            else
+            {
+                CreateRoadPage.isActive = false;
             }
         }
     }
