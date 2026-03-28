@@ -44,7 +44,23 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (pts[i] == null) continue;
                 Handles.SphereHandleCap(0, pts[i].position, Quaternion.identity,
                     DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
+
+                if (Creator.splineMoveMode == SplineMoveMode.Move3D)
+                    Draw3DMoveHandle(pts[i]);
             }
+        }
+
+        private void Draw3DMoveHandle(Transform controlPoint)
+        {
+            EditorGUI.BeginChangeCheck();
+            Vector3 newPosition = Handles.PositionHandle(controlPoint.position, Quaternion.identity);
+            if (!EditorGUI.EndChangeCheck()) return;
+
+            Undo.RecordObject(controlPoint, "Move Control Point");
+            controlPoint.position = newPosition;
+            EditorUtility.SetDirty(controlPoint);
+            EditorUtility.SetDirty(Creator);
+            SceneView.RepaintAll();
         }
 
 

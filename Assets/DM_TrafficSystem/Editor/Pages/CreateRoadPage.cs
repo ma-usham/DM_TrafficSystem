@@ -70,7 +70,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 "\u2022 Click a green / orange endpoint to change drawing direction\n" +
                 "\u2022 Ctrl + Left-click near a curve segment to insert a point\n" +
                 "\u2022 Right-click a control point to delete it\n" +
-                "\u2022 Drag any control point to reposition it",
+                "\u2022 Drag any control point to reposition it in Move2D\n" +
+                "\u2022 Use the move handle to reposition points on x,y,z in Move3D",
                 MessageType.Info);
 
             EditorGUILayout.Space(6);
@@ -114,6 +115,15 @@ namespace Darkmatter.TrafficSystem.Editor
                 EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
             routeCreator.curveResolution =
                 EditorGUILayout.IntSlider("Curve Smoothness", routeCreator.curveResolution, 10, 100);
+            EditorGUI.BeginChangeCheck();
+            SplineMoveMode newMoveMode =
+                (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.splineMoveMode);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(routeCreator, "Change Spline Move Mode");
+                routeCreator.splineMoveMode = newMoveMode;
+                EditorUtility.SetDirty(routeCreator);
+            }
 
             EditorGUILayout.Space(2);
             string dir = activeEnd == DrawEnd.End ? "End  \u25BA" : "\u25C4  Start";
@@ -172,7 +182,8 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             int controlId = GUIUtility.GetControlID(FocusType.Passive);
-            HandleUtility.AddDefaultControl(controlId);
+            if (routeCreator == null || routeCreator.splineMoveMode == SplineMoveMode.Move2D)
+                HandleUtility.AddDefaultControl(controlId);
 
             if (routeCreator != null)
             {
@@ -248,6 +259,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 };
                 Handles.Label(cp.position + Vector3.up * DMTSPrefs.ControlPointHandleSize * 0.35f,
                     $"[{i}]", labelStyle);
+
+                if (routeCreator.splineMoveMode == SplineMoveMode.Move3D)
+                    Draw3DMoveHandle(cp);
             }
         }
 
@@ -330,15 +344,18 @@ namespace Darkmatter.TrafficSystem.Editor
                 && nearDist < DMTSPrefs.EndpointScreenRadius)
             {
                 activeEnd = nearest == 0 ? DrawEnd.Start : DrawEnd.End;
-                dragIndex = nearest;
-                GUIUtility.hotControl = controlId;
+                dragIndex = routeCreator.splineMoveMode == SplineMoveMode.Move2D ? nearest : -1;
+                if (routeCreator.splineMoveMode == SplineMoveMode.Move2D)
+                    GUIUtility.hotControl = controlId;
                 e.Use();
                 windowCtx?.Repaint();
                 return;
             }
 
             // Click on mid-point → begin drag
-            if (nearest >= 0 && nearDist < DMTSPrefs.PointScreenRadius)
+            if (routeCreator.splineMoveMode == SplineMoveMode.Move2D
+                && nearest >= 0
+                && nearDist < DMTSPrefs.PointScreenRadius)
             {
                 dragIndex = nearest;
                 GUIUtility.hotControl = controlId;
@@ -367,6 +384,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private void HandleDrag(Event e)
         {
             if (routeCreator == null) return;
+            if (routeCreator.splineMoveMode == SplineMoveMode.Move3D) return;
             if (dragIndex < 0 || dragIndex >= routeCreator.controlPointsList.Count)
                 return;
 
@@ -486,6 +504,20 @@ namespace Darkmatter.TrafficSystem.Editor
                 return ray.GetPoint(enter);
 
             return ray.GetPoint(10f);
+        }
+
+        private void Draw3DMoveHandle(Transform controlPoint)
+        {
+            EditorGUI.BeginChangeCheck();
+            Vector3 newPosition = Handles.PositionHandle(controlPoint.position, Quaternion.identity);
+            if (!EditorGUI.EndChangeCheck()) return;
+
+            Undo.RecordObject(controlPoint, "Move Control Point");
+            controlPoint.position = newPosition;
+            EditorUtility.SetDirty(controlPoint);
+            EditorUtility.SetDirty(routeCreator);
+            GUI.changed = true;
+            windowCtx?.Repaint();
         }
 
     }

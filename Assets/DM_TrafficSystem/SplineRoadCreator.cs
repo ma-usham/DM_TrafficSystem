@@ -8,6 +8,7 @@ namespace Darkmatter.TrafficSystem
     {
         public List<Transform> controlPointsList = new List<Transform>();
         [HideInInspector] public Transform controlPointsHolder;
+        public SplineMoveMode splineMoveMode = SplineMoveMode.Move2D;
         [Range(1, 8)] public int lanes = 1;
         [Range(1, 15)] public int waypointDistance = 5;
         public float laneWidth = 4f;
