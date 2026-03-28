@@ -58,10 +58,18 @@ namespace Darkmatter.TrafficSystem.Editor
         public void OnGUI(Editor_DMWindow ctx)
         {
             windowCtx = ctx;
-            EnsureInitialized();
+
+            if (initialized && routeCreator == null)
+            {
+                isActive = false;
+                ctx.pageStack.Pop();
+                return;
+            }
 
             EditorGUILayout.Space(4);
-            string title = editMode ? $"Edit Road — {routeCreator.gameObject.name}" : "Create Road";
+            string title = (editMode && routeCreator != null)
+                ? $"Edit Road — {routeCreator.gameObject.name}"
+                : "Create Road";
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
 
@@ -98,6 +106,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
             routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
+            routeCreator.moveMode = (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.moveMode);
             routeCreator.drivingDirection =
                 (DrivingDirection)EditorGUILayout.EnumPopup("Driving Side", routeCreator.drivingDirection);
             routeCreator.speedLimitForAllRoads =
@@ -152,18 +161,27 @@ namespace Darkmatter.TrafficSystem.Editor
 
         public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
         {
-            if (routeCreator == null) return;
             windowCtx = ctx;
-            routeCreator.CleanupNullPoints();
+
+            if (initialized && routeCreator == null)
+            {
+                isActive = false;
+                ctx.pageStack.Pop();
+                return;
+            }
 
             int controlId = GUIUtility.GetControlID(FocusType.Passive);
             HandleUtility.AddDefaultControl(controlId);
 
-            DrawCurve();
-            DrawPoints();
-            DrawInsertPreview();
-            ProcessInput(controlId);
+            if (routeCreator != null)
+            {
+                routeCreator.CleanupNullPoints();
+                DrawCurve();
+                DrawPoints();
+                DrawInsertPreview();
+            }
 
+            ProcessInput(controlId);
             sceneView.Repaint();
         }
 
@@ -292,6 +310,8 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleLeftDown(Event e, int controlId)
         {
+            EnsureInitialized(); //create road when clicked on the scene
+
             var pts = routeCreator.controlPointsList;
             int count = pts.Count;
 
@@ -347,6 +367,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleDrag(Event e)
         {
+            if (routeCreator == null) return;
             if (dragIndex < 0 || dragIndex >= routeCreator.controlPointsList.Count)
                 return;
 
@@ -360,6 +381,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleRightClick(Event e)
         {
+            if (routeCreator == null) return;
             int nearest = ScreenNearestPoint(e.mousePosition, out float dist);
             if (nearest < 0 || dist > EndpointScreenRadius) return;
 

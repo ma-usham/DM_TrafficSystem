@@ -34,6 +34,7 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
             routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
+            routeCreator.moveMode = (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.moveMode);
             routeCreator.drivingDirection =
                 (DrivingDirection)EditorGUILayout.EnumPopup("Driving Side", routeCreator.drivingDirection);
             routeCreator.speedLimitForAllRoads =
