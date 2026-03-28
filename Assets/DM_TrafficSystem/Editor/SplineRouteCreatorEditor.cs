@@ -19,28 +19,6 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
-        public void DrawHeaderAndSettings()
-        {
-            if (Creator == null) return;
-
-            EditorGUILayout.HelpBox(
-                "Use the Create Road page to edit this spline route.",
-                MessageType.Info);
-
-            DrawSplineSettingsFields(Creator);
-        }
-
-        private void DrawSplineSettingsFields(SplineRouteCreator routeCreator)
-        {
-            routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
-            routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
-            routeCreator.moveMode = (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.moveMode);
-            routeCreator.drivingDirection =
-                (DrivingDirection)EditorGUILayout.EnumPopup("Driving Side", routeCreator.drivingDirection);
-            routeCreator.speedLimitForAllRoads =
-                EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
-        }
-
         private void OnSceneGUI()
         {
             if (CreateRoadPage.isActive) return;

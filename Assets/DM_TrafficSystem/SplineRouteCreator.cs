@@ -7,14 +7,10 @@ namespace Darkmatter.TrafficSystem
     public class SplineRouteCreator : MonoBehaviour
     {
         public List<Transform> controlPointsList = new List<Transform>();
-
-        public SplineMoveMode moveMode = SplineMoveMode.Move2D;
-        public DrivingDirection drivingDirection = DrivingDirection.Left;
         [Range(1, 8)] public int lanes = 1;
         [Range(1, 15)] public int waypointDistance = 5;
         public float laneWidth = 4f;
         public float speedLimitForAllRoads = 30f;
-        public int spawnedPoints = 0;
         [Range(10, 100)] public int curveResolution = 30;
 
         public Transform AddControlPoint(Vector3 position)
@@ -55,7 +51,6 @@ namespace Darkmatter.TrafficSystem
 
         private Transform CreatePointObject(Vector3 position)
         {
-            spawnedPoints++;
             GameObject go = new GameObject("controlPoint");
             go.transform.position = position;
             go.transform.SetParent(transform);

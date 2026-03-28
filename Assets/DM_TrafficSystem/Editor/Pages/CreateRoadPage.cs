@@ -18,15 +18,15 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private int dragIndex = -1;
 
-        private static readonly Color CurveColor = new Color(1f, 0.85f, 0.1f);
-        private static readonly Color PointColor = Color.white;
-        private static readonly Color ActiveEndColor = Color.green;
-        private static readonly Color InactiveEndColor = new Color(1f, 0.55f, 0f);
-        private static readonly Color InsertPreviewColor = new Color(0f, 0.85f, 1f, 0.9f);
+        private static readonly Color CurveColor = new Color(1f, 0.85f, 0.1f); //yellow
+        private static readonly Color PointColor = Color.white; //white
+        private static readonly Color ActiveEndColor = Color.green; //green
+        private static readonly Color InactiveEndColor = new Color(1f, 0.55f, 0f); //orange
+        private static readonly Color InsertPreviewColor = new Color(0f, 0.85f, 1f, 0.9f); //light blue
 
-        private const float PointScreenRadius = 10f;
-        private const float EndpointScreenRadius = 16f;
-        private const float InsertScreenThreshold = 25f;
+        private const float PointScreenRadius = 10f; 
+        private const float EndpointScreenRadius = 16f; 
+        private const float InsertScreenThreshold = 25f; 
 
         public CreateRoadPage() { }
 
@@ -92,6 +92,11 @@ namespace Darkmatter.TrafficSystem.Editor
 
             GUILayout.FlexibleSpace();
 
+            if (GUILayout.Button("Generate Road", GUILayout.Width(100)))
+            {
+                
+            }
+
             if (GUILayout.Button("Back", GUILayout.Width(100)))
             {
                 isActive = false;
@@ -103,12 +108,11 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Road Settings", EditorStyles.boldLabel);
+            
 
             routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
             routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
-            routeCreator.moveMode = (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.moveMode);
-            routeCreator.drivingDirection =
-                (DrivingDirection)EditorGUILayout.EnumPopup("Driving Side", routeCreator.drivingDirection);
+            routeCreator.waypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", routeCreator.waypointDistance, 1, 15);
             routeCreator.speedLimitForAllRoads =
                 EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
             routeCreator.curveResolution =
