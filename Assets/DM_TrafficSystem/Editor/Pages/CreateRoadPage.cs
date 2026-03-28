@@ -35,6 +35,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void EnsureInitialized()
         {
+
             if (initialized && routeCreator != null) return;
 
             GameObject go = new GameObject("Road_Route_"+ (++roadCount));
@@ -321,8 +322,8 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleLeftDown(Event e, int controlId)
         {
-            EnsureInitialized(); //create road when clicked on the scene
-
+            if(e.shift && !initialized )EnsureInitialized(); //create road when first clicked on the scene
+            if(!initialized) return; //if not initialized, ignore other clicks
             var pts = routeCreator.controlPointsList;
             int count = pts.Count;
 
