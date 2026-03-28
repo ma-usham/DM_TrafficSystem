@@ -92,10 +92,15 @@ namespace Darkmatter.TrafficSystem.Editor
 
             GUILayout.FlexibleSpace();
 
+            bool canGenerate = routeCreator != null && routeCreator.controlPointsList.Count >= 2;
+            EditorGUI.BeginDisabledGroup(!canGenerate);
             if (GUILayout.Button("Generate Road", GUILayout.Width(100)))
             {
-                
+                Undo.RegisterFullObjectHierarchyUndo(routeCreator.gameObject, "Generate Road Waypoints");
+                routeCreator.GenerateRoadWaypoints();
+                EditorUtility.SetDirty(routeCreator);
             }
+            EditorGUI.EndDisabledGroup();
 
             if (GUILayout.Button("Back", GUILayout.Width(100)))
             {

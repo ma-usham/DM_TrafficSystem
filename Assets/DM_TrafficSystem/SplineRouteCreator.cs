@@ -92,6 +92,9 @@ namespace Darkmatter.TrafficSystem
             handleB = p1 - tangentB / 3f;
         }
 
+        [HideInInspector] public List<List<Transform>> generatedLanes = new List<List<Transform>>();
+        [HideInInspector] public Transform waypointsContainer;
+
         public List<Vector3> GetCurvePoints()
         {
             var points = new List<Vector3>();
@@ -110,6 +113,92 @@ namespace Darkmatter.TrafficSystem
                 }
             }
             return points;
+        }
+
+        public void ClearGeneratedWaypoints()
+        {
+            generatedLanes.Clear();
+            if (waypointsContainer != null)
+            {
+                DestroyImmediate(waypointsContainer.gameObject);
+                waypointsContainer = null;
+            }
+        }
+
+        public void GenerateRoadWaypoints()
+        {
+            if (controlPointsList.Count < 2) return;
+
+            ClearGeneratedWaypoints();
+
+            List<Vector3> densePoints = GetCurvePoints();
+            if (densePoints.Count < 2) return;
+
+            // Walk the polyline at waypointDistance intervals
+            var centerPositions = new List<Vector3>();
+            var tangents = new List<Vector3>();
+
+            centerPositions.Add(densePoints[0]);
+            tangents.Add((densePoints[1] - densePoints[0]).normalized);
+
+            float accumulated = 0f;
+            for (int i = 1; i < densePoints.Count; i++)
+            {
+                float segLen = Vector3.Distance(densePoints[i], densePoints[i - 1]);
+                accumulated += segLen;
+
+                if (accumulated >= waypointDistance)
+                {
+                    centerPositions.Add(densePoints[i]);
+
+                    Vector3 forward = (i + 1 < densePoints.Count)
+                        ? (densePoints[i + 1] - densePoints[i - 1]).normalized
+                        : (densePoints[i] - densePoints[i - 1]).normalized;
+                    tangents.Add(forward);
+
+                    accumulated = 0f;
+                }
+            }
+
+            // Always include the last point
+            Vector3 lastPoint = densePoints[densePoints.Count - 1];
+            if (Vector3.Distance(centerPositions[centerPositions.Count - 1], lastPoint) > 0.01f)
+            {
+                centerPositions.Add(lastPoint);
+                int c = densePoints.Count;
+                tangents.Add((densePoints[c - 1] - densePoints[c - 2]).normalized);
+            }
+
+            // Create the Waypoints container
+            var containerGo = new GameObject("Waypoints");
+            containerGo.transform.SetParent(transform);
+            containerGo.transform.localPosition = Vector3.zero;
+            waypointsContainer = containerGo.transform;
+
+            // Generate waypoints for each lane, offset symmetrically from center
+            for (int lane = 0; lane < lanes; lane++)
+            {
+                float offset = (lane - (lanes - 1) / 2f) * laneWidth;
+
+                var laneGo = new GameObject($"Lane_{lane}");
+                laneGo.transform.SetParent(waypointsContainer);
+                laneGo.transform.localPosition = Vector3.zero;
+
+                var laneWaypoints = new List<Transform>();
+
+                for (int w = 0; w < centerPositions.Count; w++)
+                {
+                    Vector3 right = Vector3.Cross(tangents[w], Vector3.up).normalized;
+                    Vector3 pos = centerPositions[w] + right * offset;
+
+                    var wpGo = new GameObject($"Waypoint_{w}");
+                    wpGo.transform.position = pos;
+                    wpGo.transform.SetParent(laneGo.transform);
+                    laneWaypoints.Add(wpGo.transform);
+                }
+
+                generatedLanes.Add(laneWaypoints);
+            }
         }
     }
 }
