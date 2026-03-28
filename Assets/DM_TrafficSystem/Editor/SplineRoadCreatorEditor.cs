@@ -8,6 +8,7 @@ namespace Darkmatter.TrafficSystem.Editor
     {
         private SplineRoadCreator Creator => (SplineRoadCreator)target;
 
+
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
@@ -28,8 +29,6 @@ namespace Darkmatter.TrafficSystem.Editor
             var pts = Creator.controlPointsList;
             if (pts.Count < 2) return;
 
-            DrawGeneratedWaypointGizmos();
-
             for (int i = 0; i < pts.Count - 1; i++)
             {
                 if (pts[i] == null || pts[i + 1] == null) continue;
@@ -48,10 +47,18 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
-        private void DrawGeneratedWaypointGizmos()
+
+
+
+
+        #region Gizmos
+        [DrawGizmo(GizmoType.Selected)] //This will only draw the gizmos when the object is selected, which can help reduce clutter in the scene view.
+        private static void DrawGeneratedWaypointGizmos(SplineRoadCreator creator, GizmoType gizmoType) // This function is automatically called by Unity to draw gizmos in the scene view. It will draw arrows at each waypoint to indicate direction, and lines between waypoints to show the path.
         {
-            Transform waypointsContainer = Creator.waypointsContainer;
+            Transform waypointsContainer = creator.waypointsContainer;
             if (waypointsContainer == null) return;
+
+            Color previousColor = Handles.color;
 
             for (int laneIndex = 0; laneIndex < waypointsContainer.childCount; laneIndex++)
             {
@@ -67,20 +74,21 @@ namespace Darkmatter.TrafficSystem.Editor
                     if (waypointTransform == null) continue;
 
                     Vector3 waypointPosition = waypointTransform.position;
-                    float waypointSize = HandleUtility.GetHandleSize(waypointPosition) * DMTSPrefs.WaypointSizeMultiplier;
+                    float waypointSize = HandleUtility.GetHandleSize(waypointPosition) *
+                                         DMTSPrefs.WaypointSizeMultiplier;
 
                     Vector3 forward;
                     if (waypointIndex < laneTransform.childCount - 1)
                     {
                         forward = (laneTransform.GetChild(waypointIndex + 1).position - waypointPosition).normalized;
                     }
-                    else if(hasPrevWaypoint)
+                    else if (hasPrevWaypoint)
                     {
                         forward = (waypointPosition - prevWaypointPosition).normalized;
                     }
                     else
                     {
-                        forward = Vector3.forward; // default forward direction
+                        forward = Vector3.forward;
                     }
 
                     Vector3 right = Vector3.Cross(Vector3.up, forward).normalized;
@@ -90,7 +98,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     float arrowLength = waypointSize * 0.6f;
                     float arrowHalfWidth = waypointSize * 0.3f;
                     Vector3 tip = waypointPosition;
-                    Vector3 baseLeft  = waypointPosition - forward * arrowLength + right * arrowHalfWidth;
+                    Vector3 baseLeft = waypointPosition - forward * arrowLength + right * arrowHalfWidth;
                     Vector3 baseRight = waypointPosition - forward * arrowLength - right * arrowHalfWidth;
 
                     Handles.color = DMTSPrefs.WaypointColor;
@@ -101,10 +109,16 @@ namespace Darkmatter.TrafficSystem.Editor
                         Handles.color = DMTSPrefs.WaypointLineColor;
                         Handles.DrawLine(prevWaypointPosition, waypointPosition);
                     }
+
                     prevWaypointPosition = waypointPosition;
                     hasPrevWaypoint = true;
                 }
             }
+
+            Handles.color = previousColor;
         }
+
+        #endregion
+
     }
 }

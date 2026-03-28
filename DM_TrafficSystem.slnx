@@ -1,0 +1,6 @@
+﻿<Solution>
+  <Project Path="Darkmatter.TrafficSystem.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Darkmatter.TrafficSystem.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+</Solution>
