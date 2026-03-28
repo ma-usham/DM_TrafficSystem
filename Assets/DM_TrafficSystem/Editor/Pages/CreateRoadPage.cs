@@ -8,7 +8,7 @@ namespace Darkmatter.TrafficSystem.Editor
         public static bool isActive;
         public static int roadCount = 0;
 
-        private SplineRouteCreator routeCreator;
+        private SplineRoadCreator routeCreator;
         private bool initialized;
         private bool editMode;
         private Editor_DMWindow windowCtx;
@@ -18,19 +18,11 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private int dragIndex = -1;
 
-        private static readonly Color CurveColor = new Color(1f, 0.85f, 0.1f); //yellow
-        private static readonly Color PointColor = Color.white; //white
-        private static readonly Color ActiveEndColor = Color.green; //green
-        private static readonly Color InactiveEndColor = new Color(1f, 0.55f, 0f); //orange
-        private static readonly Color InsertPreviewColor = new Color(0f, 0.85f, 1f, 0.9f); //light blue
-
-        private const float PointScreenRadius = 10f; 
-        private const float EndpointScreenRadius = 16f; 
-        private const float InsertScreenThreshold = 25f; 
+        
 
         public CreateRoadPage() { }
 
-        public CreateRoadPage(SplineRouteCreator existingRoad)
+        public CreateRoadPage(SplineRoadCreator existingRoad)
         {
             routeCreator = existingRoad;
             initialized = true;
@@ -46,7 +38,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (initialized && routeCreator != null) return;
 
             GameObject go = new GameObject("Road_Route_"+ (++roadCount));
-            routeCreator = go.AddComponent<SplineRouteCreator>();
+            routeCreator = go.AddComponent<SplineRoadCreator>();
             Selection.activeGameObject = go;
             Undo.RegisterCreatedObjectUndo(go, "Create Road Route");
             initialized = true;
@@ -74,7 +66,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.Space(4);
 
             EditorGUILayout.HelpBox(
-                "\u2022 Left-click in the scene to place control points\n" +
+                "\u2022 Shift + Left-click in the scene to place control points\n" +
                 "\u2022 Click a green / orange endpoint to change drawing direction\n" +
                 "\u2022 Ctrl + Left-click near a curve segment to insert a point\n" +
                 "\u2022 Right-click a control point to delete it\n" +
@@ -207,7 +199,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 Vector3 a = pts[i].position;
                 Vector3 b = pts[i + 1].position;
                 routeCreator.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
-                Handles.DrawBezier(a, b, h1, h2, CurveColor, null, 3f);
+                Handles.DrawBezier(a, b, h1, h2, DMTSPrefs.CurveColor, null, DMTSPrefs.CurveEditWidth);
             }
         }
 
@@ -222,41 +214,39 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (cp == null) continue;
 
                 bool isEndpoint = (i == 0 || i == count - 1) && count >= 2;
-                float handleSize = HandleUtility.GetHandleSize(cp.position);
+                //float handleSize = HandleUtility.GetHandleSize(cp.position);
 
                 if (isEndpoint)
                 {
                     bool isActiveEnd = (i == 0 && activeEnd == DrawEnd.Start)
                                     || (i == count - 1 && activeEnd == DrawEnd.End);
 
-                    Handles.color = isActiveEnd ? ActiveEndColor : InactiveEndColor;
-                    float sz = handleSize * 0.18f;
+                    Handles.color = isActiveEnd ? DMTSPrefs.ActiveEndColor : DMTSPrefs.InactiveEndColor;
                     Handles.SphereHandleCap(0, cp.position, Quaternion.identity,
-                        sz * 2f, EventType.Repaint);
+                        DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
 
                     if (isActiveEnd && Camera.current != null)
                     {
-                        Handles.color = new Color(
-                            ActiveEndColor.r, ActiveEndColor.g, ActiveEndColor.b, 0.4f);
+                        Color ac = DMTSPrefs.ActiveEndColor;
+                        Handles.color = new Color(ac.r, ac.g, ac.b, 0.4f);
                         Handles.DrawWireDisc(cp.position,
-                            Camera.current.transform.forward, sz * 2.5f);
+                            Camera.current.transform.forward, DMTSPrefs.ControlPointHandleSize * 2.5f);
                     }
                 }
                 else
                 {
-                    Handles.color = PointColor;
-                    float sz = handleSize * 0.12f;
+                    Handles.color = DMTSPrefs.ControlPointColor;
                     Handles.SphereHandleCap(0, cp.position, Quaternion.identity,
-                        sz * 2f, EventType.Repaint);
+                        DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
                 }
 
                 var labelStyle = new GUIStyle
                 {
                     normal = { textColor = Color.white },
                     fontStyle = FontStyle.Bold,
-                    fontSize = 10
+                    fontSize = DMTSPrefs.PointLabelFontSize
                 };
-                Handles.Label(cp.position + Vector3.up * handleSize * 0.35f,
+                Handles.Label(cp.position + Vector3.up * DMTSPrefs.ControlPointHandleSize * 0.35f,
                     $"[{i}]", labelStyle);
             }
         }
@@ -269,24 +259,23 @@ namespace Darkmatter.TrafficSystem.Editor
             FindNearestSegmentScreenSpace(e.mousePosition,
                 out int seg, out float t, out float screenDist);
 
-            if (seg < 0 || screenDist > InsertScreenThreshold) return;
+            if (seg < 0 || screenDist > DMTSPrefs.InsertScreenThreshold) return;
 
             Vector3 p0 = routeCreator.controlPointsList[seg].position;
             Vector3 p3 = routeCreator.controlPointsList[seg + 1].position;
             routeCreator.GetSegmentHandles(seg, out Vector3 p1, out Vector3 p2);
-            Vector3 preview = SplineRouteCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
+            Vector3 preview = SplineRoadCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
 
-            float sz = HandleUtility.GetHandleSize(preview) * 0.14f;
-            Handles.color = InsertPreviewColor;
+            Handles.color = DMTSPrefs.InsertPreviewColor;
             Handles.SphereHandleCap(0, preview, Quaternion.identity,
-                sz * 2f, EventType.Repaint);
+                DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
 
             var style = new GUIStyle
             {
-                normal = { textColor = InsertPreviewColor },
-                fontSize = 11
+                normal = { textColor = DMTSPrefs.InsertPreviewColor },
+                fontSize = DMTSPrefs.InsertLabelFontSize
             };
-            Handles.Label(preview + Vector3.up * sz * 5f,
+            Handles.Label(preview + Vector3.up * DMTSPrefs.ControlPointHandleSize * 5f,
                 "Ctrl+Click to insert", style);
         }
 
@@ -296,7 +285,7 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             Event e = Event.current;
 
-            if (e.type == EventType.MouseDown && e.button == 0 && !e.alt)
+            if (e.type == EventType.MouseDown && e.button == 0)
             {
                 HandleLeftDown(e, controlId);
             }
@@ -310,8 +299,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 GUIUtility.hotControl = 0;
                 e.Use();
             }
-            else if (e.type == EventType.MouseDown && e.button == 1
-                     && !e.alt && !e.control)
+            else if (e.type == EventType.MouseDown && e.button == 1) 
             {
                 HandleRightClick(e);
             }
@@ -339,7 +327,7 @@ namespace Darkmatter.TrafficSystem.Editor
             // Click on endpoint → select drawing direction (+ begin drag)
             if (nearest >= 0 && count >= 2
                 && (nearest == 0 || nearest == count - 1)
-                && nearDist < EndpointScreenRadius)
+                && nearDist < DMTSPrefs.EndpointScreenRadius)
             {
                 activeEnd = nearest == 0 ? DrawEnd.Start : DrawEnd.End;
                 dragIndex = nearest;
@@ -350,7 +338,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             // Click on mid-point → begin drag
-            if (nearest >= 0 && nearDist < PointScreenRadius)
+            if (nearest >= 0 && nearDist < DMTSPrefs.PointScreenRadius)
             {
                 dragIndex = nearest;
                 GUIUtility.hotControl = controlId;
@@ -358,7 +346,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
-            // Click empty space → add new control point
+            // Shift+Click empty space → add new control point
+            if (!e.shift) return;
+
             Vector3 worldPos = GetWorldPosition(e.mousePosition);
             Undo.RecordObject(routeCreator, "Add Control Point");
 
@@ -392,7 +382,7 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             if (routeCreator == null) return;
             int nearest = ScreenNearestPoint(e.mousePosition, out float dist);
-            if (nearest < 0 || dist > EndpointScreenRadius) return;
+            if (nearest < 0 || dist > DMTSPrefs.EndpointScreenRadius) return;
 
             Transform point = routeCreator.controlPointsList[nearest];
             Undo.RecordObject(routeCreator, "Delete Control Point");
@@ -410,12 +400,12 @@ namespace Darkmatter.TrafficSystem.Editor
             FindNearestSegmentScreenSpace(mousePos,
                 out int seg, out float t, out float screenDist);
 
-            if (seg < 0 || screenDist > InsertScreenThreshold) return false;
+            if (seg < 0 || screenDist > DMTSPrefs.InsertScreenThreshold) return false;
 
             Vector3 p0 = routeCreator.controlPointsList[seg].position;
             Vector3 p3 = routeCreator.controlPointsList[seg + 1].position;
             routeCreator.GetSegmentHandles(seg, out Vector3 p1, out Vector3 p2);
-            Vector3 insertPos = SplineRouteCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
+            Vector3 insertPos = SplineRoadCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
 
             Undo.RecordObject(routeCreator, "Insert Control Point");
             Transform newPoint = routeCreator.InsertControlPoint(seg + 1, insertPos);
@@ -470,7 +460,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 for (int s = 0; s <= samples; s++)
                 {
                     float t = s / (float)samples;
-                    Vector3 worldPt = SplineRouteCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
+                    Vector3 worldPt = SplineRoadCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
                     Vector2 screenPt = HandleUtility.WorldToGUIPoint(worldPt);
                     float d = Vector2.Distance(mousePos, screenPt);
 

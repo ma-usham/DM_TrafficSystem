@@ -29,12 +29,8 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void OnSceneGUI()
         {
-            Handles.color = Color.cyan;
-            float size = HandleUtility.GetHandleSize(Waypoint.transform.position) * 0.15f;
-            Handles.SphereHandleCap(0, Waypoint.transform.position, Quaternion.identity, size * 2f, EventType.Repaint);
-
             Handles.Label(
-                Waypoint.transform.position + Vector3.up * size * 3f,
+                Waypoint.transform.position + Vector3.up,
                 $"Speed: {Waypoint.settings.speed}",
                 EditorStyles.boldLabel
             );

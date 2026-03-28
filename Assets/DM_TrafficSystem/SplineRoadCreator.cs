@@ -4,9 +4,10 @@ using UnityEngine;
 namespace Darkmatter.TrafficSystem
 {
     [ExecuteInEditMode]
-    public class SplineRouteCreator : MonoBehaviour
+    public class SplineRoadCreator : MonoBehaviour
     {
         public List<Transform> controlPointsList = new List<Transform>();
+        [HideInInspector] public Transform controlPointsHolder;
         [Range(1, 8)] public int lanes = 1;
         [Range(1, 15)] public int waypointDistance = 5;
         public float laneWidth = 4f;
@@ -49,11 +50,23 @@ namespace Darkmatter.TrafficSystem
             controlPointsList.RemoveAll(t => t == null);
         }
 
+        public Transform GetOrCreateHolder()
+        {
+            if (controlPointsHolder == null)
+            {
+                var cpHolder = new GameObject("ControlPointsHolder");
+                cpHolder.transform.SetParent(transform);
+                cpHolder.transform.localPosition = Vector3.zero;
+                controlPointsHolder = cpHolder.transform;
+            }
+            return controlPointsHolder;
+        }
+
         private Transform CreatePointObject(Vector3 position)
         {
             GameObject go = new GameObject("controlPoint");
             go.transform.position = position;
-            go.transform.SetParent(transform);
+            go.transform.SetParent(GetOrCreateHolder());
             return go.transform;
         }
 
@@ -192,6 +205,7 @@ namespace Darkmatter.TrafficSystem
                     Vector3 pos = centerPositions[w] + right * offset;
 
                     var wpGo = new GameObject($"Waypoint_{w}");
+                    wpGo.AddComponent<AIWaypoint>();
                     wpGo.transform.position = pos;
                     wpGo.transform.SetParent(laneGo.transform);
                     laneWaypoints.Add(wpGo.transform);
