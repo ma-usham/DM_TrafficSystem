@@ -16,12 +16,12 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.Space(4);
             if (GUILayout.Button("Open in Traffic System Window", GUILayout.Height(24)))
             {
-                Editor_DMWindow.ShowWindow();
+                Editor_DMWindow.ShowWindow(new CreateRoadPage(Creator));
             }
             SceneView.RepaintAll();
         }
 
-        private void OnSceneGUI()
+        private void OnSceneGUI() //This just shows the bezier curve and control points of that road object int he scene.
         {
             if (CreateRoadPage.isActive) return;
 
@@ -45,23 +45,10 @@ namespace Darkmatter.TrafficSystem.Editor
                 Handles.SphereHandleCap(0, pts[i].position, Quaternion.identity,
                     DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
 
-                if (Creator.splineMoveMode == SplineMoveMode.Move3D)
-                    Draw3DMoveHandle(pts[i]);
             }
         }
 
-        private void Draw3DMoveHandle(Transform controlPoint)
-        {
-            EditorGUI.BeginChangeCheck();
-            Vector3 newPosition = Handles.PositionHandle(controlPoint.position, Quaternion.identity);
-            if (!EditorGUI.EndChangeCheck()) return;
 
-            Undo.RecordObject(controlPoint, "Move Control Point");
-            controlPoint.position = newPosition;
-            EditorUtility.SetDirty(controlPoint);
-            EditorUtility.SetDirty(Creator);
-            SceneView.RepaintAll();
-        }
 
 
 

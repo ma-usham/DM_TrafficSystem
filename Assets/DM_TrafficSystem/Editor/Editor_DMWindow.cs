@@ -10,12 +10,16 @@ namespace Darkmatter.TrafficSystem.Editor
         public static Editor_DMWindow editorWindow;
 
         [MenuItem("Tools/DarkMatter Traffic System Tool", false, 2)]
-        public static void ShowWindow()
+        public static void ShowWindow(IPage openPage = null)
         {
             Editor_DMWindow window = (Editor_DMWindow)GetWindow(typeof(Editor_DMWindow));
             window.minSize = new Vector2(320, 240);
             window.titleContent.text = "DarkMatter Traffic System";
             window.Show();
+            if (openPage != null)
+            {
+               window.pageStack.Push(openPage);
+            }
         }
 
         private void OnEnable()
