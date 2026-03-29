@@ -139,6 +139,21 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        /// <summary>
+        /// Snaps a world position to collider geometry below (terrain, road meshes, etc.)
+        /// so waypoints sit on the ground instead of following spline height over/under scenery.
+        /// </summary>
+        private static Vector3 ProjectOntoGround(Vector3 worldPosition)
+        {
+            const float lift = 500f;
+            const float maxDistance = 3000f;
+            Vector3 origin = worldPosition + Vector3.up * lift;
+            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, maxDistance,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                return hit.point;
+            return worldPosition;
+        }
+
         public void GenerateRoadWaypoints()
         {
             if (controlPointsList.Count < 2) return;
@@ -204,6 +219,7 @@ namespace Darkmatter.TrafficSystem
                 {
                     Vector3 right = Vector3.Cross(tangents[w], Vector3.up).normalized;
                     Vector3 pos = centerPositions[w] + right * offset;
+                    pos = ProjectOntoGround(pos);
 
                     var wpGo = new GameObject($"Waypoint_{w}");
                     wpGo.AddComponent<AIWaypoint>();
