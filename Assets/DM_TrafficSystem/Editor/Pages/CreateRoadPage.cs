@@ -33,12 +33,13 @@ namespace Darkmatter.TrafficSystem.Editor
 
         // ───────────────── Initialization ─────────────────
 
-        private void EnsureInitialized()
+        private void EnsureInitialized(Vector3 firstClickPosition)
         {
 
             if (initialized && routeCreator != null) return;
 
             GameObject go = new GameObject("Road_Route_"+ (++roadCount));
+            go.transform.position = firstClickPosition;
             routeCreator = go.AddComponent<SplineRoadCreator>();
             Selection.activeGameObject = go;
             Undo.RegisterCreatedObjectUndo(go, "Create Road Route");
@@ -107,16 +108,7 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Road Settings", EditorStyles.boldLabel);
-            
 
-            routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
-            routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
-            routeCreator.waypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", routeCreator.waypointDistance, 1, 15);
-            routeCreator.speedLimitForAllRoads =
-                EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
-            routeCreator.curveResolution =
-                EditorGUILayout.IntSlider("Curve Smoothness", routeCreator.curveResolution, 10, 100);
-            EditorGUI.BeginChangeCheck();
             SplineMoveMode newMoveMode =
                 (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.splineMoveMode);
             if (EditorGUI.EndChangeCheck())
@@ -125,6 +117,15 @@ namespace Darkmatter.TrafficSystem.Editor
                 routeCreator.splineMoveMode = newMoveMode;
                 EditorUtility.SetDirty(routeCreator);
             }
+            routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
+            routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
+            routeCreator.waypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", routeCreator.waypointDistance, 1, 15);
+            routeCreator.speedLimitForAllRoads =
+                EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
+            routeCreator.curveResolution =
+                EditorGUILayout.IntSlider("Curve Smoothness", routeCreator.curveResolution, 10, 100);
+            EditorGUI.BeginChangeCheck();
+           
 
             EditorGUILayout.Space(2);
             string dir = activeEnd == DrawEnd.End ? "End  \u25BA" : "\u25C4  Start";
@@ -322,7 +323,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleLeftDown(Event e, int controlId)
         {
-            if(e.shift && !initialized )EnsureInitialized(); //create road when first clicked on the scene
+            if(e.shift && !initialized )EnsureInitialized(GetWorldPosition(e.mousePosition)); //create road when first clicked on the scene
             if(!initialized) return; //if not initialized, ignore other clicks
             var pts = routeCreator.controlPointsList;
             int count = pts.Count;
@@ -503,7 +504,7 @@ namespace Darkmatter.TrafficSystem.Editor
             Plane ground = new Plane(Vector3.up, Vector3.zero);
             if (ground.Raycast(ray, out float enter))
                 return ray.GetPoint(enter);
-
+            
             return ray.GetPoint(10f);
         }
 

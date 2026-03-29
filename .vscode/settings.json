@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "DM_TrafficSystem.slnx"
+    "dotnet.defaultSolution": "DM_TrafficSystem.sln"
 }
