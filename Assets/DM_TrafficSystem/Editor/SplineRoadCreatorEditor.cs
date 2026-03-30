@@ -94,18 +94,8 @@ namespace Darkmatter.TrafficSystem.Editor
                         forward = Vector3.forward;
                     }
 
-                    Vector3 right = Vector3.Cross(Vector3.up, forward).normalized;
-                    if (right.sqrMagnitude < 0.001f)
-                        right = Vector3.Cross(Vector3.forward, forward).normalized;
-
-                    float arrowLength = waypointSize * 0.6f;
-                    float arrowHalfWidth = waypointSize * 0.3f;
-                    Vector3 tip = waypointPosition;
-                    Vector3 baseLeft = waypointPosition - forward * arrowLength + right * arrowHalfWidth;
-                    Vector3 baseRight = waypointPosition - forward * arrowLength - right * arrowHalfWidth;
-
                     Handles.color = DMTSPrefs.WaypointColor;
-                    Handles.DrawAAConvexPolygon(tip, baseLeft, baseRight);
+                    DrawDirectionArrow(waypointPosition, forward, waypointSize);
 
                     if (hasPrevWaypoint)
                     {
@@ -119,6 +109,28 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             Handles.color = previousColor;
+        }
+
+        private static void DrawDirectionArrow(Vector3 position, Vector3 forward, float size)
+        {
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.Cross(Vector3.forward, forward);
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.right;
+            right.Normalize();
+
+            float shaftLength = size * 1.3f;
+            float headLength = size * 0.55f;
+            float headWidth = size * 0.4f;
+
+            Vector3 tail = position - forward * shaftLength * 0.5f;
+            Vector3 tip = position + forward * shaftLength * 0.5f;
+            Vector3 headBase = tip - forward * headLength;
+
+            Handles.DrawLine(tail, tip);
+            Handles.DrawLine(tip, headBase + right * headWidth);
+            Handles.DrawLine(tip, headBase - right * headWidth);
         }
 
         #endregion

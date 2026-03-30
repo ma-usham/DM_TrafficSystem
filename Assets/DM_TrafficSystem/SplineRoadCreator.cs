@@ -14,6 +14,7 @@ namespace Darkmatter.TrafficSystem
         public float laneWidth = 4f;
         public float speedLimitForAllRoads = 30f;
         [Range(10, 100)] public int curveResolution = 30;
+        public DrivingDirection drivingDirection = DrivingDirection.Left;
 
         public Transform AddControlPoint(Vector3 position)
         {
@@ -154,6 +155,26 @@ namespace Darkmatter.TrafficSystem
             return worldPosition;
         }
 
+        private static Vector3 GetRightSide(Vector3 forward)
+        {
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.Cross(Vector3.forward, forward);
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.right;
+            return right.normalized;
+        }
+
+        private bool LaneTravelsWithSpline(float laneOffset)
+        {
+            if (Mathf.Abs(laneOffset) < 0.001f)
+                return drivingDirection == DrivingDirection.Left;
+
+            return drivingDirection == DrivingDirection.Left
+                ? laneOffset < 0f
+                : laneOffset > 0f;
+        }
+
         public void GenerateRoadWaypoints()
         {
             if (controlPointsList.Count < 2) return;
@@ -207,23 +228,30 @@ namespace Darkmatter.TrafficSystem
             // Generate waypoints for each lane, offset symmetrically from center
             for (int lane = 0; lane < lanes; lane++)
             {
-                float offset = (lane - (lanes - 1) / 2f) * laneWidth;
+                float laneOffset = (lane - (lanes - 1) / 2f) * laneWidth;
 
                 var laneGo = new GameObject($"Lane_{lane}");
                 laneGo.transform.SetParent(waypointsContainer);
                 laneGo.transform.localPosition = Vector3.zero;
 
+                var lanePositions = new List<Vector3>(centerPositions.Count);
                 var laneWaypoints = new List<Transform>();
 
                 for (int w = 0; w < centerPositions.Count; w++)
                 {
-                    Vector3 right = Vector3.Cross(tangents[w], Vector3.up).normalized;
-                    Vector3 pos = centerPositions[w] + right * offset;
-                    pos = ProjectOntoGround(pos);
+                    Vector3 right = GetRightSide(tangents[w]);
+                    Vector3 pos = ProjectOntoGround(centerPositions[w] + right * laneOffset);
+                    lanePositions.Add(pos);
+                }
 
+                if (!LaneTravelsWithSpline(laneOffset))
+                    lanePositions.Reverse();
+
+                for (int w = 0; w < lanePositions.Count; w++)
+                {
                     var wpGo = new GameObject($"Waypoint_{w}");
                     wpGo.AddComponent<AIWaypoint>();
-                    wpGo.transform.position = pos;
+                    wpGo.transform.position = lanePositions[w];
                     wpGo.transform.SetParent(laneGo.transform);
                     laneWaypoints.Add(wpGo.transform);
                 }

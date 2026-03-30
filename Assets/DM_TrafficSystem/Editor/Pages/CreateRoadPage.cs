@@ -109,23 +109,30 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Road Settings", EditorStyles.boldLabel);
 
+            EditorGUI.BeginChangeCheck();
+
             SplineMoveMode newMoveMode =
                 (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.splineMoveMode);
+            int newLaneCount = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
+            float newLaneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
+            int newWaypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", routeCreator.waypointDistance, 1, 15);
+            float newSpeedLimit = EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
+            int newCurveResolution = EditorGUILayout.IntSlider("Curve Smoothness", routeCreator.curveResolution, 10, 100);
+            DrivingDirection newDrivingDirection =
+                (DrivingDirection)EditorGUILayout.EnumPopup("Driving Direction", routeCreator.drivingDirection);
+
             if (EditorGUI.EndChangeCheck())
             {
-                Undo.RecordObject(routeCreator, "Change Spline Move Mode");
+                Undo.RecordObject(routeCreator, "Change Road Settings");
                 routeCreator.splineMoveMode = newMoveMode;
+                routeCreator.lanes = newLaneCount;
+                routeCreator.laneWidth = newLaneWidth;
+                routeCreator.waypointDistance = newWaypointDistance;
+                routeCreator.speedLimitForAllRoads = newSpeedLimit;
+                routeCreator.curveResolution = newCurveResolution;
+                routeCreator.drivingDirection = newDrivingDirection;
                 EditorUtility.SetDirty(routeCreator);
             }
-            routeCreator.lanes = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
-            routeCreator.laneWidth = EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth);
-            routeCreator.waypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", routeCreator.waypointDistance, 1, 15);
-            routeCreator.speedLimitForAllRoads =
-                EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads);
-            routeCreator.curveResolution =
-                EditorGUILayout.IntSlider("Curve Smoothness", routeCreator.curveResolution, 10, 100);
-            EditorGUI.BeginChangeCheck();
-           
 
             EditorGUILayout.Space(2);
             string dir = activeEnd == DrawEnd.End ? "End  \u25BA" : "\u25C4  Start";
