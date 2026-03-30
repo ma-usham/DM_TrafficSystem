@@ -7,15 +7,15 @@ namespace Darkmatter.TrafficSystem
         // Control points
         public static float ControlPointHandleSize = 1f;
         public static Color ControlPointColor = Color.white;
+        public static Color DraggedControlPointColor = Color.yellow;
 
         // Spline curve
         public static Color CurveColor = new Color(1f, 0.85f, 0.1f, 1f);
         public static float CurveWidth = 2.5f;
         public static float CurveEditWidth = 3f;
 
-        // Endpoint markers (active drawing direction)
+        // Spline end marker
         public static Color ActiveEndColor = Color.green;
-        public static Color InactiveEndColor = new Color(1f, 0.55f, 0f, 1f);
 
         // Insert-preview handle
         public static Color InsertPreviewColor = new Color(0f, 0.85f, 1f, 0.9f);

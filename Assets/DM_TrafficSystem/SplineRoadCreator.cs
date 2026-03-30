@@ -23,13 +23,6 @@ namespace Darkmatter.TrafficSystem
             return point;
         }
 
-        public Transform AddControlPointAtStart(Vector3 position)
-        {
-            Transform point = CreatePointObject(position);
-            controlPointsList.Insert(0, point);
-            return point;
-        }
-
         public Transform InsertControlPoint(int index, Vector3 position)
         {
             index = Mathf.Clamp(index, 0, controlPointsList.Count);

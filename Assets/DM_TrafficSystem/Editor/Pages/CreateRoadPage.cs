@@ -13,9 +13,6 @@ namespace Darkmatter.TrafficSystem.Editor
         private bool editMode;
         private Editor_DMWindow windowCtx;
 
-        private enum DrawEnd { Start, End }
-        private DrawEnd activeEnd = DrawEnd.End;
-
         private int dragIndex = -1;
 
         
@@ -59,6 +56,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 ctx.pageStack.Pop();
                 return;
             }
+            if(routeCreator) Selection.activeGameObject = routeCreator.gameObject;
 
             EditorGUILayout.Space(4);
             string title = (editMode && routeCreator != null)
@@ -68,8 +66,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.Space(4);
 
             EditorGUILayout.HelpBox(
-                "\u2022 Shift + Left-click in the scene to place control points\n" +
-                "\u2022 Click a green / orange endpoint to change drawing direction\n" +
+                "\u2022 Shift + Left-click in the scene to place control points at the spline end\n" +
                 "\u2022 Ctrl + Left-click near a curve segment to insert a point\n" +
                 "\u2022 Right-click a control point to delete it\n" +
                 "\u2022 Drag any control point to reposition it in Move2D\n" +
@@ -82,7 +79,7 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 DrawSettings();
                 EditorGUILayout.Space(4);
-                DrawPointList();
+                //DrawPointList();
             }
 
             GUILayout.FlexibleSpace();
@@ -135,8 +132,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             EditorGUILayout.Space(2);
-            string dir = activeEnd == DrawEnd.End ? "End  \u25BA" : "\u25C4  Start";
-            EditorGUILayout.LabelField("Drawing from", dir, EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Extends from", "End  \u25BA", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Points", routeCreator.controlPointsList.Count.ToString());
 
             EditorGUILayout.EndVertical();
@@ -233,21 +229,21 @@ namespace Darkmatter.TrafficSystem.Editor
                 Transform cp = pts[i];
                 if (cp == null) continue;
 
-                bool isEndpoint = (i == 0 || i == count - 1) && count >= 2;
-                //float handleSize = HandleUtility.GetHandleSize(cp.position);
+                bool isDraggedPoint = i == dragIndex;
+                bool isSplineEnd = i == count - 1 && count >= 2;
 
-                if (isEndpoint)
+                if (isSplineEnd)
                 {
-                    bool isActiveEnd = (i == 0 && activeEnd == DrawEnd.Start)
-                                    || (i == count - 1 && activeEnd == DrawEnd.End);
-
-                    Handles.color = isActiveEnd ? DMTSPrefs.ActiveEndColor : DMTSPrefs.InactiveEndColor;
+                    Color pointColor = isDraggedPoint
+                        ? DMTSPrefs.DraggedControlPointColor
+                        : DMTSPrefs.ActiveEndColor;
+                    Handles.color = pointColor;
                     Handles.SphereHandleCap(0, cp.position, Quaternion.identity,
                         DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
 
-                    if (isActiveEnd && Camera.current != null)
+                    if (Camera.current != null)
                     {
-                        Color ac = DMTSPrefs.ActiveEndColor;
+                        Color ac = pointColor;
                         Handles.color = new Color(ac.r, ac.g, ac.b, 0.4f);
                         Handles.DrawWireDisc(cp.position,
                             Camera.current.transform.forward, DMTSPrefs.ControlPointHandleSize * 2.5f);
@@ -255,7 +251,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 }
                 else
                 {
-                    Handles.color = DMTSPrefs.ControlPointColor;
+                    Handles.color = isDraggedPoint
+                        ? DMTSPrefs.DraggedControlPointColor
+                        : DMTSPrefs.ControlPointColor;
                     Handles.SphereHandleCap(0, cp.position, Quaternion.identity,
                         DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
                 }
@@ -347,12 +345,11 @@ namespace Darkmatter.TrafficSystem.Editor
 
             int nearest = ScreenNearestPoint(e.mousePosition, out float nearDist);
 
-            // Click on endpoint → select drawing direction (+ begin drag)
+            // Click on endpoint → begin drag
             if (nearest >= 0 && count >= 2
                 && (nearest == 0 || nearest == count - 1)
                 && nearDist < DMTSPrefs.EndpointScreenRadius)
             {
-                activeEnd = nearest == 0 ? DrawEnd.Start : DrawEnd.End;
                 dragIndex = routeCreator.splineMoveMode == SplineMoveMode.Move2D ? nearest : -1;
                 if (routeCreator.splineMoveMode == SplineMoveMode.Move2D)
                     GUIUtility.hotControl = controlId;
@@ -378,12 +375,7 @@ namespace Darkmatter.TrafficSystem.Editor
             Vector3 worldPos = GetWorldPosition(e.mousePosition);
             Undo.RecordObject(routeCreator, "Add Control Point");
 
-            Transform newPoint;
-            if (activeEnd == DrawEnd.End || count < 2)
-                newPoint = routeCreator.AddControlPoint(worldPos);
-            else
-                newPoint = routeCreator.AddControlPointAtStart(worldPos);
-
+            Transform newPoint = routeCreator.AddControlPoint(worldPos);
             Undo.RegisterCreatedObjectUndo(newPoint.gameObject, "Add Control Point");
             EditorUtility.SetDirty(routeCreator);
             e.Use();
