@@ -138,41 +138,6 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.EndVertical();
         }
 
-        private void DrawPointList()
-        {
-            if (routeCreator.controlPointsList.Count == 0) return;
-
-            EditorGUILayout.BeginVertical("box");
-            EditorGUILayout.LabelField("Control Points", EditorStyles.boldLabel);
-
-            for (int i = 0; i < routeCreator.controlPointsList.Count; i++)
-            {
-                Transform cp = routeCreator.controlPointsList[i];
-                if (cp == null) continue;
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField($"[{i}] {cp.name}", GUILayout.ExpandWidth(true));
-
-                if (GUILayout.Button("Sel", GUILayout.Width(36)))
-                {
-                    Selection.activeGameObject = cp.gameObject;
-                    SceneView.lastActiveSceneView?.Frame(
-                        new Bounds(cp.position, Vector3.one * 5f), false);
-                }
-                if (GUILayout.Button("X", GUILayout.Width(22)))
-                {
-                    Undo.RecordObject(routeCreator, "Remove Control Point");
-                    routeCreator.RemoveControlPoint(i);
-                    EditorUtility.SetDirty(routeCreator);
-                    break;
-                }
-
-                EditorGUILayout.EndHorizontal();
-            }
-
-            EditorGUILayout.EndVertical();
-        }
-
         // ───────────────── Scene GUI ─────────────────
 
         public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)

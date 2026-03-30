@@ -4,5 +4,7 @@ namespace Darkmatter.TrafficSystem
     public struct WaypointSettings
     {
         public float speed;
+        public AIWaypoint previousWaypoint;
+        public AIWaypoint nextWaypoint;
     }
 }

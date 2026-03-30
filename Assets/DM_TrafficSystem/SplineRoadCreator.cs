@@ -224,6 +224,7 @@ namespace Darkmatter.TrafficSystem
                 float laneOffset = (lane - (lanes - 1) / 2f) * laneWidth;
 
                 var laneGo = new GameObject($"Lane_{lane}");
+                AILane aiLane = laneGo.AddComponent<AILane>();
                 laneGo.transform.SetParent(waypointsContainer);
                 laneGo.transform.localPosition = Vector3.zero;
 
@@ -240,13 +241,32 @@ namespace Darkmatter.TrafficSystem
                 if (!LaneTravelsWithSpline(laneOffset))
                     lanePositions.Reverse();
 
+                List<AIWaypoint> createdWaypoints = new List<AIWaypoint>();
                 for (int w = 0; w < lanePositions.Count; w++)
                 {
                     var wpGo = new GameObject($"Waypoint_{w}");
-                    wpGo.AddComponent<AIWaypoint>();
+                    AIWaypoint aiWaypoint = wpGo.AddComponent<AIWaypoint>();
                     wpGo.transform.position = lanePositions[w];
                     wpGo.transform.SetParent(laneGo.transform);
+                    
                     laneWaypoints.Add(wpGo.transform);
+                    createdWaypoints.Add(aiWaypoint);
+                    aiLane.waypoints.Add(aiWaypoint);
+                }
+
+                // Link previous and next waypoints
+                for (int w = 0; w < createdWaypoints.Count; w++)
+                {
+                    AIWaypoint currentWp = createdWaypoints[w];
+                    WaypointSettings settings = currentWp.settings;
+                    
+                    if (w > 0)
+                        settings.previousWaypoint = createdWaypoints[w - 1];
+                    
+                    if (w < createdWaypoints.Count - 1)
+                        settings.nextWaypoint = createdWaypoints[w + 1];
+                        
+                    currentWp.settings = settings;
                 }
 
                 generatedLanes.Add(laneWaypoints);
