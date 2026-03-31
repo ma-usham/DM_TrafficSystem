@@ -173,7 +173,7 @@ namespace Darkmatter.TrafficSystem.Editor
             laneObject.transform.localPosition = Vector3.zero;
 
             AILane lane = Undo.AddComponent<AILane>(laneObject);
-            lane.laneSpeedLimit = road.speedLimitForAllRoads;
+            lane.laneSpeedLimit = road.speedLimitForAllLanes;
             EditorUtility.SetDirty(lane);
             return lane;
         }

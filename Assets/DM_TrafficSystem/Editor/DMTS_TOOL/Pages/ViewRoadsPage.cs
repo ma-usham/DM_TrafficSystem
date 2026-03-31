@@ -119,7 +119,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             EditorGUILayout.LabelField($"Points: {road.controlPointsList.Count}    " +
                                        $"Lanes: {road.lanes}    " +
-                                       $"Speed: {road.speedLimitForAllRoads}",
+                                       $"Speed: {road.speedLimitForAllLanes}",
                 EditorStyles.miniLabel);
 
             EditorGUILayout.EndVertical();
