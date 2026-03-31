@@ -5,8 +5,8 @@ namespace Darkmatter.TrafficSystem.Editor
 {
     public interface IPage
     {
-        void OnGUI(Editor_DMWindow ctx);
-        void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx);
+        void OnGUI(DMTS_Window ctx);
+        void OnSceneGUI(SceneView sceneView, DMTS_Window ctx);
     
     }
 }

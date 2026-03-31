@@ -26,7 +26,7 @@ namespace Darkmatter.TrafficSystem.Editor
             Selection.activeGameObject = go;
         }
 
-        public void OnGUI(Editor_DMWindow ctx)
+        public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("AI Traffic Manager", EditorStyles.boldLabel);
             EditorGUILayout.Space(6);
@@ -76,7 +76,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
-        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
+        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
         }
     }

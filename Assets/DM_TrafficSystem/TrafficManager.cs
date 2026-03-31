@@ -1,11 +1,12 @@
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Darkmatter.TrafficSystem
 {
     public class TrafficManager : MonoBehaviour
     {
-        public int VehicleCount = 5;
-        private float testvehicle = 1;
+        [FormerlySerializedAs("VehicleCount")]
+        [Min(0)]
+        public int vehicleCount = 5;
     }
 }

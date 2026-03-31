@@ -5,7 +5,7 @@ namespace Darkmatter.TrafficSystem.Editor
 {
     public class RoadSetupPage : IPage
     {
-        public void OnGUI(Editor_DMWindow ctx)
+        public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("Road Setup Page",EditorStyles.boldLabel);
             if(GUILayout.Button("Create Road",GUILayout.Height(20)))
@@ -28,7 +28,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
-        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
+        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
 
         }

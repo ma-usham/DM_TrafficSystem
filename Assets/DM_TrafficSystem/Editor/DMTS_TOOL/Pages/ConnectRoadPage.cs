@@ -8,7 +8,7 @@ namespace Darkmatter.TrafficSystem.Editor
     /// </summary>
     public class ConnectRoadPage : IPage
     {
-        public void OnGUI(Editor_DMWindow ctx)
+        public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("Connect Roads",EditorStyles.boldLabel);
 
@@ -19,7 +19,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
-        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
+        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
             
         }

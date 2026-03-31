@@ -13,7 +13,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private Vector2 scrollPos;
 
-        public void OnGUI(Editor_DMWindow ctx)
+        public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("Visible Roads", EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
@@ -61,14 +61,14 @@ namespace Darkmatter.TrafficSystem.Editor
                 ctx.pageStack.Pop();
         }
 
-        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx)
+        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
             RefreshVisibility(sceneView);
             DrawVisibleRoadGizmos();
             ctx.Repaint();
         }
 
-        private void DrawRoadEntry(Road road, Editor_DMWindow ctx)
+        private void DrawRoadEntry(Road road, DMTS_Window ctx)
         {
             EditorGUILayout.BeginVertical("box");
 
@@ -174,7 +174,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     Vector3 a = road.controlPointsList[i];
                     Vector3 b = road.controlPointsList[i + 1];
 
-                    road.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
+                    SplineMathUtils.GetSegmentHandles(road.controlPointsList, i, out Vector3 h1, out Vector3 h2);
                     Handles.DrawBezier(a, b, h1, h2,
                         DMTSPrefs.ViewRoadCurveColor, null, DMTSPrefs.CurveWidth);
                 }

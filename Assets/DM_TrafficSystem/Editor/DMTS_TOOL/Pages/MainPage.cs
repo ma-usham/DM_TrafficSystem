@@ -5,7 +5,7 @@ namespace Darkmatter.TrafficSystem.Editor
 {
     public class MainPage : IPage
     {
-        public void OnGUI(Editor_DMWindow ctx)
+        public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("DarkMatter Traffic System", EditorStyles.boldLabel);
             EditorGUILayout.Space(6);
@@ -20,6 +20,6 @@ namespace Darkmatter.TrafficSystem.Editor
                 ctx.pageStack.Push(new IntersectionSetupPage());
         }
 
-        public void OnSceneGUI(SceneView sceneView, Editor_DMWindow ctx) { }
+        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx) { }
     }
 }

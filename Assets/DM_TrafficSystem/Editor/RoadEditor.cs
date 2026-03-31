@@ -6,7 +6,7 @@ namespace Darkmatter.TrafficSystem.Editor
     [CustomEditor(typeof(Road))]
     public class RoadEditor : UnityEditor.Editor
     {
-        private Road Creator => (Road)target;
+        private Road road => (Road)target;
 
 
         public override void OnInspectorGUI()
@@ -16,7 +16,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.Space(4);
             if (GUILayout.Button("Open in Traffic System Window", GUILayout.Height(24)))
             {
-                Editor_DMWindow.ShowWindow(new CreateRoadPage(Creator));
+                DMTS_Window.ShowWindow(new CreateRoadPage(road));
             }
             SceneView.RepaintAll();
         }
@@ -25,14 +25,15 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             if (CreateRoadPage.isActive) return;
 
-            var pts = Creator.controlPointsList;
+            var pts = road.controlPointsList;
             if (pts.Count < 2) return;
 
             for (int i = 0; i < pts.Count - 1; i++)
             {
                 Vector3 a = pts[i];
                 Vector3 b = pts[i + 1];
-                Creator.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
+                SplineMathUtils.GetSegmentHandles(road.controlPointsList, i, out Vector3 h1, out Vector3 h2);
+                //Creator.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
                 Handles.DrawBezier(a, b, h1, h2, DMTSPrefs.CurveColor, null, DMTSPrefs.CurveWidth);
             }
 
@@ -44,12 +45,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
             }
         }
-
-
-
-
-
-
 
         #region Gizmos
         [DrawGizmo(GizmoType.Selected)] //This will only draw the gizmos when the object is selected, which can help reduce clutter in the scene view.
