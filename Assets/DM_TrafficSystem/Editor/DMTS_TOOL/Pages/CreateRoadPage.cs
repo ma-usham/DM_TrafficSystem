@@ -5,24 +5,33 @@ namespace Darkmatter.TrafficSystem.Editor
 {
     public class CreateRoadPage : IPage
     {
-        private const float MinLaneWidth = 0.1f;
-        private const float MinSpeedLimit = 0f;
+
         private const int SegmentPreviewSamples = 50;
+
+        private RoadEditor roadEditor;
+        private AILaneEditor laneEditor;
 
         public static bool isActive;
 
         private readonly bool editMode;
-        private Road routeCreator;
+        private Road road;
         private bool initialized;
         private int dragIndex = -1;
 
         public CreateRoadPage()
         {
+            InitializeEditors();
+        }
+        private void InitializeEditors()
+        {
+            if (roadEditor == null) roadEditor = ScriptableObject.CreateInstance<RoadEditor>();
+            if (laneEditor == null) laneEditor = ScriptableObject.CreateInstance<AILaneEditor>();
         }
 
         public CreateRoadPage(Road existingRoad)
         {
-            routeCreator = existingRoad;
+            InitializeEditors();
+            road = existingRoad;
             initialized = existingRoad != null;
             editMode = existingRoad != null;
             isActive = existingRoad != null;
@@ -38,19 +47,13 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.LabelField(GetTitle(), EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
 
-            EditorGUILayout.HelpBox(
-                "\u2022 Shift + Left-click in the scene to place control points at the spline end\n" +
-                "\u2022 Ctrl + Left-click near a curve segment to insert a point\n" +
-                "\u2022 Right-click a control point to delete it\n" +
-                "\u2022 Drag any control point to reposition it in Move2D\n" +
-                "\u2022 Use the move handle to reposition points on x, y, z in Move3D",
-                MessageType.Info);
+            roadEditor.DrawRoadHelpBox();
 
             EditorGUILayout.Space(6);
 
-            if (routeCreator != null)
+            if (road != null)
             {
-                DrawSettings();
+                roadEditor.DrawRoadSettings(road);
                 EditorGUILayout.Space(4);
                 DrawLaneConfigurations();
             }
@@ -60,7 +63,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUI.BeginDisabledGroup(!CanGenerateRoad());
             if (GUILayout.Button("Generate Road", GUILayout.Width(100)))
             {
-                RoadBuilder.GenerateRoadWaypoints(routeCreator);
+                RoadBuilder.GenerateRoadWaypoints(road);
             }
             EditorGUI.EndDisabledGroup();
 
@@ -76,10 +79,10 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             int controlId = GUIUtility.GetControlID(FocusType.Passive);
-            if (routeCreator == null || routeCreator.splineMoveMode == SplineMoveMode.Move2D)
+            if (road == null || road.splineMoveMode == SplineMoveMode.Move2D)
                 HandleUtility.AddDefaultControl(controlId);
 
-            if (routeCreator != null)
+            if (road != null)
             {
                 DrawCurve();
                 DrawPoints();
@@ -92,109 +95,44 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void EnsureInitialized(Vector3 firstClickPosition)
         {
-            if (initialized && routeCreator != null)
+            if (initialized && road != null)
                 return;
 
             GameObject roadObject = new GameObject(GetNextRoadName());
             Undo.RegisterCreatedObjectUndo(roadObject, "Create Road");
             roadObject.transform.position = firstClickPosition;
 
-            routeCreator = roadObject.AddComponent<Road>();
+            road = roadObject.AddComponent<Road>();
             initialized = true;
             isActive = true;
 
             FocusRoadSelection();
-            EditorUtility.SetDirty(routeCreator);
-        }
-
-        private void DrawSettings()
-        {
-            EditorGUILayout.BeginVertical("box");
-            EditorGUILayout.LabelField("Road Settings", EditorStyles.boldLabel);
-
-            EditorGUI.BeginChangeCheck();
-
-            SplineMoveMode newMoveMode =
-                (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", routeCreator.splineMoveMode);
-            int newLaneCount = EditorGUILayout.IntSlider("Lanes", routeCreator.lanes, 1, 8);
-            float newLaneWidth = Mathf.Max(MinLaneWidth, EditorGUILayout.FloatField("Lane Width", routeCreator.laneWidth));
-            int newWaypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", routeCreator.waypointDistance, 1, 15);
-            float newSpeedLimit = Mathf.Max(MinSpeedLimit, EditorGUILayout.FloatField("Speed Limit", routeCreator.speedLimitForAllRoads));
-            int newCurveResolution = EditorGUILayout.IntSlider("Curve Smoothness", routeCreator.curveResolution, 10, 100);
-            DrivingDirection newDrivingDirection =
-                (DrivingDirection)EditorGUILayout.EnumPopup("Driving Direction", routeCreator.drivingDirection);
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                Undo.RecordObject(routeCreator, "Change Road Settings");
-                routeCreator.splineMoveMode = newMoveMode;
-                routeCreator.lanes = newLaneCount;
-                routeCreator.laneWidth = newLaneWidth;
-                routeCreator.waypointDistance = newWaypointDistance;
-                routeCreator.speedLimitForAllRoads = newSpeedLimit;
-                routeCreator.curveResolution = newCurveResolution;
-                routeCreator.drivingDirection = newDrivingDirection;
-                EditorUtility.SetDirty(routeCreator);
-            }
-
-            EditorGUILayout.Space(2);
-            EditorGUILayout.LabelField("Draw Direction", "End ->", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Points", routeCreator.controlPointsList.Count.ToString());
-
-            EditorGUILayout.EndVertical();
+            EditorUtility.SetDirty(road);
         }
 
         private void DrawLaneConfigurations()
         {
-            if (routeCreator == null || routeCreator.laneObjects == null || routeCreator.laneObjects.Count == 0)
+            if (road == null || road.laneObjects == null || road.laneObjects.Count == 0)
                 return;
 
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Lane Configurations", EditorStyles.boldLabel);
 
-            for (int i = 0; i < routeCreator.laneObjects.Count; i++)
+            for (int i = 0; i < road.laneObjects.Count; i++)
             {
-                AILane lane = routeCreator.laneObjects[i];
+                AILane lane = road.laneObjects[i];
                 if (lane == null)
                     continue;
 
-                EditorGUILayout.BeginVertical("helpbox");
-                EditorGUILayout.LabelField($"Lane {i + 1}", EditorStyles.boldLabel);
-
-                SerializedObject serializedLane = new SerializedObject(lane);
-                SerializedProperty waypointsProperty = serializedLane.FindProperty("waypoints");
-                SerializedProperty speedLimitProperty = serializedLane.FindProperty("laneSpeedLimit");
-
-                serializedLane.Update();
-
-                EditorGUI.BeginChangeCheck();
-                EditorGUILayout.PropertyField(speedLimitProperty, new GUIContent("Speed Limit"));
-                EditorGUILayout.LabelField("Waypoint Count", waypointsProperty.arraySize.ToString());
-                EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.PropertyField(waypointsProperty, true);
-                EditorGUI.EndDisabledGroup();
-
-                if (EditorGUI.EndChangeCheck())
-                {
-                    serializedLane.ApplyModifiedProperties();
-                    SyncLaneWaypointSpeeds(lane);
-                    EditorUtility.SetDirty(lane);
-                }
-
-                if (GUILayout.Button("Select Lane Object"))
-                {
-                    Selection.activeGameObject = lane.gameObject;
-                }
-
-                EditorGUILayout.EndVertical();
+                laneEditor.DrawLaneSettings(lane);
+                EditorGUILayout.Space(4);
             }
-
             EditorGUILayout.EndVertical();
         }
 
         private void DrawCurve()
         {
-            var points = routeCreator.controlPointsList;
+            var points = road.controlPointsList;
             if (points.Count < 2)
                 return;
 
@@ -209,7 +147,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void DrawPoints()
         {
-            var points = routeCreator.controlPointsList;
+            var points = road.controlPointsList;
             int pointCount = points.Count;
 
             for (int i = 0; i < pointCount; i++)
@@ -266,7 +204,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     $"[{i}]",
                     labelStyle);
 
-                if (routeCreator.splineMoveMode == SplineMoveMode.Move3D)
+                if (road.splineMoveMode == SplineMoveMode.Move3D)
                     Draw3DMoveHandle(i);
             }
         }
@@ -274,7 +212,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private void DrawInsertPreview()
         {
             Event currentEvent = Event.current;
-            if (!currentEvent.control || routeCreator.controlPointsList.Count < 2)
+            if (!currentEvent.control || road.controlPointsList.Count < 2)
                 return;
 
             FindNearestSegmentScreenSpace(
@@ -286,9 +224,9 @@ namespace Darkmatter.TrafficSystem.Editor
             if (segmentIndex < 0 || screenDistance > DMTSPrefs.InsertScreenThreshold)
                 return;
 
-            Vector3 startPoint = routeCreator.controlPointsList[segmentIndex];
-            Vector3 endPoint = routeCreator.controlPointsList[segmentIndex + 1];
-            SplineMathUtils.GetSegmentHandles(routeCreator.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
+            Vector3 startPoint = road.controlPointsList[segmentIndex];
+            Vector3 endPoint = road.controlPointsList[segmentIndex + 1];
+            SplineMathUtils.GetSegmentHandles(road.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
             Vector3 previewPoint = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, segmentT);
 
             Handles.color = DMTSPrefs.InsertPreviewColor;
@@ -343,7 +281,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (!initialized)
                 return;
 
-            int pointCount = routeCreator.controlPointsList.Count;
+            int pointCount = road.controlPointsList.Count;
 
             if (currentEvent.control && pointCount >= 2 && TryInsert(currentEvent.mousePosition, ctx))
             {
@@ -358,8 +296,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 && (nearestPoint == 0 || nearestPoint == pointCount - 1)
                 && nearestDistance < DMTSPrefs.EndpointScreenRadius)
             {
-                dragIndex = routeCreator.splineMoveMode == SplineMoveMode.Move2D ? nearestPoint : -1;
-                if (routeCreator.splineMoveMode == SplineMoveMode.Move2D)
+                dragIndex = road.splineMoveMode == SplineMoveMode.Move2D ? nearestPoint : -1;
+                if (road.splineMoveMode == SplineMoveMode.Move2D)
                     GUIUtility.hotControl = controlId;
 
                 currentEvent.Use();
@@ -367,7 +305,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
-            if (routeCreator.splineMoveMode == SplineMoveMode.Move2D
+            if (road.splineMoveMode == SplineMoveMode.Move2D
                 && nearestPoint >= 0
                 && nearestDistance < DMTSPrefs.PointScreenRadius)
             {
@@ -381,9 +319,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             Vector3 worldPosition = GetWorldPosition(currentEvent.mousePosition);
-            Undo.RecordObject(routeCreator, "Add Control Point");
-            routeCreator.AddControlPoint(worldPosition);
-            EditorUtility.SetDirty(routeCreator);
+            Undo.RecordObject(road, "Add Control Point");
+            road.AddControlPoint(worldPosition);
+            EditorUtility.SetDirty(road);
 
             currentEvent.Use();
             ctx.Repaint();
@@ -391,16 +329,16 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleDrag(Event currentEvent, DMTS_Window ctx)
         {
-            if (routeCreator == null || routeCreator.splineMoveMode == SplineMoveMode.Move3D)
+            if (road == null || road.splineMoveMode == SplineMoveMode.Move3D)
                 return;
 
-            if (dragIndex < 0 || dragIndex >= routeCreator.controlPointsList.Count)
+            if (dragIndex < 0 || dragIndex >= road.controlPointsList.Count)
                 return;
 
             Vector3 newPosition = GetWorldPosition(currentEvent.mousePosition);
-            Undo.RecordObject(routeCreator, "Move Control Point");
-            routeCreator.controlPointsList[dragIndex] = newPosition;
-            EditorUtility.SetDirty(routeCreator);
+            Undo.RecordObject(road, "Move Control Point");
+            road.controlPointsList[dragIndex] = newPosition;
+            EditorUtility.SetDirty(road);
             GUI.changed = true;
 
             currentEvent.Use();
@@ -409,16 +347,16 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void HandleRightClick(Event currentEvent, DMTS_Window ctx)
         {
-            if (routeCreator == null)
+            if (road == null)
                 return;
 
             int nearestPoint = ScreenNearestPoint(currentEvent.mousePosition, out float distance);
             if (nearestPoint < 0 || distance > DMTSPrefs.EndpointScreenRadius)
                 return;
 
-            Undo.RecordObject(routeCreator, "Delete Control Point");
-            routeCreator.RemoveControlPoint(nearestPoint);
-            EditorUtility.SetDirty(routeCreator);
+            Undo.RecordObject(road, "Delete Control Point");
+            road.RemoveControlPoint(nearestPoint);
+            EditorUtility.SetDirty(road);
 
             currentEvent.Use();
             ctx.Repaint();
@@ -431,14 +369,14 @@ namespace Darkmatter.TrafficSystem.Editor
             if (segmentIndex < 0 || screenDistance > DMTSPrefs.InsertScreenThreshold)
                 return false;
 
-            Vector3 startPoint = routeCreator.controlPointsList[segmentIndex];
-            Vector3 endPoint = routeCreator.controlPointsList[segmentIndex + 1];
-            SplineMathUtils.GetSegmentHandles(routeCreator.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
+            Vector3 startPoint = road.controlPointsList[segmentIndex];
+            Vector3 endPoint = road.controlPointsList[segmentIndex + 1];
+            SplineMathUtils.GetSegmentHandles(road.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
             Vector3 insertPosition = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, segmentT);
 
-            Undo.RecordObject(routeCreator, "Insert Control Point");
-            routeCreator.InsertControlPoint(segmentIndex + 1, insertPosition);
-            EditorUtility.SetDirty(routeCreator);
+            Undo.RecordObject(road, "Insert Control Point");
+            road.InsertControlPoint(segmentIndex + 1, insertPosition);
+            EditorUtility.SetDirty(road);
             ctx.Repaint();
             return true;
         }
@@ -448,9 +386,9 @@ namespace Darkmatter.TrafficSystem.Editor
             bestDistance = float.MaxValue;
             int bestIndex = -1;
 
-            for (int i = 0; i < routeCreator.controlPointsList.Count; i++)
+            for (int i = 0; i < road.controlPointsList.Count; i++)
             {
-                Vector2 screenPoint = HandleUtility.WorldToGUIPoint(routeCreator.controlPointsList[i]);
+                Vector2 screenPoint = HandleUtility.WorldToGUIPoint(road.controlPointsList[i]);
                 float distance = Vector2.Distance(mousePosition, screenPoint);
                 if (distance < bestDistance)
                 {
@@ -472,7 +410,7 @@ namespace Darkmatter.TrafficSystem.Editor
             bestT = 0f;
             bestScreenDistance = float.MaxValue;
 
-            var points = routeCreator.controlPointsList;
+            var points = road.controlPointsList;
             if (points.Count < 2)
                 return;
 
@@ -515,57 +453,57 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void Draw3DMoveHandle(int index)
         {
-            Vector3 controlPoint = routeCreator.controlPointsList[index];
+            Vector3 controlPoint = road.controlPointsList[index];
             EditorGUI.BeginChangeCheck();
             Vector3 newPosition = Handles.PositionHandle(controlPoint, Quaternion.identity);
             if (!EditorGUI.EndChangeCheck())
                 return;
 
-            Undo.RecordObject(routeCreator, "Move Control Point");
-            routeCreator.controlPointsList[index] = newPosition;
-            EditorUtility.SetDirty(routeCreator);
+            Undo.RecordObject(road, "Move Control Point");
+            road.controlPointsList[index] = newPosition;
+            EditorUtility.SetDirty(road);
             GUI.changed = true;
         }
 
         private bool CanGenerateRoad()
         {
-            return routeCreator != null && routeCreator.controlPointsList.Count >= 2;
+            return road != null && road.controlPointsList.Count >= 2;
         }
 
-        private static void SyncLaneWaypointSpeeds(AILane lane)
-        {
-            if (lane == null || lane.waypoints == null)
-                return;
+        // private static void SyncLaneWaypointSpeeds(AILane lane)
+        // {
+        //     if (lane == null || lane.waypoints == null)
+        //         return;
 
-            for (int i = 0; i < lane.waypoints.Count; i++)
-            {
-                AIWaypoint waypoint = lane.waypoints[i];
-                if (waypoint == null)
-                    continue;
+        //     for (int i = 0; i < lane.waypoints.Count; i++)
+        //     {
+        //         AIWaypoint waypoint = lane.waypoints[i];
+        //         if (waypoint == null)
+        //             continue;
 
-                WaypointSettings settings = waypoint.settings;
-                settings.speed = lane.laneSpeedLimit;
-                waypoint.settings = settings;
-                EditorUtility.SetDirty(waypoint);
-            }
-        }
+        //         WaypointSettings settings = waypoint.settings;
+        //         settings.speed = lane.laneSpeedLimit;
+        //         waypoint.settings = settings;
+        //         EditorUtility.SetDirty(waypoint);
+        //     }
+        // }
 
         private string GetTitle()
         {
-            return editMode && routeCreator != null
-                ? $"Edit Road - {routeCreator.gameObject.name}"
+            return editMode && road != null
+                ? $"Edit Road - {road.gameObject.name}"
                 : "Create Road";
         }
 
         private void FocusRoadSelection()
         {
-            if (routeCreator != null)
-                Selection.activeGameObject = routeCreator.gameObject;
+            if (road != null)
+                Selection.activeGameObject = road.gameObject;
         }
 
         private bool TryCloseMissingRoad(DMTS_Window ctx)
         {
-            if (!initialized || routeCreator != null)
+            if (!initialized || road != null)
                 return false;
 
             ClosePage(ctx);

@@ -4,13 +4,20 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    
     public class DMTS_Window : EditorWindow
     {
+        
         public Stack<IPage> pageStack = new Stack<IPage>();
         public static DMTS_Window editorWindow;
 
         [MenuItem("Tools/DarkMatter Traffic System Tool", false, 2)]
-        public static void ShowWindow(IPage openPage = null)
+        private static void ShowWindowFromMenu()
+        {
+            ShowWindow();
+        }
+
+        public static DMTS_Window ShowWindow(IPage openPage = null)
         {
             DMTS_Window window = (DMTS_Window)GetWindow(typeof(DMTS_Window));
             window.minSize = new Vector2(320, 240);
@@ -20,6 +27,8 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                window.pageStack.Push(openPage);
             }
+
+            return window;
         }
 
         private void OnEnable()
