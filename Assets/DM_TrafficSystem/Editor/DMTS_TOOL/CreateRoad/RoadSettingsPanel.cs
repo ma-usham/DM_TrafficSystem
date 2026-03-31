@@ -34,12 +34,17 @@ namespace Darkmatter.TrafficSystem.Editor
             int newLaneCount = EditorGUILayout.IntSlider("Lanes", road.lanes, 1, 8);
             float newLaneWidth = Mathf.Max(MinLaneWidth, EditorGUILayout.FloatField("Lane Width", road.laneWidth));
             int newWaypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", road.waypointDistance, 1, 15);
+            EditorGUILayout.BeginHorizontal();
             float newSpeedLimit = Mathf.Max(MinSpeedLimit, EditorGUILayout.FloatField("Global Speed Limit", road.speedLimitForAllLanes));
+            bool applyGlobalSpeed = GUILayout.Button("Apply", GUILayout.Width(50));
+            EditorGUILayout.EndHorizontal();
             int newCurveResolution = EditorGUILayout.IntSlider("Curve Smoothness", road.curveResolution, 10, 100);
             DrivingDirection newDrivingDirection =
                 (DrivingDirection)EditorGUILayout.EnumPopup("Driving Direction", road.drivingDirection);
 
-            if (EditorGUI.EndChangeCheck())
+            bool settingsChanged = EditorGUI.EndChangeCheck();
+
+            if (settingsChanged)
             {
                 Undo.RecordObject(road, "Change Road Settings");
                 road.splineMoveMode = newMoveMode;
@@ -52,11 +57,51 @@ namespace Darkmatter.TrafficSystem.Editor
                 EditorUtility.SetDirty(road);
             }
 
+            if (applyGlobalSpeed)
+            {
+                ApplyGlobalSpeedLimit(road, newSpeedLimit);
+            }
+
             EditorGUILayout.Space(2);
             EditorGUILayout.LabelField("Draw Direction", "End ->", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Points", road.controlPointsList.Count.ToString());
 
             EditorGUILayout.EndVertical();
+        }
+
+        private static void ApplyGlobalSpeedLimit(Road road, float speedLimit)
+        {
+            Undo.RegisterFullObjectHierarchyUndo(road.gameObject, "Apply Global Speed Limit");
+            road.speedLimitForAllLanes = speedLimit;
+            EditorUtility.SetDirty(road);
+
+            if (road.laneObjects == null)
+                return;
+
+            for (int laneIndex = 0; laneIndex < road.laneObjects.Count; laneIndex++)
+            {
+                AILane lane = road.laneObjects[laneIndex];
+                if (lane == null)
+                    continue;
+
+                lane.laneSpeedLimit = speedLimit;
+                EditorUtility.SetDirty(lane);
+
+                if (lane.waypoints == null)
+                    continue;
+
+                for (int waypointIndex = 0; waypointIndex < lane.waypoints.Count; waypointIndex++)
+                {
+                    AIWaypoint waypoint = lane.waypoints[waypointIndex];
+                    if (waypoint == null)
+                        continue;
+
+                    WaypointSettings settings = waypoint.settings;
+                    settings.speed = speedLimit;
+                    waypoint.settings = settings;
+                    EditorUtility.SetDirty(waypoint);
+                }
+            }
         }
     }
 }
