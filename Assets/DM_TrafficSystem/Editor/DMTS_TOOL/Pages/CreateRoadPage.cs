@@ -9,6 +9,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private readonly bool editMode;
         private readonly RoadSceneTool sceneTool;
+        private Vector2 scrollPosition;
 
         public CreateRoadPage()
         {
@@ -35,14 +36,20 @@ namespace Darkmatter.TrafficSystem.Editor
 
             EditorGUILayout.Space(6);
 
+
             if (sceneTool.Road != null)
             {
                 RoadSettingsPanel.DrawSettings(sceneTool.Road);
                 EditorGUILayout.Space(4);
+
+                scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.ExpandHeight(true));
                 DrawLaneConfigurations();
+                EditorGUILayout.EndScrollView();
             }
 
-            GUILayout.FlexibleSpace();
+
+
+            EditorGUILayout.Space(4);
 
             EditorGUI.BeginDisabledGroup(!sceneTool.CanGenerateRoad);
             if (GUILayout.Button("Generate Road", GUILayout.Width(100)))
@@ -84,7 +91,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     continue;
 
                 LaneSettingsPanel.Draw(lane);
-                EditorGUILayout.Space(4);
+                EditorGUILayout.Space(10);
             }
 
             EditorGUILayout.EndVertical();

@@ -24,47 +24,55 @@ namespace Darkmatter.TrafficSystem.Editor
             if (road == null)
                 return;
 
+            SerializedObject serializedRoad = new SerializedObject(road);
+            SerializedProperty controlPointsProperty = serializedRoad.FindProperty("controlPointsList");
+            SerializedProperty moveModeProperty = serializedRoad.FindProperty("splineMoveMode");
+            SerializedProperty laneCountProperty = serializedRoad.FindProperty("lanes");
+            SerializedProperty waypointDistanceProperty = serializedRoad.FindProperty("waypointDistance");
+            SerializedProperty laneWidthProperty = serializedRoad.FindProperty("laneWidth");
+            SerializedProperty speedLimitProperty = serializedRoad.FindProperty("speedLimitForAllLanes");
+            SerializedProperty curveResolutionProperty = serializedRoad.FindProperty("curveResolution");
+            SerializedProperty drivingDirectionProperty = serializedRoad.FindProperty("drivingDirection");
+
+            serializedRoad.Update();
+
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Road Settings", EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
-
-            SplineMoveMode newMoveMode =
-                (SplineMoveMode)EditorGUILayout.EnumPopup("Move Mode", road.splineMoveMode);
-            int newLaneCount = EditorGUILayout.IntSlider("Lanes", road.lanes, 1, 8);
-            float newLaneWidth = Mathf.Max(MinLaneWidth, EditorGUILayout.FloatField("Lane Width", road.laneWidth));
-            int newWaypointDistance = EditorGUILayout.IntSlider("Waypoint Distance", road.waypointDistance, 1, 15);
+            EditorGUILayout.PropertyField(moveModeProperty, new GUIContent("Move Mode"));
+            EditorGUILayout.PropertyField(laneCountProperty, new GUIContent("Lanes"));
+            EditorGUILayout.PropertyField(laneWidthProperty, new GUIContent("Lane Width"));
+            EditorGUILayout.PropertyField(waypointDistanceProperty, new GUIContent("Waypoint Distance"));
+            EditorGUILayout.PropertyField(curveResolutionProperty, new GUIContent("Curve Smoothness"));
+            EditorGUILayout.PropertyField(drivingDirectionProperty, new GUIContent("Driving Direction"));
+            EditorGUILayout.Space(20);
             EditorGUILayout.BeginHorizontal();
-            float newSpeedLimit = Mathf.Max(MinSpeedLimit, EditorGUILayout.FloatField("Global Speed Limit", road.speedLimitForAllLanes));
+            EditorGUILayout.PropertyField(speedLimitProperty, new GUIContent("Global Speed Limit"));
             bool applyGlobalSpeed = GUILayout.Button("Apply", GUILayout.Width(50));
             EditorGUILayout.EndHorizontal();
-            int newCurveResolution = EditorGUILayout.IntSlider("Curve Smoothness", road.curveResolution, 10, 100);
-            DrivingDirection newDrivingDirection =
-                (DrivingDirection)EditorGUILayout.EnumPopup("Driving Direction", road.drivingDirection);
 
             bool settingsChanged = EditorGUI.EndChangeCheck();
 
             if (settingsChanged)
             {
-                Undo.RecordObject(road, "Change Road Settings");
-                road.splineMoveMode = newMoveMode;
-                road.lanes = newLaneCount;
-                road.laneWidth = newLaneWidth;
-                road.waypointDistance = newWaypointDistance;
-                road.speedLimitForAllLanes = newSpeedLimit;
-                road.curveResolution = newCurveResolution;
-                road.drivingDirection = newDrivingDirection;
+                laneWidthProperty.floatValue = Mathf.Max(MinLaneWidth, laneWidthProperty.floatValue);
+                speedLimitProperty.floatValue = Mathf.Max(MinSpeedLimit, speedLimitProperty.floatValue);
+                serializedRoad.ApplyModifiedProperties();
                 EditorUtility.SetDirty(road);
             }
 
             if (applyGlobalSpeed)
             {
-                ApplyGlobalSpeedLimit(road, newSpeedLimit);
+                laneWidthProperty.floatValue = Mathf.Max(MinLaneWidth, laneWidthProperty.floatValue);
+                speedLimitProperty.floatValue = Mathf.Max(MinSpeedLimit, speedLimitProperty.floatValue);
+                serializedRoad.ApplyModifiedProperties();
+                ApplyGlobalSpeedLimit(road, speedLimitProperty.floatValue);
             }
 
             EditorGUILayout.Space(2);
             EditorGUILayout.LabelField("Draw Direction", "End ->", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Points", road.controlPointsList.Count.ToString());
+            EditorGUILayout.LabelField("Points", controlPointsProperty.arraySize.ToString());
 
             EditorGUILayout.EndVertical();
         }
