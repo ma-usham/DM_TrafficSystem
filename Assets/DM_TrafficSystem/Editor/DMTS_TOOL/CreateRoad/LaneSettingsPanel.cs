@@ -16,19 +16,23 @@ namespace Darkmatter.TrafficSystem.Editor
             SerializedObject serializedLane = new SerializedObject(lane);
             SerializedProperty waypointsProperty = serializedLane.FindProperty("waypoints");
             SerializedProperty speedLimitProperty = serializedLane.FindProperty("laneSpeedLimit");
+            SerializedProperty vehicleTypeProperty = serializedLane.FindProperty("laneVehicleType");
 
             serializedLane.Update();
 
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PropertyField(speedLimitProperty, new GUIContent("Speed Limit"));
-            if (GUILayout.Button("Apply", GUILayout.Width(50)))
+            EditorGUILayout.PropertyField(vehicleTypeProperty, new GUIContent("Vehicle Type"));
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Apply", GUILayout.Width(100)))
             {
                 serializedLane.ApplyModifiedProperties();
                 ApplyWaypointSpeedLimit(lane);
                 EditorUtility.SetDirty(lane);
             }
             EditorGUILayout.EndHorizontal();
+
 
             EditorGUILayout.LabelField("Waypoint Count", waypointsProperty.arraySize.ToString());
             EditorGUI.BeginDisabledGroup(true);
@@ -62,6 +66,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = lane.laneSpeedLimit;
+                settings.vehicleType = lane.laneVehicleType;
                 waypoint.settings = settings;
                 EditorUtility.SetDirty(waypoint);
             }
