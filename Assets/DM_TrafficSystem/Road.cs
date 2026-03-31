@@ -4,10 +4,9 @@ using UnityEngine;
 namespace Darkmatter.TrafficSystem
 {
     [ExecuteInEditMode]
-    public class SplineRoadCreator : MonoBehaviour
+    public class Road : MonoBehaviour
     {
-        public List<Transform> controlPointsList = new List<Transform>();
-        [HideInInspector] public Transform controlPointsHolder;
+        public List<Vector3> controlPointsList = new List<Vector3>();
         public SplineMoveMode splineMoveMode = SplineMoveMode.Move2D;
         [Range(1, 8)] public int lanes = 1;
         [Range(1, 15)] public int waypointDistance = 5;
@@ -16,53 +15,24 @@ namespace Darkmatter.TrafficSystem
         [Range(10, 100)] public int curveResolution = 30;
         public DrivingDirection drivingDirection = DrivingDirection.Left;
 
-        public Transform AddControlPoint(Vector3 position)
+        public List<List<Transform>> generatedLanes = new List<List<Transform>>();
+        public List<AILane> laneObjects = new List<AILane>();
+
+        public void AddControlPoint(Vector3 position)
         {
-            Transform point = CreatePointObject(position);
-            controlPointsList.Add(point);
-            return point;
+            controlPointsList.Add(position);
         }
 
-        public Transform InsertControlPoint(int index, Vector3 position)
+        public void InsertControlPoint(int index, Vector3 position)
         {
             index = Mathf.Clamp(index, 0, controlPointsList.Count);
-            Transform point = CreatePointObject(position);
-            controlPointsList.Insert(index, point);
-            return point;
+            controlPointsList.Insert(index, position);
         }
 
         public void RemoveControlPoint(int index)
         {
             if (index < 0 || index >= controlPointsList.Count) return;
-            Transform point = controlPointsList[index];
             controlPointsList.RemoveAt(index);
-            if (point != null)
-                DestroyImmediate(point.gameObject);
-        }
-
-        public void CleanupNullPoints()
-        {
-            controlPointsList.RemoveAll(t => t == null);
-        }
-
-        public Transform GetOrCreateHolder()
-        {
-            if (controlPointsHolder == null)
-            {
-                var cpHolder = new GameObject("ControlPointsHolder");
-                cpHolder.transform.SetParent(transform);
-                cpHolder.transform.localPosition = Vector3.zero;
-                controlPointsHolder = cpHolder.transform;
-            }
-            return controlPointsHolder;
-        }
-
-        private Transform CreatePointObject(Vector3 position)
-        {
-            GameObject go = new GameObject("controlPoint");
-            go.transform.position = position;
-            go.transform.SetParent(GetOrCreateHolder());
-            return go.transform;
         }
 
         /// <summary>
@@ -85,23 +55,22 @@ namespace Darkmatter.TrafficSystem
         public void GetSegmentHandles(int segIndex, out Vector3 handleA, out Vector3 handleB)
         {
             int count = controlPointsList.Count;
-            Vector3 p0 = controlPointsList[segIndex].position;
-            Vector3 p1 = controlPointsList[segIndex + 1].position;
+            Vector3 p0 = controlPointsList[segIndex];
+            Vector3 p1 = controlPointsList[segIndex + 1];
 
             Vector3 tangentA = (segIndex > 0)
-                ? (p1 - controlPointsList[segIndex - 1].position) * 0.5f
+                ? (p1 - controlPointsList[segIndex - 1]) * 0.5f
                 : (p1 - p0);
 
             Vector3 tangentB = (segIndex + 2 < count)
-                ? (controlPointsList[segIndex + 2].position - p0) * 0.5f
+                ? (controlPointsList[segIndex + 2] - p0) * 0.5f
                 : (p1 - p0);
 
             handleA = p0 + tangentA / 3f;
             handleB = p1 - tangentB / 3f;
         }
 
-        [HideInInspector] public List<List<Transform>> generatedLanes = new List<List<Transform>>();
-        [HideInInspector] public Transform waypointsContainer;
+
 
         public List<Vector3> GetCurvePoints()
         {
@@ -110,8 +79,8 @@ namespace Darkmatter.TrafficSystem
 
             for (int i = 0; i < controlPointsList.Count - 1; i++)
             {
-                Vector3 p0 = controlPointsList[i].position;
-                Vector3 p3 = controlPointsList[i + 1].position;
+                Vector3 p0 = controlPointsList[i];
+                Vector3 p3 = controlPointsList[i + 1];
                 GetSegmentHandles(i, out Vector3 p1, out Vector3 p2);
 
                 for (int s = 0; s <= curveResolution; s++)
@@ -126,10 +95,20 @@ namespace Darkmatter.TrafficSystem
         public void ClearGeneratedWaypoints()
         {
             generatedLanes.Clear();
-            if (waypointsContainer != null)
+            foreach (var lane in laneObjects)
             {
-                DestroyImmediate(waypointsContainer.gameObject);
-                waypointsContainer = null;
+                if (lane != null) DestroyImmediate(lane);
+            }
+            laneObjects.Clear();
+
+            // Fallback for cleanly removing any left-over lane objects
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var child = transform.GetChild(i);
+                if (child.name.StartsWith("Lane_"))
+                {
+                    DestroyImmediate(child.gameObject);
+                }
             }
         }
 
@@ -212,21 +191,17 @@ namespace Darkmatter.TrafficSystem
                 tangents.Add((densePoints[c - 1] - densePoints[c - 2]).normalized);
             }
 
-            // Create the Waypoints container
-            var containerGo = new GameObject("Waypoints");
-            containerGo.transform.SetParent(transform);
-            containerGo.transform.localPosition = Vector3.zero;
-            waypointsContainer = containerGo.transform;
-
             // Generate waypoints for each lane, offset symmetrically from center
             for (int lane = 0; lane < lanes; lane++)
             {
                 float laneOffset = (lane - (lanes - 1) / 2f) * laneWidth;
 
                 var laneGo = new GameObject($"Lane_{lane}");
-                AILane aiLane = laneGo.AddComponent<AILane>();
-                laneGo.transform.SetParent(waypointsContainer);
+                laneGo.transform.SetParent(transform);
                 laneGo.transform.localPosition = Vector3.zero;
+                AILane aiLane = laneGo.AddComponent<AILane>();
+
+                laneObjects.Add(aiLane);
 
                 var lanePositions = new List<Vector3>(centerPositions.Count);
                 var laneWaypoints = new List<Transform>();
@@ -248,7 +223,7 @@ namespace Darkmatter.TrafficSystem
                     AIWaypoint aiWaypoint = wpGo.AddComponent<AIWaypoint>();
                     wpGo.transform.position = lanePositions[w];
                     wpGo.transform.SetParent(laneGo.transform);
-                    
+
                     laneWaypoints.Add(wpGo.transform);
                     createdWaypoints.Add(aiWaypoint);
                     aiLane.waypoints.Add(aiWaypoint);
@@ -259,13 +234,13 @@ namespace Darkmatter.TrafficSystem
                 {
                     AIWaypoint currentWp = createdWaypoints[w];
                     WaypointSettings settings = currentWp.settings;
-                    
+
                     if (w > 0)
                         settings.previousWaypoint = createdWaypoints[w - 1];
-                    
+
                     if (w < createdWaypoints.Count - 1)
                         settings.nextWaypoint = createdWaypoints[w + 1];
-                        
+
                     currentWp.settings = settings;
                 }
 

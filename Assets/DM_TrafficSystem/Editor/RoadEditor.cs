@@ -3,10 +3,10 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
-    [CustomEditor(typeof(SplineRoadCreator))]
-    public class SplineRoadCreatorEditor : UnityEditor.Editor
+    [CustomEditor(typeof(Road))]
+    public class RoadEditor : UnityEditor.Editor
     {
-        private SplineRoadCreator Creator => (SplineRoadCreator)target;
+        private Road Creator => (Road)target;
 
 
         public override void OnInspectorGUI()
@@ -25,15 +25,13 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             if (CreateRoadPage.isActive) return;
 
-            Creator.CleanupNullPoints();
             var pts = Creator.controlPointsList;
             if (pts.Count < 2) return;
 
             for (int i = 0; i < pts.Count - 1; i++)
             {
-                if (pts[i] == null || pts[i + 1] == null) continue;
-                Vector3 a = pts[i].position;
-                Vector3 b = pts[i + 1].position;
+                Vector3 a = pts[i];
+                Vector3 b = pts[i + 1];
                 Creator.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
                 Handles.DrawBezier(a, b, h1, h2, DMTSPrefs.CurveColor, null, DMTSPrefs.CurveWidth);
             }
@@ -41,8 +39,7 @@ namespace Darkmatter.TrafficSystem.Editor
             Handles.color = DMTSPrefs.ControlPointColor;
             for (int i = 0; i < pts.Count; i++)
             {
-                if (pts[i] == null) continue;
-                Handles.SphereHandleCap(0, pts[i].position, Quaternion.identity,
+                Handles.SphereHandleCap(0, pts[i], Quaternion.identity,
                     DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
 
             }
@@ -56,17 +53,16 @@ namespace Darkmatter.TrafficSystem.Editor
 
         #region Gizmos
         [DrawGizmo(GizmoType.Selected)] //This will only draw the gizmos when the object is selected, which can help reduce clutter in the scene view.
-        private static void DrawGeneratedWaypointGizmos(SplineRoadCreator creator, GizmoType gizmoType) // This function is automatically called by Unity to draw gizmos in the scene view. It will draw arrows at each waypoint to indicate direction, and lines between waypoints to show the path.
+        private static void DrawGeneratedWaypointGizmos(Road creator, GizmoType gizmoType) // This function is automatically called by Unity to draw gizmos in the scene view. It will draw arrows at each waypoint to indicate direction, and lines between waypoints to show the path.
         {
-            Transform waypointsContainer = creator.waypointsContainer;
-            if (waypointsContainer == null) return;
+            if (creator.laneObjects == null || creator.laneObjects.Count == 0) return;
 
             Color previousColor = Handles.color;
 
-            for (int laneIndex = 0; laneIndex < waypointsContainer.childCount; laneIndex++)
+            foreach (var lane in creator.laneObjects)
             {
-                Transform laneTransform = waypointsContainer.GetChild(laneIndex);
-                if (laneTransform == null) continue;
+                if (lane == null) continue;
+                Transform laneTransform = lane.transform;
 
                 Vector3 prevWaypointPosition = default;
                 bool hasPrevWaypoint = false;
@@ -133,7 +129,7 @@ namespace Darkmatter.TrafficSystem.Editor
             Handles.DrawLine(tip, headBase - right * headWidth);
         }
 
-        #endregion
+       #endregion
 
     }
 }

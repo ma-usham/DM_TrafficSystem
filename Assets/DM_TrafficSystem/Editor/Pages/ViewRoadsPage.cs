@@ -6,9 +6,9 @@ namespace Darkmatter.TrafficSystem.Editor
 {
     public class ViewRoadsPage : IPage
     {
-        private readonly List<SplineRoadCreator> _visibleRoads = new List<SplineRoadCreator>(); //list roads that are only visible to camera.
+        private readonly List<Road> _visibleRoads = new List<Road>(); //list roads that are only visible to camera.
 
-        private readonly HashSet<SplineRoadCreator>_roadsWithGizmoDisabled = new HashSet<SplineRoadCreator>(); //list roads that have gizmo disabled. ( mandatory: used roadsWithGizmoDisabled to draw gizmo for all roads by default )
+        private readonly HashSet<Road>_roadsWithGizmoDisabled = new HashSet<Road>(); //list roads that have gizmo disabled. ( mandatory: used roadsWithGizmoDisabled to draw gizmo for all roads by default )
 
 
         private Vector2 scrollPos;
@@ -18,7 +18,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.LabelField("Visible Roads", EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
 
-            SplineRoadCreator[] allRoads = Object.FindObjectsByType<SplineRoadCreator>(FindObjectsSortMode.None);
+            Road[] allRoads = Object.FindObjectsByType<Road>(FindObjectsInactive.Exclude);
 
             if (allRoads.Length == 0)
             {
@@ -41,7 +41,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 for (int i = 0; i < _visibleRoads.Count; i++)
                 {
-                    SplineRoadCreator road = _visibleRoads[i];
+                    Road road = _visibleRoads[i];
                     if (road == null) continue;
                     DrawRoadEntry(road, ctx);
 
@@ -68,7 +68,7 @@ namespace Darkmatter.TrafficSystem.Editor
             ctx.Repaint();
         }
 
-        private void DrawRoadEntry(SplineRoadCreator road, Editor_DMWindow ctx)
+        private void DrawRoadEntry(Road road, Editor_DMWindow ctx)
         {
             EditorGUILayout.BeginVertical("box");
 
@@ -133,9 +133,9 @@ namespace Darkmatter.TrafficSystem.Editor
             if (sceneView == null || sceneView.camera == null) return;
 
             Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(sceneView.camera);
-            SplineRoadCreator[] allRoads = Object.FindObjectsByType<SplineRoadCreator>(FindObjectsInactive.Include);
+            Road[] allRoads = Object.FindObjectsByType<Road>(FindObjectsInactive.Include);
 
-            foreach (SplineRoadCreator road in allRoads)
+            foreach (Road road in allRoads)
             {
                 if (road == null || road.controlPointsList.Count == 0) continue;
 
@@ -148,16 +148,15 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
-        private static Bounds ComputeRoadBounds(SplineRoadCreator road)
+        private static Bounds ComputeRoadBounds(Road     road)
         {
-            List<Transform> pts = road.controlPointsList;
-            Vector3 first = pts[0] != null ? pts[0].position : road.transform.position;
+            List<Vector3> pts = road.controlPointsList;
+            Vector3 first = pts.Count > 0 ? pts[0] : road.transform.position;
             Bounds bounds = new Bounds(first, Vector3.zero);
 
             for (int i = 1; i < pts.Count; i++)
             {
-                if (pts[i] != null)
-                    bounds.Encapsulate(pts[i].position);
+                bounds.Encapsulate(pts[i]);
             }
 
             bounds.Expand(road.laneWidth * road.lanes);
@@ -166,33 +165,28 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private void DrawVisibleRoadGizmos()
         {
-            foreach (SplineRoadCreator road in _visibleRoads)
+            foreach (Road road in _visibleRoads)
             {
                 if (road == null || road.controlPointsList.Count < 2 || _roadsWithGizmoDisabled.Contains(road)) continue;
 
                 for (int i = 0; i < road.controlPointsList.Count - 1; i++)
                 {
-                    Transform a = road.controlPointsList[i];
-                    Transform b = road.controlPointsList[i + 1];
-                    if (a == null || b == null) continue;
+                    Vector3 a = road.controlPointsList[i];
+                    Vector3 b = road.controlPointsList[i + 1];
 
                     road.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
-                    Handles.DrawBezier(a.position, b.position, h1, h2,
+                    Handles.DrawBezier(a, b, h1, h2,
                         DMTSPrefs.ViewRoadCurveColor, null, DMTSPrefs.CurveWidth);
                 }
 
                 string name = road.gameObject.name;
-                List<Transform> controlPointsList = road.controlPointsList;
-                Transform firstPoint = controlPointsList[0];
-                Transform lastPoint = controlPointsList[controlPointsList.Count - 1];
-                if (firstPoint != null)
+                List<Vector3> controlPointsList = road.controlPointsList;
+                if (controlPointsList.Count > 0)
                 {
-                    Handles.Label(firstPoint.position, name, EditorStyles.whiteMiniLabel);
-                }
-
-                if (lastPoint != null)
-                {
-                    Handles.Label(lastPoint.position, name, EditorStyles.whiteMiniLabel);
+                    Vector3 firstPoint = controlPointsList[0];
+                    Vector3 lastPoint = controlPointsList[controlPointsList.Count - 1];
+                    Handles.Label(firstPoint, name, EditorStyles.whiteMiniLabel);
+                    Handles.Label(lastPoint, name, EditorStyles.whiteMiniLabel);
                 }
             }
         }

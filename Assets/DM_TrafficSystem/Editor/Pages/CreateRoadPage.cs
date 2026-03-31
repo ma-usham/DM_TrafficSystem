@@ -8,7 +8,7 @@ namespace Darkmatter.TrafficSystem.Editor
         public static bool isActive;
         public static int roadCount = 0;
 
-        private SplineRoadCreator routeCreator;
+        private Road routeCreator;
         private bool initialized;
         private bool editMode;
         private Editor_DMWindow windowCtx;
@@ -19,7 +19,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         public CreateRoadPage() { }
 
-        public CreateRoadPage(SplineRoadCreator existingRoad)
+        public CreateRoadPage(Road existingRoad)
         {
             routeCreator = existingRoad;
             initialized = true;
@@ -35,9 +35,9 @@ namespace Darkmatter.TrafficSystem.Editor
 
             if (initialized && routeCreator != null) return;
 
-            GameObject go = new GameObject("Road_Route_"+ (++roadCount));
+            GameObject go = new GameObject("Road_"+ (++roadCount));
             go.transform.position = firstClickPosition;
-            routeCreator = go.AddComponent<SplineRoadCreator>();
+            routeCreator = go.AddComponent<Road>();
             Selection.activeGameObject = go;
             Undo.RegisterCreatedObjectUndo(go, "Create Road Route");
             initialized = true;
@@ -157,7 +157,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
             if (routeCreator != null)
             {
-                routeCreator.CleanupNullPoints();
                 DrawCurve();
                 DrawPoints();
                 DrawInsertPreview();
@@ -176,9 +175,8 @@ namespace Darkmatter.TrafficSystem.Editor
 
             for (int i = 0; i < pts.Count - 1; i++)
             {
-                if (pts[i] == null || pts[i + 1] == null) continue;
-                Vector3 a = pts[i].position;
-                Vector3 b = pts[i + 1].position;
+                Vector3 a = pts[i];
+                Vector3 b = pts[i + 1];
                 routeCreator.GetSegmentHandles(i, out Vector3 h1, out Vector3 h2);
                 Handles.DrawBezier(a, b, h1, h2, DMTSPrefs.CurveColor, null, DMTSPrefs.CurveEditWidth);
             }
@@ -191,8 +189,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             for (int i = 0; i < count; i++)
             {
-                Transform cp = pts[i];
-                if (cp == null) continue;
+                Vector3 cp = pts[i];
 
                 bool isDraggedPoint = i == dragIndex;
                 bool isSplineEnd = i == count - 1 && count >= 2;
@@ -203,14 +200,14 @@ namespace Darkmatter.TrafficSystem.Editor
                         ? DMTSPrefs.DraggedControlPointColor
                         : DMTSPrefs.ActiveEndColor;
                     Handles.color = pointColor;
-                    Handles.SphereHandleCap(0, cp.position, Quaternion.identity,
+                    Handles.SphereHandleCap(0, cp, Quaternion.identity,
                         DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
 
                     if (Camera.current != null)
                     {
                         Color ac = pointColor;
                         Handles.color = new Color(ac.r, ac.g, ac.b, 0.4f);
-                        Handles.DrawWireDisc(cp.position,
+                        Handles.DrawWireDisc(cp,
                             Camera.current.transform.forward, DMTSPrefs.ControlPointHandleSize * 2.5f);
                     }
                 }
@@ -219,7 +216,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     Handles.color = isDraggedPoint
                         ? DMTSPrefs.DraggedControlPointColor
                         : DMTSPrefs.ControlPointColor;
-                    Handles.SphereHandleCap(0, cp.position, Quaternion.identity,
+                    Handles.SphereHandleCap(0, cp, Quaternion.identity,
                         DMTSPrefs.ControlPointHandleSize * 2f, EventType.Repaint);
                 }
 
@@ -229,11 +226,11 @@ namespace Darkmatter.TrafficSystem.Editor
                     fontStyle = FontStyle.Bold,
                     fontSize = DMTSPrefs.PointLabelFontSize
                 };
-                Handles.Label(cp.position + Vector3.up * DMTSPrefs.ControlPointHandleSize * 0.35f,
+                Handles.Label(cp + Vector3.up * DMTSPrefs.ControlPointHandleSize * 0.35f,
                     $"[{i}]", labelStyle);
 
                 if (routeCreator.splineMoveMode == SplineMoveMode.Move3D)
-                    Draw3DMoveHandle(cp);
+                    Draw3DMoveHandle(i);
             }
         }
 
@@ -247,10 +244,10 @@ namespace Darkmatter.TrafficSystem.Editor
 
             if (seg < 0 || screenDist > DMTSPrefs.InsertScreenThreshold) return;
 
-            Vector3 p0 = routeCreator.controlPointsList[seg].position;
-            Vector3 p3 = routeCreator.controlPointsList[seg + 1].position;
+            Vector3 p0 = routeCreator.controlPointsList[seg];
+            Vector3 p3 = routeCreator.controlPointsList[seg + 1];
             routeCreator.GetSegmentHandles(seg, out Vector3 p1, out Vector3 p2);
-            Vector3 preview = SplineRoadCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
+            Vector3 preview = Road.EvaluateCubicBezier(p0, p1, p2, p3, t);
 
             Handles.color = DMTSPrefs.InsertPreviewColor;
             Handles.SphereHandleCap(0, preview, Quaternion.identity,
@@ -340,8 +337,7 @@ namespace Darkmatter.TrafficSystem.Editor
             Vector3 worldPos = GetWorldPosition(e.mousePosition);
             Undo.RecordObject(routeCreator, "Add Control Point");
 
-            Transform newPoint = routeCreator.AddControlPoint(worldPos);
-            Undo.RegisterCreatedObjectUndo(newPoint.gameObject, "Add Control Point");
+            routeCreator.AddControlPoint(worldPos);
             EditorUtility.SetDirty(routeCreator);
             e.Use();
             windowCtx?.Repaint();
@@ -355,9 +351,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             Vector3 newPos = GetWorldPosition(e.mousePosition);
-            Undo.RecordObject(routeCreator.controlPointsList[dragIndex],
-                "Move Control Point");
-            routeCreator.controlPointsList[dragIndex].position = newPos;
+            Undo.RecordObject(routeCreator, "Move Control Point");
+            routeCreator.controlPointsList[dragIndex] = newPos;
             GUI.changed = true;
             e.Use();
         }
@@ -368,11 +363,8 @@ namespace Darkmatter.TrafficSystem.Editor
             int nearest = ScreenNearestPoint(e.mousePosition, out float dist);
             if (nearest < 0 || dist > DMTSPrefs.EndpointScreenRadius) return;
 
-            Transform point = routeCreator.controlPointsList[nearest];
             Undo.RecordObject(routeCreator, "Delete Control Point");
             routeCreator.controlPointsList.RemoveAt(nearest);
-            if (point != null)
-                Undo.DestroyObjectImmediate(point.gameObject);
 
             EditorUtility.SetDirty(routeCreator);
             e.Use();
@@ -386,14 +378,13 @@ namespace Darkmatter.TrafficSystem.Editor
 
             if (seg < 0 || screenDist > DMTSPrefs.InsertScreenThreshold) return false;
 
-            Vector3 p0 = routeCreator.controlPointsList[seg].position;
-            Vector3 p3 = routeCreator.controlPointsList[seg + 1].position;
+            Vector3 p0 = routeCreator.controlPointsList[seg];
+            Vector3 p3 = routeCreator.controlPointsList[seg + 1];
             routeCreator.GetSegmentHandles(seg, out Vector3 p1, out Vector3 p2);
-            Vector3 insertPos = SplineRoadCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
+            Vector3 insertPos = Road.EvaluateCubicBezier(p0, p1, p2, p3, t);
 
             Undo.RecordObject(routeCreator, "Insert Control Point");
-            Transform newPoint = routeCreator.InsertControlPoint(seg + 1, insertPos);
-            Undo.RegisterCreatedObjectUndo(newPoint.gameObject, "Insert Control Point");
+            routeCreator.InsertControlPoint(seg + 1, insertPos);
             EditorUtility.SetDirty(routeCreator);
             windowCtx?.Repaint();
             return true;
@@ -408,10 +399,9 @@ namespace Darkmatter.TrafficSystem.Editor
 
             for (int i = 0; i < routeCreator.controlPointsList.Count; i++)
             {
-                Transform cp = routeCreator.controlPointsList[i];
-                if (cp == null) continue;
+                Vector3 cp = routeCreator.controlPointsList[i];
 
-                Vector2 sp = HandleUtility.WorldToGUIPoint(cp.position);
+                Vector2 sp = HandleUtility.WorldToGUIPoint(cp);
                 float d = Vector2.Distance(mousePos, sp);
                 if (d < bestDist)
                 {
@@ -436,15 +426,14 @@ namespace Darkmatter.TrafficSystem.Editor
 
             for (int i = 0; i < pts.Count - 1; i++)
             {
-                if (pts[i] == null || pts[i + 1] == null) continue;
-                Vector3 p0 = pts[i].position;
-                Vector3 p3 = pts[i + 1].position;
+                Vector3 p0 = pts[i];
+                Vector3 p3 = pts[i + 1];
                 routeCreator.GetSegmentHandles(i, out Vector3 p1, out Vector3 p2);
 
                 for (int s = 0; s <= samples; s++)
                 {
                     float t = s / (float)samples;
-                    Vector3 worldPt = SplineRoadCreator.EvaluateCubicBezier(p0, p1, p2, p3, t);
+                    Vector3 worldPt = Road.EvaluateCubicBezier(p0, p1, p2, p3, t);
                     Vector2 screenPt = HandleUtility.WorldToGUIPoint(worldPt);
                     float d = Vector2.Distance(mousePos, screenPt);
 
@@ -472,15 +461,15 @@ namespace Darkmatter.TrafficSystem.Editor
             return ray.GetPoint(10f);
         }
 
-        private void Draw3DMoveHandle(Transform controlPoint)
+        private void Draw3DMoveHandle(int index)
         {
+            Vector3 controlPoint = routeCreator.controlPointsList[index];
             EditorGUI.BeginChangeCheck();
-            Vector3 newPosition = Handles.PositionHandle(controlPoint.position, Quaternion.identity);
+            Vector3 newPosition = Handles.PositionHandle(controlPoint, Quaternion.identity);
             if (!EditorGUI.EndChangeCheck()) return;
 
-            Undo.RecordObject(controlPoint, "Move Control Point");
-            controlPoint.position = newPosition;
-            EditorUtility.SetDirty(controlPoint);
+            Undo.RecordObject(routeCreator, "Move Control Point");
+            routeCreator.controlPointsList[index] = newPosition;
             EditorUtility.SetDirty(routeCreator);
             GUI.changed = true;
             windowCtx?.Repaint();
