@@ -124,16 +124,12 @@ namespace Darkmatter.TrafficSystem.Editor
                 right = Vector3.right;
             right.Normalize();
 
-            float shaftLength = size * 1.3f;
-            float headLength = size * 0.55f;
+            float headLength = size * 0.7f;
             float headWidth = size * 0.4f;
 
-            Vector3 tail = position - forward * shaftLength * 0.5f;
-            Vector3 tip = position + forward * shaftLength * 0.5f;
+            Vector3 tip = position;
             Vector3 headBase = tip - forward * headLength;
 
-            batchedLines.Add(tail);
-            batchedLines.Add(tip);
             batchedLines.Add(tip);
             batchedLines.Add(headBase + right * headWidth);
             batchedLines.Add(tip);

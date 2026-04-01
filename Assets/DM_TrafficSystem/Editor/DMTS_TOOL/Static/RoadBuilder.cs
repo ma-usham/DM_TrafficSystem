@@ -9,7 +9,8 @@ namespace Darkmatter.TrafficSystem.Editor
         private const float GroundProjectionLift = 500f;
         private const float GroundProjectionDistance = 3000f;
         private const float MinDirectionSqrMagnitude = 0.001f;
-        private const float MaxLaneChangeTurnAngle = 20f;
+        private const float MaxLaneChangeTurnAngle = 10f;
+        private const float MinLaneChangeForwardDot = 0.1f;
 
         public static void ClearGeneratedWaypoints(Road road)
         {
@@ -80,7 +81,10 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (!CanLinkAdjacentLanes(road, laneIndex, laneIndex + 1, laneCount))
                     continue;
 
-                LinkAdjacentLanes(road.laneObjects[laneIndex], road.laneObjects[laneIndex + 1]);
+                LinkAdjacentLanes(
+                    road.laneObjects[laneIndex],
+                    road.laneObjects[laneIndex + 1],
+                    Mathf.Max(1, road.laneChangeLinkRoadDistance));
             }
 
             EditorUtility.SetDirty(road);
@@ -309,7 +313,7 @@ namespace Darkmatter.TrafficSystem.Editor
             return LaneTravelsWithSpline(road, currentLaneOffset) == LaneTravelsWithSpline(road, adjacentLaneOffset);
         }
 
-        private static void LinkAdjacentLanes(AILane currentLane, AILane adjacentLane)
+        private static void LinkAdjacentLanes(AILane currentLane, AILane adjacentLane, int linkRoadDistance)
         {
             if (currentLane == null
                 || adjacentLane == null
@@ -322,23 +326,88 @@ namespace Darkmatter.TrafficSystem.Editor
             int waypointCount = Mathf.Min(currentLane.waypoints.Count, adjacentLane.waypoints.Count);
             for (int waypointIndex = 0; waypointIndex < waypointCount; waypointIndex++)
             {
-                if (!CanLinkWaypointForLaneChange(currentLane.waypoints, waypointIndex)
-                    || !CanLinkWaypointForLaneChange(adjacentLane.waypoints, waypointIndex))
-                {
+                if (!CanLinkWaypointForLaneChange(currentLane.waypoints, waypointIndex))
                     continue;
-                }
 
                 AIWaypoint currentWaypoint = currentLane.waypoints[waypointIndex];
-                AIWaypoint adjacentWaypoint = adjacentLane.waypoints[waypointIndex];
-                AddLaneChangePoint(currentWaypoint, adjacentWaypoint);
-                AddLaneChangePoint(adjacentWaypoint, currentWaypoint);
+                int adjacentTargetIndex = FindOffsetLaneChangeTargetIndex(
+                    currentLane.waypoints,
+                    adjacentLane.waypoints,
+                    waypointIndex,
+                    linkRoadDistance);
+
+                if (adjacentTargetIndex >= 0)
+                    AddLaneChangePoint(currentWaypoint, adjacentLane.waypoints[adjacentTargetIndex]);
+
+                int currentTargetIndex = FindOffsetLaneChangeTargetIndex(
+                    adjacentLane.waypoints,
+                    currentLane.waypoints,
+                    waypointIndex,
+                    linkRoadDistance);
+
+                if (currentTargetIndex >= 0)
+                    AddLaneChangePoint(adjacentLane.waypoints[waypointIndex], currentLane.waypoints[currentTargetIndex]);
             }
+        }
+
+        private static int FindOffsetLaneChangeTargetIndex(
+            IReadOnlyList<AIWaypoint> sourceWaypoints,
+            IReadOnlyList<AIWaypoint> targetWaypoints,
+            int sourceWaypointIndex,
+            int linkRoadDistance)
+        {
+            if (sourceWaypoints == null
+                || targetWaypoints == null
+                || sourceWaypointIndex < 0
+                || sourceWaypointIndex >= sourceWaypoints.Count)
+            {
+                return -1;
+            }
+
+            AIWaypoint sourceWaypoint = sourceWaypoints[sourceWaypointIndex];
+            if (sourceWaypoint == null)
+                return -1;
+
+            if (!TryGetWaypointTravelDirection(sourceWaypoints, sourceWaypointIndex, out Vector3 sourceForward))
+                return -1;
+
+            int targetWaypointIndex = sourceWaypointIndex + linkRoadDistance;
+            if (targetWaypointIndex <= 0 || targetWaypointIndex >= targetWaypoints.Count)
+                return -1;
+
+            if (!CanLinkWaypointForLaneChange(targetWaypoints, targetWaypointIndex))
+                return -1;
+
+            AIWaypoint targetWaypoint = targetWaypoints[targetWaypointIndex];
+            if (targetWaypoint == null)
+                return -1;
+
+            Vector3 laneChangeDirection = targetWaypoint.transform.position - sourceWaypoint.transform.position;
+            if (!TryNormalizeDirection(laneChangeDirection, out Vector3 laneChangeDirectionNormalized))
+                return -1;
+
+            if (Vector3.Dot(sourceForward, laneChangeDirectionNormalized) <= MinLaneChangeForwardDot)
+                return -1;
+
+            return targetWaypointIndex;
         }
 
         private static bool CanLinkWaypointForLaneChange(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex)
         {
             if (waypoints == null || waypointIndex <= 0 || waypointIndex >= waypoints.Count - 1)
                 return false;
+
+            if (!TryGetWaypointTurnAngle(waypoints, waypointIndex, out float turnAngle))
+            {
+                return false;
+            }
+
+            return turnAngle <= MaxLaneChangeTurnAngle;
+        }
+
+        private static bool TryGetWaypointTurnAngle(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex, out float turnAngle)
+        {
+            turnAngle = 0f;
 
             AIWaypoint previousWaypoint = waypoints[waypointIndex - 1];
             AIWaypoint currentWaypoint = waypoints[waypointIndex];
@@ -353,7 +422,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 return false;
             }
 
-            return Vector3.Angle(incomingDirection, outgoingDirection) <= MaxLaneChangeTurnAngle;
+            turnAngle = Vector3.Angle(incomingDirection, outgoingDirection);
+            return true;
         }
 
         private static bool TryGetWaypointDirection(Vector3 start, Vector3 end, out Vector3 direction)
@@ -373,6 +443,45 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             direction = Vector3.zero;
+            return false;
+        }
+
+        private static bool TryGetWaypointTravelDirection(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex, out Vector3 direction)
+        {
+            direction = Vector3.zero;
+
+            if (waypoints == null || waypointIndex < 0 || waypointIndex >= waypoints.Count)
+                return false;
+
+            AIWaypoint currentWaypoint = waypoints[waypointIndex];
+            if (currentWaypoint == null)
+                return false;
+
+            if (waypointIndex < waypoints.Count - 1 && waypoints[waypointIndex + 1] != null)
+                return TryGetWaypointDirection(currentWaypoint.transform.position, waypoints[waypointIndex + 1].transform.position, out direction);
+
+            if (waypointIndex > 0 && waypoints[waypointIndex - 1] != null)
+                return TryGetWaypointDirection(waypoints[waypointIndex - 1].transform.position, currentWaypoint.transform.position, out direction);
+
+            return false;
+        }
+
+        private static bool TryNormalizeDirection(Vector3 direction, out Vector3 normalizedDirection)
+        {
+            Vector3 planarDirection = Vector3.ProjectOnPlane(direction, Vector3.up);
+            if (planarDirection.sqrMagnitude >= MinDirectionSqrMagnitude)
+            {
+                normalizedDirection = planarDirection.normalized;
+                return true;
+            }
+
+            if (direction.sqrMagnitude >= MinDirectionSqrMagnitude)
+            {
+                normalizedDirection = direction.normalized;
+                return true;
+            }
+
+            normalizedDirection = Vector3.zero;
             return false;
         }
 

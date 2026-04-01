@@ -59,6 +59,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUI.EndDisabledGroup();
 
             EditorGUILayout.BeginHorizontal();
+            DrawLinkRoadDistanceField();
             EditorGUI.BeginDisabledGroup(!HasGeneratedLaneData());
             if (GUILayout.Button("Link Lanes", GUILayout.Width(100)))
             {
@@ -118,6 +119,23 @@ namespace Darkmatter.TrafficSystem.Editor
             return editMode && sceneTool.Road != null
                 ? $"Edit Road - {sceneTool.Road.gameObject.name}"
                 : "Create Road";
+        }
+
+        private void DrawLinkRoadDistanceField()
+        {
+            if (sceneTool.Road == null)
+                return;
+
+            EditorGUILayout.LabelField("Link Offset", GUILayout.Width(80));
+
+            EditorGUI.BeginChangeCheck();
+            int linkRoadDistance = EditorGUILayout.IntField(sceneTool.Road.laneChangeLinkRoadDistance, GUILayout.Width(45));
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(sceneTool.Road, "Change Link Offset");
+                sceneTool.Road.laneChangeLinkRoadDistance = Mathf.Max(1, linkRoadDistance);
+                EditorUtility.SetDirty(sceneTool.Road);
+            }
         }
 
         private bool HasGeneratedLaneData()

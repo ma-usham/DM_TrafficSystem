@@ -13,6 +13,7 @@ namespace Darkmatter.TrafficSystem
         [Range(1, 15)] public int waypointDistance = 5;
         public float laneWidth = 4f;
         public float speedLimitForAllLanes = 30f;
+        [Min(1)] public int laneChangeLinkRoadDistance = 1;
         [Range(10, 100)] public int curveResolution = 30;
         public DrivingDirection drivingDirection = DrivingDirection.Left;
 
