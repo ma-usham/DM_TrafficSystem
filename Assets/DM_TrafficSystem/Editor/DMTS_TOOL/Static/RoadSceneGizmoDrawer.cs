@@ -155,6 +155,15 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (connection.sourceWaypoint == null || connection.targetWaypoint == null)
                     continue;
 
+                if (connection.connection != null)
+                {
+                    DrawConnectionCurve(
+                        connection.connection,
+                        DMTSPrefs.ConnectRoadExistingConnectionColor,
+                        DMTSPrefs.ConnectRoadCurveWidth);
+                    continue;
+                }
+
                 Handles.DrawDottedLine(
                     connection.sourceWaypoint.transform.position,
                     connection.targetWaypoint.transform.position,
@@ -162,6 +171,75 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             Handles.color = previousColor;
+        }
+
+        /// <summary>
+        /// Draws one connection spline using its stored editable control points.
+        /// </summary>
+        public static void DrawConnectionCurve(AIWaypointConnection connection, Color color, float lineWidth)
+        {
+            if (connection == null)
+                return;
+
+            List<Vector3> curvePoints = GetConnectionCurvePoints(connection);
+            if (curvePoints.Count >= 2)
+            {
+                Color previousColor = Handles.color;
+                Handles.color = color;
+                Handles.DrawAAPolyLine(lineWidth, curvePoints.ToArray());
+                Handles.color = previousColor;
+                return;
+            }
+
+            if (connection.sourceWaypoint != null && connection.targetWaypoint != null)
+            {
+                Color previousColor = Handles.color;
+                Handles.color = color;
+                Handles.DrawDottedLine(
+                    connection.sourceWaypoint.transform.position,
+                    connection.targetWaypoint.transform.position,
+                    ConnectionGizmoScreenSize);
+                Handles.color = previousColor;
+            }
+        }
+
+        /// <summary>
+        /// Draws the generated transition waypoints that belong to one connection object.
+        /// </summary>
+        public static void DrawConnectionTransitionWaypoints(AIWaypointConnection connection)
+        {
+            if (connection == null || connection.transitionWaypoints == null || connection.transitionWaypoints.Count == 0)
+                return;
+
+            Color previousColor = Handles.color;
+            Handles.color = DMTSPrefs.ConnectRoadTransitionWaypointColor;
+
+            for (int i = 0; i < connection.transitionWaypoints.Count; i++)
+            {
+                AIWaypoint waypoint = connection.transitionWaypoints[i];
+                if (waypoint == null)
+                    continue;
+
+                Vector3 position = waypoint.transform.position;
+                float size = HandleUtility.GetHandleSize(position) * DMTSPrefs.WaypointSizeMultiplier * 0.9f;
+                Handles.SphereHandleCap(0, position, Quaternion.identity, size, EventType.Repaint);
+            }
+
+            Handles.color = previousColor;
+        }
+
+        /// <summary>
+        /// Returns the sampled scene points used to render one connection spline.
+        /// </summary>
+        public static List<Vector3> GetConnectionCurvePoints(AIWaypointConnection connection)
+        {
+            if (connection == null || connection.controlPointsList == null || connection.controlPointsList.Count < 2)
+                return new List<Vector3>();
+
+            connection.SyncEndpointControlPoints();
+            return SplineMathUtils.GetCurvePoints(
+                connection.controlPointsList,
+                Mathf.Max(4, connection.curveResolution));
         }
 
         private static Vector3 GetWaypointForward(IReadOnlyList<Vector3> waypointPositions, int waypointIndex)

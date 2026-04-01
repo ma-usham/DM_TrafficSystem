@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,6 +15,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private AIWaypoint selectedEndingWaypoint;
         private string selectedEndingConnectionName;
+        private AIWaypointConnection activeConnection;
         private AIWaypoint viewedConnectionSourceWaypoint;
         private AIWaypoint viewedConnectionTargetWaypoint;
         private string statusMessage = "Click an ending waypoint in the Scene view to begin connecting lanes.";
@@ -22,6 +24,7 @@ namespace Darkmatter.TrafficSystem.Editor
         public IReadOnlyList<LaneTerminal> LaneEnds => laneEnds;
         public AIWaypoint SelectedEndingWaypoint => selectedEndingWaypoint;
         public string SelectedEndingConnectionName => selectedEndingConnectionName;
+        public AIWaypointConnection ActiveConnection => activeConnection;
         public string StatusMessage => statusMessage;
 
         /// <summary>
@@ -57,11 +60,37 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
-        /// Builds the current connection records, optionally filtering them to the active Scene view camera.
+        /// Builds the current connection records, including editable spline connections and legacy direct links.
         /// </summary>
         public List<ConnectionRecord> BuildConnectionRecords(bool filterBySceneView, SceneView sceneView = null)
         {
             var connectionRecords = new List<ConnectionRecord>();
+            var registeredPairs = new HashSet<ulong>();
+
+            AIWaypointConnection[] connectionObjects = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < connectionObjects.Length; i++)
+            {
+                AIWaypointConnection connection = connectionObjects[i];
+                if (connection == null
+                    || connection.sourceWaypoint == null
+                    || connection.targetWaypoint == null
+                    || !TryGetLaneEndTerminal(connection.sourceWaypoint, out LaneTerminal laneEnd)
+                    || !TryGetLaneStartTerminal(connection.targetWaypoint, out LaneTerminal laneStart))
+                {
+                    continue;
+                }
+
+                if (filterBySceneView && !IsConnectionVisible(connection, sceneView))
+                    continue;
+
+                registeredPairs.Add(GetConnectionKey(connection.sourceWaypoint, connection.targetWaypoint));
+                connectionRecords.Add(new ConnectionRecord(
+                    laneEnd.connectionName,
+                    laneStart.connectionName,
+                    connection.sourceWaypoint,
+                    connection.targetWaypoint,
+                    connection));
+            }
 
             for (int i = 0; i < laneEnds.Count; i++)
             {
@@ -74,6 +103,10 @@ namespace Darkmatter.TrafficSystem.Editor
                 {
                     AIWaypoint targetWaypoint = endWaypoint.settings.nextWaypoint[connectionIndex];
                     if (targetWaypoint == null || !TryGetLaneStartTerminal(targetWaypoint, out LaneTerminal laneStart))
+                        continue;
+
+                    ulong connectionKey = GetConnectionKey(endWaypoint, targetWaypoint);
+                    if (!registeredPairs.Add(connectionKey))
                         continue;
 
                     if (filterBySceneView
@@ -90,7 +123,8 @@ namespace Darkmatter.TrafficSystem.Editor
                         laneEnd.connectionName,
                         laneStart.connectionName,
                         endWaypoint,
-                        targetWaypoint));
+                        targetWaypoint,
+                        null));
                 }
             }
 
@@ -103,6 +137,16 @@ namespace Darkmatter.TrafficSystem.Editor
         public bool IsSelectedEndingStillAvailable()
         {
             return IsWaypointStillAvailable(selectedEndingWaypoint, laneEnds);
+        }
+
+        /// <summary>
+        /// Returns whether the actively edited connection is still valid.
+        /// </summary>
+        public bool IsActiveConnectionStillAvailable()
+        {
+            return activeConnection != null
+                && activeConnection.sourceWaypoint != null
+                && activeConnection.targetWaypoint != null;
         }
 
         /// <summary>
@@ -119,27 +163,32 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         public void SelectEndingWaypoint(LaneTerminal laneEnd)
         {
+            activeConnection = null;
             selectedEndingWaypoint = laneEnd.waypoint;
             selectedEndingConnectionName = laneEnd.connectionName;
-            statusMessage = $"Selected end waypoint on {laneEnd.connectionName}. Click a lane start waypoint to connect.";
+            statusMessage = $"Selected end waypoint on {laneEnd.connectionName}. Click a lane start waypoint to create a curved connection.";
             RepaintViews();
         }
 
         /// <summary>
-        /// Frames and highlights one connection in the Scene view.
+        /// Frames and highlights one connection in the Scene view, entering curve-edit mode when possible.
         /// </summary>
         public void ViewConnection(ConnectionRecord connection)
         {
+            activeConnection = connection.connection;
+            selectedEndingWaypoint = null;
+            selectedEndingConnectionName = null;
             viewedConnectionSourceWaypoint = connection.sourceWaypoint;
             viewedConnectionTargetWaypoint = connection.targetWaypoint;
-            statusMessage = $"Viewing {connection.label}";
+
+            statusMessage = connection.connection != null
+                ? $"Editing {connection.label}. Drag control points to shape the turn. Connection waypoint spacing and curve resolution come from this AIWaypointConnection."
+                : $"Viewing {connection.label}";
 
             SceneView sceneView = GetActiveSceneView();
-            if (sceneView != null && connection.sourceWaypoint != null && connection.targetWaypoint != null)
+            if (sceneView != null)
             {
-                Bounds connectionBounds = new Bounds(connection.sourceWaypoint.transform.position, Vector3.zero);
-                connectionBounds.Encapsulate(connection.targetWaypoint.transform.position);
-                connectionBounds.Expand(4f);
+                Bounds connectionBounds = ComputeConnectionBounds(connection);
                 sceneView.Frame(connectionBounds, false);
             }
 
@@ -147,7 +196,7 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
-        /// Creates a bidirectional road connection from the selected ending waypoint to the provided lane start.
+        /// Creates a curved road connection from the selected lane ending waypoint to the provided lane start.
         /// </summary>
         public void CreateLaneConnection(LaneTerminal laneStart)
         {
@@ -160,28 +209,77 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
+            AIWaypointConnection existingConnection = FindExistingConnection(selectedEndingWaypoint, laneStart.waypoint);
+            if (existingConnection != null)
+            {
+                activeConnection = existingConnection;
+                selectedEndingWaypoint = null;
+                selectedEndingConnectionName = null;
+                viewedConnectionSourceWaypoint = existingConnection.sourceWaypoint;
+                viewedConnectionTargetWaypoint = existingConnection.targetWaypoint;
+                statusMessage = $"Connection already exists: {GetLaneTerminalName(existingConnection.sourceWaypoint)} --> {laneStart.connectionName}. Editing the existing curve with its saved waypoint spacing and curve resolution.";
+                RepaintViews();
+                return;
+            }
+
             int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Connect Road Lanes");
+            Undo.SetCurrentGroupName("Create Road Connection");
 
-            bool updatedNext = AppendWaypointLink(selectedEndingWaypoint, laneStart.waypoint, useNextWaypoint: true);
-            bool updatedPrevious = AppendWaypointLink(laneStart.waypoint, selectedEndingWaypoint, useNextWaypoint: false);
+            AIWaypointConnection connection = WaypointConnectionBuilder.CreateConnection(selectedEndingWaypoint, laneStart.waypoint);
 
-            if (updatedNext || updatedPrevious)
+            if (connection != null)
             {
-                statusMessage = $"{selectedEndingConnectionName} --> {laneStart.connectionName}";
+                activeConnection = connection;
+                viewedConnectionSourceWaypoint = selectedEndingWaypoint;
+                viewedConnectionTargetWaypoint = laneStart.waypoint;
+                statusMessage = $"{selectedEndingConnectionName} --> {laneStart.connectionName}. Connection waypoints were generated using this AIWaypointConnection's spacing and curve resolution.";
             }
-            else
-            {
-                statusMessage = $"Connection already exists: {selectedEndingConnectionName} --> {laneStart.connectionName}";
-            }
+
+            selectedEndingWaypoint = null;
+            selectedEndingConnectionName = null;
 
             Undo.CollapseUndoOperations(undoGroup);
-            ClearSelection(resetStatus: false);
             RepaintViews();
         }
 
         /// <summary>
-        /// Deletes the selected road connection from both participating waypoints.
+        /// Regenerates the currently active connection after the user edits its spline.
+        /// </summary>
+        public void RebuildActiveConnection(string undoLabel)
+        {
+            if (activeConnection == null)
+                return;
+
+            WaypointConnectionBuilder.RegenerateConnection(activeConnection, undoLabel);
+            viewedConnectionSourceWaypoint = activeConnection.sourceWaypoint;
+            viewedConnectionTargetWaypoint = activeConnection.targetWaypoint;
+            statusMessage = $"Editing {GetConnectionLabel(activeConnection.sourceWaypoint, activeConnection.targetWaypoint)}. Connection waypoints regenerate from this AIWaypointConnection's spacing and curve resolution.";
+            RepaintViews();
+        }
+
+        /// <summary>
+        /// Finalizes the current connection edit and returns the tool to selection mode.
+        /// </summary>
+        public void ApplyActiveConnection()
+        {
+            if (activeConnection == null)
+                return;
+
+            WaypointConnectionBuilder.RegenerateConnection(activeConnection, "Apply Road Connection");
+
+            string appliedLabel = GetConnectionLabel(activeConnection.sourceWaypoint, activeConnection.targetWaypoint);
+            activeConnection = null;
+            viewedConnectionSourceWaypoint = null;
+            viewedConnectionTargetWaypoint = null;
+            selectedEndingWaypoint = null;
+            selectedEndingConnectionName = null;
+
+            statusMessage = $"Applied {appliedLabel}. Choose another ending waypoint or connection.";
+            RepaintViews();
+        }
+
+        /// <summary>
+        /// Deletes the selected road connection from the scene.
         /// </summary>
         public void DeleteConnection(ConnectionRecord connection)
         {
@@ -191,35 +289,41 @@ namespace Darkmatter.TrafficSystem.Editor
             int undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Delete Road Connection");
 
-            bool removedNext = RemoveWaypointLink(connection.sourceWaypoint, connection.targetWaypoint, useNextWaypoint: true);
-            bool removedPrevious = RemoveWaypointLink(connection.targetWaypoint, connection.sourceWaypoint, useNextWaypoint: false);
-
-            if (removedNext || removedPrevious)
+            if (connection.connection != null)
             {
-                statusMessage = $"Deleted {connection.label}";
+                WaypointConnectionBuilder.DeleteConnection(connection.connection, "Delete Road Connection");
             }
             else
             {
-                statusMessage = $"Connection was already missing: {connection.label}";
+                bool removedNext = RemoveWaypointLink(connection.sourceWaypoint, connection.targetWaypoint, useNextWaypoint: true);
+                bool removedPrevious = RemoveWaypointLink(connection.targetWaypoint, connection.sourceWaypoint, useNextWaypoint: false);
+
+                if (!removedNext && !removedPrevious)
+                    statusMessage = $"Connection was already missing: {connection.label}";
             }
 
             if (IsViewedConnection(connection))
             {
+                activeConnection = null;
                 viewedConnectionSourceWaypoint = null;
                 viewedConnectionTargetWaypoint = null;
             }
 
+            statusMessage = $"Deleted {connection.label}";
             Undo.CollapseUndoOperations(undoGroup);
             RepaintViews();
         }
 
         /// <summary>
-        /// Clears the current source selection while optionally restoring the default status text.
+        /// Clears the current source selection and active connection.
         /// </summary>
         public void ClearSelection(bool resetStatus)
         {
             selectedEndingWaypoint = null;
             selectedEndingConnectionName = null;
+            activeConnection = null;
+            viewedConnectionSourceWaypoint = null;
+            viewedConnectionTargetWaypoint = null;
 
             if (resetStatus)
                 UpdateStatusForCurrentSelection();
@@ -236,6 +340,12 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
+            if (activeConnection != null)
+            {
+                statusMessage = "Editing a curved connection. Drag control points, Ctrl+Click the curve to insert, or right-click a middle point to delete. Connection waypoint spacing and curve resolution come from the active AIWaypointConnection.";
+                return;
+            }
+
             if (selectedEndingWaypoint == null)
             {
                 statusMessage = "Click an ending waypoint in the Scene view to begin connecting lanes.";
@@ -248,7 +358,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
-            statusMessage = "Click a lane beginning waypoint in the Scene view to create the connection.";
+            statusMessage = "Click a lane beginning waypoint in the Scene view to create the curved connection.";
         }
 
         /// <summary>
@@ -265,8 +375,20 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         public void SetMissingSelectedEndingStatus()
         {
-            ClearSelection(resetStatus: false);
+            selectedEndingWaypoint = null;
+            selectedEndingConnectionName = null;
             statusMessage = "The selected ending waypoint is no longer valid. Choose an ending waypoint again.";
+        }
+
+        /// <summary>
+        /// Sets the status used when the actively edited connection has disappeared.
+        /// </summary>
+        public void SetMissingActiveConnectionStatus()
+        {
+            activeConnection = null;
+            viewedConnectionSourceWaypoint = null;
+            viewedConnectionTargetWaypoint = null;
+            statusMessage = "The selected connection is no longer valid. Pick a connection again.";
         }
 
         /// <summary>
@@ -286,35 +408,100 @@ namespace Darkmatter.TrafficSystem.Editor
             SceneView.RepaintAll();
         }
 
-        private static bool AppendWaypointLink(AIWaypoint ownerWaypoint, AIWaypoint linkedWaypoint, bool useNextWaypoint)
+        private bool TryGetLaneStartTerminal(AIWaypoint waypoint, out LaneTerminal terminal)
         {
-            if (ownerWaypoint == null || linkedWaypoint == null)
-                return false;
-
-            WaypointSettings settings = ownerWaypoint.settings;
-            AIWaypoint[] currentLinks = useNextWaypoint ? settings.nextWaypoint : settings.previousWaypoint;
-            AIWaypoint[] updatedLinks = BuildUniqueWaypointLinkArray(currentLinks, linkedWaypoint);
-
-            if (WaypointArraysEqual(currentLinks, updatedLinks))
-                return false;
-
-            Undo.RecordObject(ownerWaypoint, "Connect Road Lanes");
-
-            if (useNextWaypoint)
+            for (int i = 0; i < laneStarts.Count; i++)
             {
-                settings.nextWaypoint = updatedLinks;
-            }
-            else
-            {
-                settings.previousWaypoint = updatedLinks;
+                if (laneStarts[i].waypoint == waypoint)
+                {
+                    terminal = laneStarts[i];
+                    return true;
+                }
             }
 
-            ownerWaypoint.settings = settings;
-            EditorUtility.SetDirty(ownerWaypoint);
-            return true;
+            terminal = default(LaneTerminal);
+            return false;
         }
 
-        private static bool RemoveWaypointLink(AIWaypoint ownerWaypoint, AIWaypoint linkedWaypoint, bool useNextWaypoint)
+        private bool TryGetLaneEndTerminal(AIWaypoint waypoint, out LaneTerminal terminal)
+        {
+            for (int i = 0; i < laneEnds.Count; i++)
+            {
+                if (laneEnds[i].waypoint == waypoint)
+                {
+                    terminal = laneEnds[i];
+                    return true;
+                }
+            }
+
+            terminal = default(LaneTerminal);
+            return false;
+        }
+
+        private AIWaypointConnection FindExistingConnection(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
+        {
+            AIWaypointConnection[] connections = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < connections.Length; i++)
+            {
+                AIWaypointConnection connection = connections[i];
+                if (connection != null
+                    && connection.sourceWaypoint == sourceWaypoint
+                    && connection.targetWaypoint == targetWaypoint)
+                {
+                    return connection;
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsConnectionVisible(AIWaypointConnection connection, SceneView sceneView)
+        {
+            List<Vector3> curvePoints = RoadSceneGizmoDrawer.GetConnectionCurvePoints(connection);
+            if (curvePoints.Count == 0)
+            {
+                return RoadSceneVisibilityUtility.IsSegmentVisible(
+                    sceneView,
+                    connection.sourceWaypoint.transform.position,
+                    connection.targetWaypoint.transform.position,
+                    1.5f);
+            }
+
+            Bounds bounds = new Bounds(curvePoints[0], Vector3.zero);
+            for (int i = 1; i < curvePoints.Count; i++)
+            {
+                bounds.Encapsulate(curvePoints[i]);
+            }
+
+            bounds.Expand(2f);
+            return RoadSceneVisibilityUtility.IsBoundsVisible(sceneView, bounds);
+        }
+
+        private static Bounds ComputeConnectionBounds(ConnectionRecord connection)
+        {
+            if (connection.connection != null)
+            {
+                List<Vector3> curvePoints = RoadSceneGizmoDrawer.GetConnectionCurvePoints(connection.connection);
+                if (curvePoints.Count > 0)
+                {
+                    Bounds bounds = new Bounds(curvePoints[0], Vector3.zero);
+                    for (int i = 1; i < curvePoints.Count; i++)
+                    {
+                        bounds.Encapsulate(curvePoints[i]);
+                    }
+
+                    bounds.Expand(4f);
+                    return bounds;
+                }
+            }
+
+            Bounds fallbackBounds = new Bounds(connection.sourceWaypoint.transform.position, Vector3.zero);
+            fallbackBounds.Encapsulate(connection.targetWaypoint.transform.position);
+            fallbackBounds.Expand(4f);
+            return fallbackBounds;
+        }
+
+        private bool RemoveWaypointLink(AIWaypoint ownerWaypoint, AIWaypoint linkedWaypoint, bool useNextWaypoint)
         {
             if (ownerWaypoint == null || linkedWaypoint == null)
                 return false;
@@ -340,28 +527,6 @@ namespace Darkmatter.TrafficSystem.Editor
             ownerWaypoint.settings = settings;
             EditorUtility.SetDirty(ownerWaypoint);
             return true;
-        }
-
-        private static AIWaypoint[] BuildUniqueWaypointLinkArray(IReadOnlyList<AIWaypoint> existingLinks, AIWaypoint candidate)
-        {
-            var uniqueLinks = new List<AIWaypoint>();
-
-            if (existingLinks != null)
-            {
-                for (int i = 0; i < existingLinks.Count; i++)
-                {
-                    AIWaypoint existingLink = existingLinks[i];
-                    if (existingLink != null && !uniqueLinks.Contains(existingLink))
-                        uniqueLinks.Add(existingLink);
-                }
-            }
-
-            if (candidate != null && !uniqueLinks.Contains(candidate))
-                uniqueLinks.Add(candidate);
-
-            return uniqueLinks.Count > 0
-                ? uniqueLinks.ToArray()
-                : System.Array.Empty<AIWaypoint>();
         }
 
         private static AIWaypoint[] BuildFilteredWaypointLinkArray(IReadOnlyList<AIWaypoint> existingLinks, AIWaypoint candidateToRemove)
@@ -415,19 +580,27 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
-        private bool TryGetLaneStartTerminal(AIWaypoint waypoint, out LaneTerminal terminal)
+        private string GetLaneTerminalName(AIWaypoint waypoint)
         {
-            for (int i = 0; i < laneStarts.Count; i++)
-            {
-                if (laneStarts[i].waypoint == waypoint)
-                {
-                    terminal = laneStarts[i];
-                    return true;
-                }
-            }
+            if (TryGetLaneEndTerminal(waypoint, out LaneTerminal laneEnd))
+                return laneEnd.connectionName;
 
-            terminal = default(LaneTerminal);
-            return false;
+            if (TryGetLaneStartTerminal(waypoint, out LaneTerminal laneStart))
+                return laneStart.connectionName;
+
+            return waypoint != null ? waypoint.name : "waypoint";
+        }
+
+        private string GetConnectionLabel(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
+        {
+            return $"{GetLaneTerminalName(sourceWaypoint)} --> {GetLaneTerminalName(targetWaypoint)}";
+        }
+
+        private static ulong GetConnectionKey(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
+        {
+            uint sourceId = sourceWaypoint != null ? unchecked((uint)RuntimeHelpers.GetHashCode(sourceWaypoint)) : 0u;
+            uint targetId = targetWaypoint != null ? unchecked((uint)RuntimeHelpers.GetHashCode(targetWaypoint)) : 0u;
+            return ((ulong)sourceId << 32) | targetId;
         }
 
         private static SceneView GetActiveSceneView()
@@ -460,12 +633,19 @@ namespace Darkmatter.TrafficSystem.Editor
             public readonly string label;
             public readonly AIWaypoint sourceWaypoint;
             public readonly AIWaypoint targetWaypoint;
+            public readonly AIWaypointConnection connection;
 
-            public ConnectionRecord(string sourceConnectionName, string targetConnectionName, AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
+            public ConnectionRecord(
+                string sourceConnectionName,
+                string targetConnectionName,
+                AIWaypoint sourceWaypoint,
+                AIWaypoint targetWaypoint,
+                AIWaypointConnection connection)
             {
                 label = $"{sourceConnectionName} --> {targetConnectionName}";
                 this.sourceWaypoint = sourceWaypoint;
                 this.targetWaypoint = targetWaypoint;
+                this.connection = connection;
             }
         }
     }

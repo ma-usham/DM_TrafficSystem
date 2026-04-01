@@ -39,6 +39,11 @@ namespace Darkmatter.TrafficSystem
         public static Color ConnectRoadSelectedWaypointColor = new Color(0.2f, 0.85f, 0.25f, 0.98f);
         public static Color ConnectRoadAvailableWaypointColor = new Color(0.2f, 0.85f, 0.25f, 0.98f);
         public static Color ConnectRoadExistingConnectionColor = new Color(0.2f, 0.85f, 0.25f, 0.9f);
+        public static Color ConnectRoadCurveControlPointColor = Color.white;
+        public static Color ConnectRoadCurveAnchorColor = new Color(1f, 0.85f, 0.1f, 1f);
+        public static Color ConnectRoadTransitionWaypointColor = new Color(0.15f, 0.75f, 0.95f, 0.95f);
+        public static float ConnectRoadCurveWidth = 3f;
+        public static float ConnectRoadSelectedCurveWidth = 4f;
 
         // View Roads page curve preview
         public static Color ViewRoadCurveColor = Color.cyan;

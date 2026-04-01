@@ -10,7 +10,7 @@ namespace Darkmatter.TrafficSystem.Editor
     public class ConnectRoadSceneTool
     {
         private const float ConnectionGizmoScreenSize = 5f;
-        private const float HighlightedConnectionLineWidth = 4f;
+        private const int SegmentPreviewSamples = 50;
 
         private readonly ConnectRoadToolState toolState;
 
@@ -20,7 +20,7 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
-        /// Draws connection gizmos and terminal selection handles for the active connect-road page.
+        /// Draws connection gizmos, selection handles, and connection spline editing controls.
         /// </summary>
         public void OnSceneGUI(SceneView sceneView)
         {
@@ -30,6 +30,19 @@ namespace Darkmatter.TrafficSystem.Editor
                 sceneView: sceneView);
 
             DrawConnectionGizmos(connectionRecords);
+
+            if (toolState.ActiveConnection != null)
+            {
+                if (!toolState.IsActiveConnectionStillAvailable())
+                {
+                    toolState.SetMissingActiveConnectionStatus();
+                    toolState.RepaintViews();
+                    return;
+                }
+
+                DrawActiveConnectionEditor(toolState.ActiveConnection);
+                return;
+            }
 
             if (toolState.LaneEnds.Count == 0)
             {
@@ -117,7 +130,6 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             bool suppressStandardConnections = DMTS_Window.SuppressConnectPagePassiveConnectionGizmos;
-            Handles.color = DMTSPrefs.ConnectRoadExistingConnectionColor;
 
             for (int i = 0; i < connectionRecords.Count; i++)
             {
@@ -125,23 +137,249 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (connection.sourceWaypoint == null || connection.targetWaypoint == null)
                     continue;
 
-                Vector3 start = connection.sourceWaypoint.transform.position;
-                Vector3 end = connection.targetWaypoint.transform.position;
-
-                if (toolState.IsViewedConnection(connection))
-                {
-                    Handles.color = DMTSPrefs.ConnectRoadSelectedWaypointColor;
-                    Handles.DrawAAPolyLine(HighlightedConnectionLineWidth, start, end);
-                    Handles.color = DMTSPrefs.ConnectRoadExistingConnectionColor;
-
-                    if (suppressStandardConnections)
-                        continue;
-                }
-
-                if (suppressStandardConnections)
+                bool isViewedConnection = toolState.IsViewedConnection(connection);
+                if (!isViewedConnection && suppressStandardConnections)
                     continue;
 
-                Handles.DrawDottedLine(start, end, ConnectionGizmoScreenSize);
+                if (connection.connection != null)
+                {
+                    RoadSceneGizmoDrawer.DrawConnectionCurve(
+                        connection.connection,
+                        isViewedConnection ? DMTSPrefs.ConnectRoadSelectedWaypointColor : DMTSPrefs.ConnectRoadExistingConnectionColor,
+                        isViewedConnection ? DMTSPrefs.ConnectRoadSelectedCurveWidth : DMTSPrefs.ConnectRoadCurveWidth);
+
+                    if (isViewedConnection)
+                        RoadSceneGizmoDrawer.DrawConnectionTransitionWaypoints(connection.connection);
+
+                    continue;
+                }
+
+                Handles.color = isViewedConnection
+                    ? DMTSPrefs.ConnectRoadSelectedWaypointColor
+                    : DMTSPrefs.ConnectRoadExistingConnectionColor;
+                Handles.DrawDottedLine(
+                    connection.sourceWaypoint.transform.position,
+                    connection.targetWaypoint.transform.position,
+                    ConnectionGizmoScreenSize);
+            }
+        }
+
+        private void DrawActiveConnectionEditor(AIWaypointConnection connection)
+        {
+            if (connection == null)
+                return;
+
+            connection.SyncEndpointControlPoints();
+
+            RoadSceneGizmoDrawer.DrawConnectionCurve(
+                connection,
+                DMTSPrefs.ConnectRoadSelectedWaypointColor,
+                DMTSPrefs.ConnectRoadSelectedCurveWidth);
+            RoadSceneGizmoDrawer.DrawConnectionTransitionWaypoints(connection);
+
+            DrawConnectionInsertPreview(connection);
+            ProcessActiveConnectionInput(connection);
+            DrawConnectionControlPoints(connection);
+        }
+
+        private void DrawConnectionControlPoints(AIWaypointConnection connection)
+        {
+            if (connection == null || connection.controlPointsList == null)
+                return;
+
+            for (int i = 0; i < connection.controlPointsList.Count; i++)
+            {
+                Vector3 controlPoint = connection.controlPointsList[i];
+                bool isEndpoint = i == 0 || i == connection.controlPointsList.Count - 1;
+
+                if (isEndpoint)
+                {
+                    Handles.color = DMTSPrefs.ConnectRoadCurveAnchorColor;
+                    DrawFilledRectangleCap(
+                        0,
+                        controlPoint,
+                        GetWaypointHandleRotation(),
+                        GetWaypointHandleSize(controlPoint) * 0.9f,
+                        EventType.Repaint);
+                    continue;
+                }
+
+                Handles.color = DMTSPrefs.ConnectRoadCurveControlPointColor;
+                EditorGUI.BeginChangeCheck();
+                Vector3 newPosition = Handles.FreeMoveHandle(
+                    controlPoint,
+                    HandleUtility.GetHandleSize(controlPoint) * 0.08f,
+                    Vector3.zero,
+                    Handles.SphereHandleCap);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(connection, "Move Connection Control Point");
+                    connection.controlPointsList[i] = newPosition;
+                    toolState.RebuildActiveConnection("Move Connection Control Point");
+                }
+
+                Handles.Label(
+                    controlPoint + Vector3.up * HandleUtility.GetHandleSize(controlPoint) * 0.1f,
+                    $"[{i}]",
+                    EditorStyles.whiteMiniLabel);
+            }
+        }
+
+        private void DrawConnectionInsertPreview(AIWaypointConnection connection)
+        {
+            Event currentEvent = Event.current;
+            if (!currentEvent.control || connection == null || connection.controlPointsList == null || connection.controlPointsList.Count < 2)
+                return;
+
+            FindNearestSegmentScreenSpace(
+                connection.controlPointsList,
+                currentEvent.mousePosition,
+                out int segmentIndex,
+                out float segmentT,
+                out float screenDistance);
+
+            if (segmentIndex < 0 || screenDistance > DMTSPrefs.InsertScreenThreshold)
+                return;
+
+            Vector3 startPoint = connection.controlPointsList[segmentIndex];
+            Vector3 endPoint = connection.controlPointsList[segmentIndex + 1];
+            SplineMathUtils.GetSegmentHandles(connection.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
+            Vector3 previewPoint = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, segmentT);
+
+            Handles.color = DMTSPrefs.InsertPreviewColor;
+            Handles.SphereHandleCap(
+                0,
+                previewPoint,
+                Quaternion.identity,
+                HandleUtility.GetHandleSize(previewPoint) * 0.12f,
+                EventType.Repaint);
+
+            Handles.Label(
+                previewPoint + Vector3.up * HandleUtility.GetHandleSize(previewPoint) * 0.2f,
+                "Ctrl+Click to insert",
+                EditorStyles.whiteMiniLabel);
+        }
+
+        private void ProcessActiveConnectionInput(AIWaypointConnection connection)
+        {
+            Event currentEvent = Event.current;
+
+            if (currentEvent.type == EventType.MouseDown
+                && currentEvent.button == 0
+                && currentEvent.control
+                && TryInsertConnectionControlPoint(connection, currentEvent.mousePosition))
+            {
+                currentEvent.Use();
+                GUI.changed = true;
+                return;
+            }
+
+            if (currentEvent.type == EventType.MouseDown
+                && currentEvent.button == 1
+                && TryDeleteConnectionControlPoint(connection, currentEvent.mousePosition))
+            {
+                currentEvent.Use();
+                GUI.changed = true;
+            }
+        }
+
+        private bool TryInsertConnectionControlPoint(AIWaypointConnection connection, Vector2 mousePosition)
+        {
+            if (connection == null || connection.controlPointsList == null || connection.controlPointsList.Count < 2)
+                return false;
+
+            FindNearestSegmentScreenSpace(
+                connection.controlPointsList,
+                mousePosition,
+                out int segmentIndex,
+                out float segmentT,
+                out float screenDistance);
+
+            if (segmentIndex < 0 || screenDistance > DMTSPrefs.InsertScreenThreshold)
+                return false;
+
+            Vector3 startPoint = connection.controlPointsList[segmentIndex];
+            Vector3 endPoint = connection.controlPointsList[segmentIndex + 1];
+            SplineMathUtils.GetSegmentHandles(connection.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
+            Vector3 insertPosition = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, segmentT);
+
+            Undo.RecordObject(connection, "Insert Connection Control Point");
+            connection.InsertControlPoint(segmentIndex + 1, insertPosition);
+            toolState.RebuildActiveConnection("Insert Connection Control Point");
+            return true;
+        }
+
+        private bool TryDeleteConnectionControlPoint(AIWaypointConnection connection, Vector2 mousePosition)
+        {
+            if (connection == null || connection.controlPointsList == null || connection.controlPointsList.Count <= 2)
+                return false;
+
+            int nearestPointIndex = FindNearestInteriorPoint(connection.controlPointsList, mousePosition, out float distance);
+            if (nearestPointIndex < 0 || distance > DMTSPrefs.EndpointScreenRadius)
+                return false;
+
+            Undo.RecordObject(connection, "Delete Connection Control Point");
+            connection.RemoveControlPoint(nearestPointIndex);
+            toolState.RebuildActiveConnection("Delete Connection Control Point");
+            return true;
+        }
+
+        private static int FindNearestInteriorPoint(IReadOnlyList<Vector3> controlPoints, Vector2 mousePosition, out float bestDistance)
+        {
+            bestDistance = float.MaxValue;
+            int bestIndex = -1;
+
+            if (controlPoints == null)
+                return bestIndex;
+
+            for (int i = 1; i < controlPoints.Count - 1; i++)
+            {
+                Vector2 screenPoint = HandleUtility.WorldToGUIPoint(controlPoints[i]);
+                float distance = Vector2.Distance(mousePosition, screenPoint);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestIndex = i;
+                }
+            }
+
+            return bestIndex;
+        }
+
+        private static void FindNearestSegmentScreenSpace(
+            IReadOnlyList<Vector3> controlPoints,
+            Vector2 mousePosition,
+            out int bestSegment,
+            out float bestT,
+            out float bestScreenDistance)
+        {
+            bestSegment = -1;
+            bestT = 0f;
+            bestScreenDistance = float.MaxValue;
+
+            if (controlPoints == null || controlPoints.Count < 2)
+                return;
+
+            for (int i = 0; i < controlPoints.Count - 1; i++)
+            {
+                Vector3 startPoint = controlPoints[i];
+                Vector3 endPoint = controlPoints[i + 1];
+                SplineMathUtils.GetSegmentHandles(controlPoints, i, out Vector3 handleA, out Vector3 handleB);
+
+                for (int sampleIndex = 0; sampleIndex <= SegmentPreviewSamples; sampleIndex++)
+                {
+                    float t = sampleIndex / (float)SegmentPreviewSamples;
+                    Vector3 worldPoint = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, t);
+                    Vector2 screenPoint = HandleUtility.WorldToGUIPoint(worldPoint);
+                    float distance = Vector2.Distance(mousePosition, screenPoint);
+
+                    if (distance < bestScreenDistance)
+                    {
+                        bestScreenDistance = distance;
+                        bestSegment = i;
+                        bestT = t;
+                    }
+                }
             }
         }
 
