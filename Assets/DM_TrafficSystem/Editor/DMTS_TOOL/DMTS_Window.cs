@@ -54,6 +54,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private void OnDisable()
         {
             CreateRoadPage.isActive = false;
+            ConnectRoadPage.isActive = false;
             SceneView.duringSceneGui -= OnSceneGUI;
         }
 
@@ -73,12 +74,15 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             if (pageStack.Count > 0)
             {
-                CreateRoadPage.isActive = pageStack.Peek() is CreateRoadPage;
-                pageStack.Peek().OnSceneGUI(sceneView, this);
+                IPage activePage = pageStack.Peek();
+                CreateRoadPage.isActive = activePage is CreateRoadPage;
+                ConnectRoadPage.isActive = activePage is ConnectRoadPage;
+                activePage.OnSceneGUI(sceneView, this);
             }
             else
             {
                 CreateRoadPage.isActive = false;
+                ConnectRoadPage.isActive = false;
             }
         }
     }

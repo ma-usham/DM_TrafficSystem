@@ -36,7 +36,7 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private void OnSceneGUI()
         {
-            if (CreateRoadPage.isActive)
+            if (CreateRoadPage.isActive || ConnectRoadPage.isActive)
                 return;
 
             var pts = road.controlPointsList;
@@ -68,6 +68,9 @@ namespace Darkmatter.TrafficSystem.Editor
         [DrawGizmo(GizmoType.Selected)]
         private static void DrawGeneratedWaypointGizmos(Road road, GizmoType gizmoType)
         {
+            if (ConnectRoadPage.isActive)
+                return;
+
             if (road.laneObjects == null || road.laneObjects.Count == 0)
                 return;
 
