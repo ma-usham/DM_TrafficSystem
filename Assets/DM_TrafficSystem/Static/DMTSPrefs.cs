@@ -26,7 +26,7 @@ namespace Darkmatter.TrafficSystem
         public static float InsertScreenThreshold = 25f;
 
         // Waypoints
-        public static float WaypointSizeMultiplier = 0.15f;
+        public static float WaypointSizeMultiplier = 0.1f;
         public static Color WaypointColor = new Color(0.1f, 0.55f, 0.2f, 1f);
         public static Color WaypointLineColor = new Color(0.1f, 0.55f, 0.2f, 1f);
 

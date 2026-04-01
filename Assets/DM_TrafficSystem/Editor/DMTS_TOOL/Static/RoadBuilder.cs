@@ -186,18 +186,15 @@ namespace Darkmatter.TrafficSystem.Editor
             for (int waypointIndex = 0; waypointIndex < lanePositions.Count; waypointIndex++)
             {
                 GameObject waypointObject = new GameObject($"Waypoint_{waypointIndex}");
-                Undo.RegisterCreatedObjectUndo(waypointObject, "Generate Road Waypoints");
                 waypointObject.transform.SetParent(lane.transform);
                 waypointObject.transform.position = lanePositions[waypointIndex];
 
-                AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
+                AIWaypoint waypoint = waypointObject.AddComponent<AIWaypoint>();
                 waypoint.settings.speed = lane.laneSpeedLimit;
 
                 lane.waypoints.Add(waypoint);
                 createdWaypoints.Add(waypoint);
                 waypointTransforms.Add(waypoint.transform);
-
-                EditorUtility.SetDirty(waypoint);
             }
 
             LinkWaypoints(createdWaypoints);
@@ -215,8 +212,6 @@ namespace Darkmatter.TrafficSystem.Editor
                 settings.previousWaypoint = i > 0 ? waypoints[i - 1] : null;
                 settings.nextWaypoint = i < waypoints.Count - 1 ? waypoints[i + 1] : null;
                 waypoint.settings = settings;
-
-                EditorUtility.SetDirty(waypoint);
             }
         }
 

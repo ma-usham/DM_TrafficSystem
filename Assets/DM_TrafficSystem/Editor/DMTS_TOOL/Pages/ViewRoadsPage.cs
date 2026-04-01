@@ -52,8 +52,10 @@ namespace Darkmatter.TrafficSystem.Editor
 
             GUILayout.FlexibleSpace();
 
-            RefreshVisibility(SceneView.lastActiveSceneView);
-            SceneView.RepaintAll();
+            if (Event.current.type == EventType.Repaint)
+            {
+                RefreshVisibility(SceneView.lastActiveSceneView);
+            }
 
             EditorGUILayout.Space(4);
 
@@ -63,9 +65,15 @@ namespace Darkmatter.TrafficSystem.Editor
 
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
-            RefreshVisibility(sceneView);
-            DrawVisibleRoadGizmos();
-            ctx.Repaint();
+            if (Event.current.type == EventType.Repaint)
+            {
+                bool changed = RefreshVisibility(sceneView);
+                DrawVisibleRoadGizmos();
+                if (changed)
+                {
+                    ctx.Repaint();
+                }
+            }
         }
 
         private void DrawRoadEntry(Road road, DMTS_Window ctx)
@@ -126,26 +134,52 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
 
-        private void RefreshVisibility(SceneView sceneView)
+        private bool RefreshVisibility(SceneView sceneView)
         {
-
-            _visibleRoads.Clear();
-            if (sceneView == null || sceneView.camera == null) return;
+            if (sceneView == null || sceneView.camera == null) return false;
 
             Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(sceneView.camera);
             Road[] allRoads = Object.FindObjectsByType<Road>(FindObjectsInactive.Include);
 
-            foreach (Road road in allRoads)
+            List<Road> newVisibleRoads = new List<Road>();
+
+            for (int i = 0; i < allRoads.Length; i++)
             {
+                Road road = allRoads[i];
                 if (road == null || road.controlPointsList.Count == 0) continue;
 
                 Bounds bounds = ComputeRoadBounds(road);
 
                 if (GeometryUtility.TestPlanesAABB(frustumPlanes, bounds))
                 {
-                    _visibleRoads.Add(road);
+                    newVisibleRoads.Add(road);
                 }
             }
+
+            bool changed = false;
+            if (_visibleRoads.Count != newVisibleRoads.Count)
+            {
+                changed = true;
+            }
+            else
+            {
+                for (int i = 0; i < _visibleRoads.Count; i++)
+                {
+                    if (_visibleRoads[i] != newVisibleRoads[i])
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                _visibleRoads.Clear();
+                _visibleRoads.AddRange(newVisibleRoads);
+            }
+
+            return changed;
         }
 
         private static Bounds ComputeRoadBounds(Road     road)
