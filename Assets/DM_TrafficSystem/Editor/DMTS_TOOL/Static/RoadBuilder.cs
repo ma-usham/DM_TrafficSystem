@@ -23,17 +23,13 @@ namespace Darkmatter.TrafficSystem.Editor
             for (int i = road.laneObjects.Count - 1; i >= 0; i--)
             {
                 AILane lane = road.laneObjects[i];
-                if (lane != null)
-                    Undo.DestroyObjectImmediate(lane.gameObject);
-            }
+                if (lane == null)
+                {
+                    road.laneObjects.RemoveAt(i);
+                    continue;
+                }
 
-            road.laneObjects.Clear();
-
-            for (int i = road.transform.childCount - 1; i >= 0; i--)
-            {
-                Transform child = road.transform.GetChild(i);
-                if (child != null && child.TryGetComponent<AILane>(out _))
-                    Undo.DestroyObjectImmediate(child.gameObject);
+                ClearLaneWaypoints(lane);
             }
 
             EditorUtility.SetDirty(road);
@@ -56,6 +52,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
+            EnsureLaneObjectsMatchRoad(road);
+
             for (int laneIndex = 0; laneIndex < road.lanes; laneIndex++)
             {
                 BuildLane(road, laneIndex, centerPositions, tangents);
@@ -77,8 +75,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (!LaneTravelsWithSpline(road, laneOffset))
                 lanePositions.Reverse();
 
-            AILane lane = CreateLaneObject(road, laneIndex);
-            road.laneObjects.Add(lane);
+            AILane lane = road.laneObjects[laneIndex];
             road.generatedLanes.Add(CreateWaypoints(lane, lanePositions));
         }
 
@@ -180,21 +177,31 @@ namespace Darkmatter.TrafficSystem.Editor
 
         private static List<Transform> CreateWaypoints(AILane lane, IReadOnlyList<Vector3> lanePositions)
         {
+            Undo.RecordObject(lane, "Generate Road Waypoints");
+
+            lane.waypoints.Clear();
+
             var createdWaypoints = new List<AIWaypoint>(lanePositions.Count);
             var waypointTransforms = new List<Transform>(lanePositions.Count);
 
             for (int waypointIndex = 0; waypointIndex < lanePositions.Count; waypointIndex++)
             {
                 GameObject waypointObject = new GameObject($"Waypoint_{waypointIndex}");
+                Undo.RegisterCreatedObjectUndo(waypointObject, "Generate Road Waypoints");
                 waypointObject.transform.SetParent(lane.transform);
                 waypointObject.transform.position = lanePositions[waypointIndex];
 
-                AIWaypoint waypoint = waypointObject.AddComponent<AIWaypoint>();
-                waypoint.settings.speed = lane.laneSpeedLimit;
+                AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
+                WaypointSettings settings = waypoint.settings;
+                settings.speed = lane.laneSpeedLimit;
+                settings.vehicleType = lane.laneVehicleType;
+                waypoint.settings = settings;
 
                 lane.waypoints.Add(waypoint);
                 createdWaypoints.Add(waypoint);
                 waypointTransforms.Add(waypoint.transform);
+
+                EditorUtility.SetDirty(waypoint);
             }
 
             LinkWaypoints(createdWaypoints);
@@ -219,6 +226,69 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             road.generatedLanes ??= new List<List<Transform>>();
             road.laneObjects ??= new List<AILane>();
+        }
+
+        private static void ClearLaneWaypoints(AILane lane)
+        {
+            if (lane == null)
+                return;
+
+            Undo.RecordObject(lane, "Clear Road Waypoints");
+
+            for (int i = lane.waypoints.Count - 1; i >= 0; i--)
+            {
+                AIWaypoint waypoint = lane.waypoints[i];
+                if (waypoint != null)
+                    Undo.DestroyObjectImmediate(waypoint.gameObject);
+            }
+
+            for (int i = lane.transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = lane.transform.GetChild(i);
+                if (child != null && child.TryGetComponent<AIWaypoint>(out _))
+                    Undo.DestroyObjectImmediate(child.gameObject);
+            }
+
+            lane.waypoints.Clear();
+            EditorUtility.SetDirty(lane);
+        }
+
+        private static void EnsureLaneObjectsMatchRoad(Road road)
+        {
+            EnsureCollections(road);
+
+            for (int laneIndex = road.laneObjects.Count - 1; laneIndex >= road.lanes; laneIndex--)
+            {
+                DestroyLaneObject(road, laneIndex);
+            }
+
+            for (int laneIndex = 0; laneIndex < road.lanes; laneIndex++)
+            {
+                AILane lane = laneIndex < road.laneObjects.Count ? road.laneObjects[laneIndex] : null;
+                if (lane == null)
+                {
+                    lane = CreateLaneObject(road, laneIndex);
+                    if (laneIndex < road.laneObjects.Count)
+                        road.laneObjects[laneIndex] = lane;
+                    else
+                        road.laneObjects.Add(lane);
+                }
+
+                lane.gameObject.name = $"Lane_{laneIndex}";
+                EditorUtility.SetDirty(lane);
+            }
+        }
+
+        private static void DestroyLaneObject(Road road, int laneIndex)
+        {
+            AILane lane = road.laneObjects[laneIndex];
+            if (lane != null)
+            {
+                ClearLaneWaypoints(lane);
+                Undo.DestroyObjectImmediate(lane.gameObject);
+            }
+
+            road.laneObjects.RemoveAt(laneIndex);
         }
 
         private static Vector3 ProjectOntoGround(Vector3 worldPosition)

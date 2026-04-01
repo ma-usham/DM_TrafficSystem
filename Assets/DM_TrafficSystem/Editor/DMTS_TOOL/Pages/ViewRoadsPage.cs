@@ -102,10 +102,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("Edit", GUILayout.Width(40)))
                 ctx.pageStack.Push(new CreateRoadPage(road));
 
-            if (GUILayout.Button("Select", GUILayout.Width(50)))
-                Selection.activeGameObject = road.gameObject;
-
-            if (GUILayout.Button("Frame", GUILayout.Width(50)))
+            if (GUILayout.Button("View", GUILayout.Width(50)))
             {
                 Selection.activeGameObject = road.gameObject;
                 Bounds b = ComputeRoadBounds(road);
@@ -182,7 +179,7 @@ namespace Darkmatter.TrafficSystem.Editor
             return changed;
         }
 
-        private static Bounds ComputeRoadBounds(Road     road)
+        private static Bounds ComputeRoadBounds(Road road)
         {
             List<Vector3> pts = road.controlPointsList;
             Vector3 first = pts.Count > 0 ? pts[0] : road.transform.position;
