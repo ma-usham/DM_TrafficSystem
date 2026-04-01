@@ -9,6 +9,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private const float GroundProjectionLift = 500f;
         private const float GroundProjectionDistance = 3000f;
         private const float MinDirectionSqrMagnitude = 0.001f;
+        private const float MaxLaneChangeTurnAngle = 20f;
 
         public static void ClearGeneratedWaypoints(Road road)
         {
@@ -63,13 +64,50 @@ namespace Darkmatter.TrafficSystem.Editor
             Undo.CollapseUndoOperations(undoGroup);
         }
 
+        public static void LinkLanes(Road road)
+        {
+            if (road == null || road.laneObjects == null || road.laneObjects.Count < 2)
+                return;
+
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Link Lanes");
+
+            ClearLaneChangeLinks(road, "Link Lanes");
+
+            int laneCount = road.laneObjects.Count;
+            for (int laneIndex = 0; laneIndex < laneCount - 1; laneIndex++)
+            {
+                if (!CanLinkAdjacentLanes(road, laneIndex, laneIndex + 1, laneCount))
+                    continue;
+
+                LinkAdjacentLanes(road.laneObjects[laneIndex], road.laneObjects[laneIndex + 1]);
+            }
+
+            EditorUtility.SetDirty(road);
+            Undo.CollapseUndoOperations(undoGroup);
+        }
+
+        public static void UnlinkLanes(Road road)
+        {
+            if (road == null)
+                return;
+
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Unlink Lanes");
+
+            ClearLaneChangeLinks(road, "Unlink Lanes");
+
+            EditorUtility.SetDirty(road);
+            Undo.CollapseUndoOperations(undoGroup);
+        }
+
         private static void BuildLane(
             Road road,
             int laneIndex,
             IReadOnlyList<Vector3> centerPositions,
             IReadOnlyList<Vector3> tangents)
         {
-            float laneOffset = (laneIndex - (road.lanes - 1) / 2f) * road.laneWidth;
+            float laneOffset = GetLaneOffset(laneIndex, road.lanes, road.laneWidth);
             List<Vector3> lanePositions = BuildLanePositions(road, centerPositions, tangents, laneOffset);
 
             if (!LaneTravelsWithSpline(road, laneOffset))
@@ -216,8 +254,9 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 AIWaypoint waypoint = waypoints[i];
                 WaypointSettings settings = waypoint.settings;
-                settings.previousWaypoint = i > 0 ? waypoints[i - 1] : null;
-                settings.nextWaypoint = i < waypoints.Count - 1 ? waypoints[i + 1] : null;
+                settings.previousWaypoint = i > 0 ? new AIWaypoint[] { waypoints[i - 1] } : new AIWaypoint[0];
+                settings.nextWaypoint = i < waypoints.Count - 1 ? new AIWaypoint[] { waypoints[i + 1] } : new AIWaypoint[0];
+                settings.laneChangePoints = new AIWaypoint[0];
                 waypoint.settings = settings;
             }
         }
@@ -226,6 +265,154 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             road.generatedLanes ??= new List<List<Transform>>();
             road.laneObjects ??= new List<AILane>();
+        }
+
+        private static void ClearLaneChangeLinks(Road road, string undoLabel)
+        {
+            EnsureCollections(road);
+            Undo.RecordObject(road, undoLabel);
+
+            for (int laneIndex = 0; laneIndex < road.laneObjects.Count; laneIndex++)
+            {
+                AILane lane = road.laneObjects[laneIndex];
+                if (lane == null || lane.waypoints == null)
+                    continue;
+
+                for (int waypointIndex = 0; waypointIndex < lane.waypoints.Count; waypointIndex++)
+                {
+                    AIWaypoint waypoint = lane.waypoints[waypointIndex];
+                    if (waypoint == null)
+                        continue;
+
+                    Undo.RecordObject(waypoint, undoLabel);
+                    WaypointSettings settings = waypoint.settings;
+                    settings.laneChangePoints = new AIWaypoint[0];
+                    waypoint.settings = settings;
+                    EditorUtility.SetDirty(waypoint);
+                }
+            }
+        }
+
+        private static bool CanLinkAdjacentLanes(Road road, int currentLaneIndex, int adjacentLaneIndex, int laneCount)
+        {
+            if (currentLaneIndex < 0
+                || adjacentLaneIndex < 0
+                || currentLaneIndex >= road.laneObjects.Count
+                || adjacentLaneIndex >= road.laneObjects.Count)
+            {
+                return false;
+            }
+
+            float currentLaneOffset = GetLaneOffset(currentLaneIndex, laneCount, road.laneWidth);
+            float adjacentLaneOffset = GetLaneOffset(adjacentLaneIndex, laneCount, road.laneWidth);
+
+            return LaneTravelsWithSpline(road, currentLaneOffset) == LaneTravelsWithSpline(road, adjacentLaneOffset);
+        }
+
+        private static void LinkAdjacentLanes(AILane currentLane, AILane adjacentLane)
+        {
+            if (currentLane == null
+                || adjacentLane == null
+                || currentLane.waypoints == null
+                || adjacentLane.waypoints == null)
+            {
+                return;
+            }
+
+            int waypointCount = Mathf.Min(currentLane.waypoints.Count, adjacentLane.waypoints.Count);
+            for (int waypointIndex = 0; waypointIndex < waypointCount; waypointIndex++)
+            {
+                if (!CanLinkWaypointForLaneChange(currentLane.waypoints, waypointIndex)
+                    || !CanLinkWaypointForLaneChange(adjacentLane.waypoints, waypointIndex))
+                {
+                    continue;
+                }
+
+                AIWaypoint currentWaypoint = currentLane.waypoints[waypointIndex];
+                AIWaypoint adjacentWaypoint = adjacentLane.waypoints[waypointIndex];
+                AddLaneChangePoint(currentWaypoint, adjacentWaypoint);
+                AddLaneChangePoint(adjacentWaypoint, currentWaypoint);
+            }
+        }
+
+        private static bool CanLinkWaypointForLaneChange(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex)
+        {
+            if (waypoints == null || waypointIndex <= 0 || waypointIndex >= waypoints.Count - 1)
+                return false;
+
+            AIWaypoint previousWaypoint = waypoints[waypointIndex - 1];
+            AIWaypoint currentWaypoint = waypoints[waypointIndex];
+            AIWaypoint nextWaypoint = waypoints[waypointIndex + 1];
+
+            if (previousWaypoint == null || currentWaypoint == null || nextWaypoint == null)
+                return false;
+
+            if (!TryGetWaypointDirection(previousWaypoint.transform.position, currentWaypoint.transform.position, out Vector3 incomingDirection)
+                || !TryGetWaypointDirection(currentWaypoint.transform.position, nextWaypoint.transform.position, out Vector3 outgoingDirection))
+            {
+                return false;
+            }
+
+            return Vector3.Angle(incomingDirection, outgoingDirection) <= MaxLaneChangeTurnAngle;
+        }
+
+        private static bool TryGetWaypointDirection(Vector3 start, Vector3 end, out Vector3 direction)
+        {
+            Vector3 planarDirection = Vector3.ProjectOnPlane(end - start, Vector3.up);
+            if (planarDirection.sqrMagnitude >= MinDirectionSqrMagnitude)
+            {
+                direction = planarDirection.normalized;
+                return true;
+            }
+
+            Vector3 worldDirection = end - start;
+            if (worldDirection.sqrMagnitude >= MinDirectionSqrMagnitude)
+            {
+                direction = worldDirection.normalized;
+                return true;
+            }
+
+            direction = Vector3.zero;
+            return false;
+        }
+
+        private static void AddLaneChangePoint(AIWaypoint waypoint, AIWaypoint laneChangeTarget)
+        {
+            if (waypoint == null || laneChangeTarget == null)
+                return;
+
+            WaypointSettings settings = waypoint.settings;
+            if (ContainsWaypoint(settings.laneChangePoints, laneChangeTarget))
+                return;
+
+            int existingCount = settings.laneChangePoints != null ? settings.laneChangePoints.Length : 0;
+            AIWaypoint[] laneChangePoints = new AIWaypoint[existingCount + 1];
+
+            for (int i = 0; i < existingCount; i++)
+            {
+                laneChangePoints[i] = settings.laneChangePoints[i];
+            }
+
+            laneChangePoints[existingCount] = laneChangeTarget;
+
+            Undo.RecordObject(waypoint, "Link Lanes");
+            settings.laneChangePoints = laneChangePoints;
+            waypoint.settings = settings;
+            EditorUtility.SetDirty(waypoint);
+        }
+
+        private static bool ContainsWaypoint(IReadOnlyList<AIWaypoint> waypoints, AIWaypoint candidate)
+        {
+            if (waypoints == null || candidate == null)
+                return false;
+
+            for (int i = 0; i < waypoints.Count; i++)
+            {
+                if (waypoints[i] == candidate)
+                    return true;
+            }
+
+            return false;
         }
 
         private static void ClearLaneWaypoints(AILane lane)
@@ -289,6 +476,11 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             road.laneObjects.RemoveAt(laneIndex);
+        }
+
+        private static float GetLaneOffset(int laneIndex, int laneCount, float laneWidth)
+        {
+            return (laneIndex - (laneCount - 1) / 2f) * laneWidth;
         }
 
         private static Vector3 ProjectOntoGround(Vector3 worldPosition)

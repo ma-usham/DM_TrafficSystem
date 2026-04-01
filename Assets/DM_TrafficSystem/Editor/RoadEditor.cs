@@ -7,6 +7,9 @@ namespace Darkmatter.TrafficSystem.Editor
     [CustomEditor(typeof(Road))]
     public class RoadEditor : UnityEditor.Editor
     {
+        private static readonly Color LaneChangeLineColor = new Color(1f, 0.45f, 0.1f, 0.9f);
+        private const float LaneChangeLineScreenSize = 4f;
+
         private Road road => (Road)target;
 
 
@@ -55,6 +58,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (road.laneObjects == null || road.laneObjects.Count == 0) return;
 
             Color previousColor = Handles.color;
+            var drawnLaneChangeLines = new HashSet<ulong>();
 
             foreach (var lane in road.laneObjects)
             {
@@ -105,6 +109,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 }
 
                 Handles.DrawLines(batchedArrowLines.ToArray());
+                DrawLaneChangeGizmos(waypoints, drawnLaneChangeLines);
             }
 
             Handles.color = previousColor;
@@ -133,6 +138,51 @@ namespace Darkmatter.TrafficSystem.Editor
             batchedLines.Add(headBase + right * headWidth);
             batchedLines.Add(tip);
             batchedLines.Add(headBase - right * headWidth);
+        }
+
+        private static void DrawLaneChangeGizmos(IReadOnlyList<AIWaypoint> waypoints, HashSet<ulong> drawnLaneChangeLines)
+        {
+            if (waypoints == null || drawnLaneChangeLines == null)
+                return;
+
+            for (int waypointIndex = 0; waypointIndex < waypoints.Count; waypointIndex++)
+            {
+                AIWaypoint waypoint = waypoints[waypointIndex];
+                if (waypoint == null || waypoint.settings.laneChangePoints == null)
+                    continue;
+
+                for (int laneChangeIndex = 0; laneChangeIndex < waypoint.settings.laneChangePoints.Length; laneChangeIndex++)
+                {
+                    AIWaypoint laneChangeTarget = waypoint.settings.laneChangePoints[laneChangeIndex];
+                    if (laneChangeTarget == null)
+                        continue;
+
+                    ulong laneChangeKey = GetLaneChangeKey(waypoint, laneChangeTarget);
+                    if (!drawnLaneChangeLines.Add(laneChangeKey))
+                        continue;
+
+                    Handles.color = LaneChangeLineColor;
+                    Handles.DrawDottedLine(
+                        waypoint.transform.position,
+                        laneChangeTarget.transform.position,
+                        LaneChangeLineScreenSize);
+                }
+            }
+        }
+
+        private static ulong GetLaneChangeKey(AIWaypoint firstWaypoint, AIWaypoint secondWaypoint)
+        {
+            uint firstId = unchecked((uint)firstWaypoint.GetInstanceID());
+            uint secondId = unchecked((uint)secondWaypoint.GetInstanceID());
+
+            if (firstId > secondId)
+            {
+                uint temp = firstId;
+                firstId = secondId;
+                secondId = temp;
+            }
+
+            return ((ulong)firstId << 32) | secondId;
         }
 
        #endregion

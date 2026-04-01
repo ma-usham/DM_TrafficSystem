@@ -58,6 +58,22 @@ namespace Darkmatter.TrafficSystem.Editor
             }
             EditorGUI.EndDisabledGroup();
 
+            EditorGUILayout.BeginHorizontal();
+            EditorGUI.BeginDisabledGroup(!HasGeneratedLaneData());
+            if (GUILayout.Button("Link Lanes", GUILayout.Width(100)))
+            {
+                RoadBuilder.LinkLanes(sceneTool.Road);
+                SceneView.RepaintAll();
+            }
+
+            if (GUILayout.Button("Unlink Lanes", GUILayout.Width(100)))
+            {
+                RoadBuilder.UnlinkLanes(sceneTool.Road);
+                SceneView.RepaintAll();
+            }
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+
             if (GUILayout.Button("Back", GUILayout.Width(100)))
             {
                 ClosePage(ctx);
@@ -102,6 +118,13 @@ namespace Darkmatter.TrafficSystem.Editor
             return editMode && sceneTool.Road != null
                 ? $"Edit Road - {sceneTool.Road.gameObject.name}"
                 : "Create Road";
+        }
+
+        private bool HasGeneratedLaneData()
+        {
+            return sceneTool.Road != null
+                && sceneTool.Road.laneObjects != null
+                && sceneTool.Road.laneObjects.Count > 1;
         }
 
         private bool TryCloseMissingRoad(DMTS_Window ctx)
