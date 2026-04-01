@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Hosts the road creation workflow, lane settings, and lane-link actions for a single road.
+    /// </summary>
     public class CreateRoadPage : IPage
     {
         public static bool isActive;
@@ -23,6 +26,9 @@ namespace Darkmatter.TrafficSystem.Editor
             isActive = existingRoad != null;
         }
 
+        /// <summary>
+        /// Draws the road editing workflow for the selected or newly created road.
+        /// </summary>
         public void OnGUI(DMTS_Window ctx)
         {
             if (TryCloseMissingRoad(ctx))
@@ -50,7 +56,30 @@ namespace Darkmatter.TrafficSystem.Editor
 
 
             EditorGUILayout.Space(4);
+            DrawGenerationControls();
 
+            if (GUILayout.Button("Back", GUILayout.Width(100)))
+            {
+                ClosePage(ctx);
+            }
+        }
+
+        /// <summary>
+        /// Forwards scene interaction to the shared road scene tool while this page is active.
+        /// </summary>
+        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
+        {
+            if (TryCloseMissingRoad(ctx))
+                return;
+
+            sceneTool.OnSceneGUI(sceneView, ctx);
+        }
+
+        /// <summary>
+        /// Draws the generate, link, and unlink controls for the current road.
+        /// </summary>
+        private void DrawGenerationControls()
+        {
             EditorGUI.BeginDisabledGroup(!sceneTool.CanGenerateRoad);
             if (GUILayout.Button("Generate Road", GUILayout.Width(100)))
             {
@@ -74,21 +103,11 @@ namespace Darkmatter.TrafficSystem.Editor
             }
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
-
-            if (GUILayout.Button("Back", GUILayout.Width(100)))
-            {
-                ClosePage(ctx);
-            }
         }
 
-        public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
-        {
-            if (TryCloseMissingRoad(ctx))
-                return;
-
-            sceneTool.OnSceneGUI(sceneView, ctx);
-        }
-
+        /// <summary>
+        /// Draws editable panels for each generated lane on the road.
+        /// </summary>
         private void DrawLaneConfigurations()
         {
             if (sceneTool.Road == null
@@ -114,6 +133,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.EndVertical();
         }
 
+        /// <summary>
+        /// Returns the page title based on whether an existing road is being edited.
+        /// </summary>
         private string GetTitle()
         {
             return editMode && sceneTool.Road != null
@@ -121,6 +143,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : "Create Road";
         }
 
+        /// <summary>
+        /// Draws the lane-change link settings beside the lane-link actions.
+        /// </summary>
         private void DrawLinkRoadDistanceField()
         {
             if (sceneTool.Road == null)
@@ -129,15 +154,31 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.LabelField("Link Offset", GUILayout.Width(80));
 
             EditorGUI.BeginChangeCheck();
-            int linkRoadDistance = EditorGUILayout.IntField(sceneTool.Road.laneChangeLinkRoadDistance, GUILayout.Width(45));
+            int linkOffset = EditorGUILayout.IntField(sceneTool.Road.laneChangeLinkOffset, GUILayout.Width(45));
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(sceneTool.Road, "Change Link Offset");
-                sceneTool.Road.laneChangeLinkRoadDistance = Mathf.Max(1, linkRoadDistance);
+                sceneTool.Road.laneChangeLinkOffset = Mathf.Max(1, linkOffset);
+                EditorUtility.SetDirty(sceneTool.Road);
+            }
+
+            EditorGUILayout.LabelField("Max Turn Angle", GUILayout.Width(95));
+
+            EditorGUI.BeginChangeCheck();
+            float maxTurnAngle = EditorGUILayout.FloatField(
+                sceneTool.Road.laneChangeMaxTurnAngle > 0f ? sceneTool.Road.laneChangeMaxTurnAngle : 10f,
+                GUILayout.Width(45));
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(sceneTool.Road, "Change Max Lane Change Turn Angle");
+                sceneTool.Road.laneChangeMaxTurnAngle = Mathf.Max(1f, maxTurnAngle);
                 EditorUtility.SetDirty(sceneTool.Road);
             }
         }
 
+        /// <summary>
+        /// Returns whether the current road has enough generated lanes to support lane linking.
+        /// </summary>
         private bool HasGeneratedLaneData()
         {
             return sceneTool.Road != null
@@ -145,6 +186,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 && sceneTool.Road.laneObjects.Count > 1;
         }
 
+        /// <summary>
+        /// Closes the page automatically if the backing road object has been deleted.
+        /// </summary>
         private bool TryCloseMissingRoad(DMTS_Window ctx)
         {
             if (!sceneTool.HasMissingRoad)
@@ -154,6 +198,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Leaves the create-road workflow and returns to the previous page.
+        /// </summary>
         private void ClosePage(DMTS_Window ctx)
         {
             isActive = false;

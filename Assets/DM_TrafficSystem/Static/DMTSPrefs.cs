@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
 {
+    /// <summary>
+    /// Centralizes editor drawing preferences so scene tools share one visual configuration.
+    /// </summary>
     public static class DMTSPrefs
     {
         // Control points

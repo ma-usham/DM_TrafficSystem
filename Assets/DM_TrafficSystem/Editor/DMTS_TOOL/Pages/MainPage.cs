@@ -3,8 +3,14 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Displays the top-level navigation for the traffic system editor window.
+    /// </summary>
     public class MainPage : IPage
     {
+        /// <summary>
+        /// Draws the primary editor menu and pushes the selected workflow page.
+        /// </summary>
         public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("DarkMatter Traffic System", EditorStyles.boldLabel);
@@ -20,6 +26,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 ctx.pageStack.Push(new IntersectionSetupPage());
         }
 
+        /// <summary>
+        /// This menu page does not draw scene handles.
+        /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx) { }
     }
 }

@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
 {
+    /// <summary>
+    /// Provides spline math helpers shared by the road editor and waypoint builder.
+    /// </summary>
     public static class SplineMathUtils
     {
         /// <summary>
@@ -22,7 +25,7 @@ namespace Darkmatter.TrafficSystem
         /// controlPointsList[segIndex] and controlPointsList[segIndex+1]
         /// using Catmull-Rom to cubic-Bezier conversion.
         /// </summary>
-        public static void GetSegmentHandles(List<Vector3> controlPointsList, int segIndex, out Vector3 handleA, out Vector3 handleB)
+        public static void GetSegmentHandles(IReadOnlyList<Vector3> controlPointsList, int segIndex, out Vector3 handleA, out Vector3 handleB)
         {
             int count = controlPointsList.Count;
             Vector3 p0 = controlPointsList[segIndex];
@@ -40,10 +43,16 @@ namespace Darkmatter.TrafficSystem
             handleB = p1 - tangentB / 3f;
         }
 
-        public static List<Vector3> GetCurvePoints(List<Vector3> controlPointsList, int curveResolution)
+        /// <summary>
+        /// Samples every road segment into evenly spaced Bezier points for previews and waypoint generation.
+        /// </summary>
+        public static List<Vector3> GetCurvePoints(IReadOnlyList<Vector3> controlPointsList, int curveResolution)
         {
             var points = new List<Vector3>();
-            if (controlPointsList == null || controlPointsList.Count < 2) return points;
+            if (controlPointsList == null || controlPointsList.Count < 2)
+                return points;
+
+            int segmentResolution = Mathf.Max(1, curveResolution);
 
             for (int i = 0; i < controlPointsList.Count - 1; i++)
             {
@@ -51,12 +60,13 @@ namespace Darkmatter.TrafficSystem
                 Vector3 p3 = controlPointsList[i + 1];
                 GetSegmentHandles(controlPointsList, i, out Vector3 p1, out Vector3 p2);
 
-                for (int s = 0; s <= curveResolution; s++)
+                for (int sampleIndex = 0; sampleIndex <= segmentResolution; sampleIndex++)
                 {
-                    float t = s / (float)curveResolution;
+                    float t = sampleIndex / (float)segmentResolution;
                     points.Add(EvaluateCubicBezier(p0, p1, p2, p3, t));
                 }
             }
+
             return points;
         }
     }

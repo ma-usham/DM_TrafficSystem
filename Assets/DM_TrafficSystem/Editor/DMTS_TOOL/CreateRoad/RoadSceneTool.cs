@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Handles scene-view road editing, including point placement, dragging, insertion, and deletion.
+    /// </summary>
     public class RoadSceneTool
     {
         private const int SegmentPreviewSamples = 50;
@@ -28,6 +31,9 @@ namespace Darkmatter.TrafficSystem.Editor
 
         public bool HasMissingRoad => initialized && road == null;
 
+        /// <summary>
+        /// Draws the active road editing overlays and processes scene input for the current page.
+        /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
             int controlId = GUIUtility.GetControlID(FocusType.Passive);
@@ -45,6 +51,9 @@ namespace Darkmatter.TrafficSystem.Editor
             sceneView.Repaint();
         }
 
+        /// <summary>
+        /// Creates the road object on the first shift-click so later interactions have a valid target.
+        /// </summary>
         private void EnsureInitialized(Vector3 firstClickPosition)
         {
             if (initialized && road != null)
@@ -62,6 +71,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorUtility.SetDirty(road);
         }
 
+        /// <summary>
+        /// Draws the editable bezier spline that connects the road control points.
+        /// </summary>
         private void DrawCurve()
         {
             var points = road.controlPointsList;
@@ -77,6 +89,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws control points, endpoint highlighting, labels, and optional 3D move handles.
+        /// </summary>
         private void DrawPoints()
         {
             var points = road.controlPointsList;
@@ -141,6 +156,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws the insert preview marker when the user is holding Ctrl near a spline segment.
+        /// </summary>
         private void DrawInsertPreview()
         {
             Event currentEvent = Event.current;
@@ -181,6 +199,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 style);
         }
 
+        /// <summary>
+        /// Routes scene input to the correct interaction handler based on the current mouse event.
+        /// </summary>
         private void ProcessInput(int controlId, DMTS_Window ctx)
         {
             Event currentEvent = Event.current;
@@ -205,6 +226,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Handles left-click actions for creating roads, dragging points, inserting points, and extending the spline.
+        /// </summary>
         private void HandleLeftDown(Event currentEvent, int controlId, DMTS_Window ctx)
         {
             if (currentEvent.shift && !initialized)
@@ -259,6 +283,9 @@ namespace Darkmatter.TrafficSystem.Editor
             ctx.Repaint();
         }
 
+        /// <summary>
+        /// Moves the currently dragged control point in 2D editing mode.
+        /// </summary>
         private void HandleDrag(Event currentEvent, DMTS_Window ctx)
         {
             if (road == null || road.splineMoveMode == SplineMoveMode.Move3D)
@@ -277,6 +304,9 @@ namespace Darkmatter.TrafficSystem.Editor
             ctx.Repaint();
         }
 
+        /// <summary>
+        /// Deletes the nearest control point when the user right-clicks close enough to it.
+        /// </summary>
         private void HandleRightClick(Event currentEvent, DMTS_Window ctx)
         {
             if (road == null)
@@ -294,6 +324,9 @@ namespace Darkmatter.TrafficSystem.Editor
             ctx.Repaint();
         }
 
+        /// <summary>
+        /// Inserts a new control point on the nearest segment under the mouse cursor.
+        /// </summary>
         private bool TryInsert(Vector2 mousePosition, DMTS_Window ctx)
         {
             FindNearestSegmentScreenSpace(mousePosition, out int segmentIndex, out float segmentT, out float screenDistance);
@@ -313,6 +346,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Finds the control point whose screen position is nearest to the mouse cursor.
+        /// </summary>
         private int ScreenNearestPoint(Vector2 mousePosition, out float bestDistance)
         {
             bestDistance = float.MaxValue;
@@ -332,6 +368,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return bestIndex;
         }
 
+        /// <summary>
+        /// Finds the closest sampled point on the spline in screen space for insert-preview and insertion logic.
+        /// </summary>
         private void FindNearestSegmentScreenSpace(
             Vector2 mousePosition,
             out int bestSegment,
@@ -369,6 +408,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Converts a scene-view mouse position into a world position using colliders first and a ground plane fallback.
+        /// </summary>
         private static Vector3 GetWorldPosition(Vector2 mousePosition)
         {
             Ray ray = HandleUtility.GUIPointToWorldRay(mousePosition);
@@ -383,6 +425,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return ray.GetPoint(10f);
         }
 
+        /// <summary>
+        /// Draws and applies a standard Unity position handle for one control point in 3D mode.
+        /// </summary>
         private void Draw3DMoveHandle(int index)
         {
             Vector3 controlPoint = road.controlPointsList[index];
@@ -397,12 +442,18 @@ namespace Darkmatter.TrafficSystem.Editor
             GUI.changed = true;
         }
 
+        /// <summary>
+        /// Selects the current road object in the Unity hierarchy.
+        /// </summary>
         private void FocusRoadSelection()
         {
             if (road != null)
                 Selection.activeGameObject = road.gameObject;
         }
 
+        /// <summary>
+        /// Returns the next available default road name in the scene.
+        /// </summary>
         private static string GetNextRoadName()
         {
             Road[] roads = Object.FindObjectsByType<Road>(FindObjectsInactive.Include);

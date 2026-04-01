@@ -4,14 +4,21 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Builds generated lanes and waypoint links from editable road spline data.
+    /// </summary>
     public static class RoadBuilder
     {
         private const float GroundProjectionLift = 500f;
         private const float GroundProjectionDistance = 3000f;
         private const float MinDirectionSqrMagnitude = 0.001f;
-        private const float MaxLaneChangeTurnAngle = 10f;
+        private const float DefaultMaxLaneChangeTurnAngle = 10f;
         private const float MinLaneChangeForwardDot = 0.1f;
+        private static readonly AIWaypoint[] EmptyWaypointLinks = System.Array.Empty<AIWaypoint>();
 
+        /// <summary>
+        /// Removes all generated waypoint objects while preserving the lane objects and their lane-level settings.
+        /// </summary>
         public static void ClearGeneratedWaypoints(Road road)
         {
             if (road == null)
@@ -37,6 +44,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorUtility.SetDirty(road);
         }
 
+        /// <summary>
+        /// Rebuilds all generated waypoints from the current spline while preserving lane-level lane objects when possible.
+        /// </summary>
         public static void GenerateRoadWaypoints(Road road)
         {
             if (road == null || road.controlPointsList == null || road.controlPointsList.Count < 2)
@@ -65,6 +75,9 @@ namespace Darkmatter.TrafficSystem.Editor
             Undo.CollapseUndoOperations(undoGroup);
         }
 
+        /// <summary>
+        /// Generates same-direction lane-change links between adjacent lanes using the configured waypoint offset.
+        /// </summary>
         public static void LinkLanes(Road road)
         {
             if (road == null || road.laneObjects == null || road.laneObjects.Count < 2)
@@ -82,15 +95,19 @@ namespace Darkmatter.TrafficSystem.Editor
                     continue;
 
                 LinkAdjacentLanes(
+                    road,
                     road.laneObjects[laneIndex],
                     road.laneObjects[laneIndex + 1],
-                    Mathf.Max(1, road.laneChangeLinkRoadDistance));
+                    Mathf.Max(1, road.laneChangeLinkOffset));
             }
 
             EditorUtility.SetDirty(road);
             Undo.CollapseUndoOperations(undoGroup);
         }
 
+        /// <summary>
+        /// Clears all generated lane-change links without affecting forward lane traversal links.
+        /// </summary>
         public static void UnlinkLanes(Road road)
         {
             if (road == null)
@@ -105,6 +122,9 @@ namespace Darkmatter.TrafficSystem.Editor
             Undo.CollapseUndoOperations(undoGroup);
         }
 
+        /// <summary>
+        /// Builds one generated lane by offsetting the centerline samples and creating waypoints along it.
+        /// </summary>
         private static void BuildLane(
             Road road,
             int laneIndex,
@@ -121,6 +141,9 @@ namespace Darkmatter.TrafficSystem.Editor
             road.generatedLanes.Add(CreateWaypoints(lane, lanePositions));
         }
 
+        /// <summary>
+        /// Samples the road spline into centerline positions and tangent directions used for lane generation.
+        /// </summary>
         private static bool TryBuildCenterlineSamples(
             Road road,
             out List<Vector3> centerPositions,
@@ -186,6 +209,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Offsets centerline samples sideways to create the waypoint positions for one lane.
+        /// </summary>
         private static List<Vector3> BuildLanePositions(
             Road road,
             IReadOnlyList<Vector3> centerPositions,
@@ -204,6 +230,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return lanePositions;
         }
 
+        /// <summary>
+        /// Creates a lane object under the road and seeds it with the road-wide default speed limit.
+        /// </summary>
         private static AILane CreateLaneObject(Road road, int laneIndex)
         {
             GameObject laneObject = new GameObject($"Lane_{laneIndex}");
@@ -217,6 +246,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return lane;
         }
 
+        /// <summary>
+        /// Creates waypoint objects for one lane and applies the lane-level settings to each waypoint.
+        /// </summary>
         private static List<Transform> CreateWaypoints(AILane lane, IReadOnlyList<Vector3> lanePositions)
         {
             Undo.RecordObject(lane, "Generate Road Waypoints");
@@ -246,31 +278,40 @@ namespace Darkmatter.TrafficSystem.Editor
                 EditorUtility.SetDirty(waypoint);
             }
 
-            LinkWaypoints(createdWaypoints);
+            LinkPrevAndNextWaypoints(createdWaypoints);
             EditorUtility.SetDirty(lane);
 
             return waypointTransforms;
         }
 
-        private static void LinkWaypoints(IReadOnlyList<AIWaypoint> waypoints)
+        /// <summary>
+        /// Rebuilds the forward and backward waypoint links for a newly generated lane.
+        /// </summary>
+        private static void LinkPrevAndNextWaypoints(IReadOnlyList<AIWaypoint> waypoints)
         {
             for (int i = 0; i < waypoints.Count; i++)
             {
                 AIWaypoint waypoint = waypoints[i];
                 WaypointSettings settings = waypoint.settings;
-                settings.previousWaypoint = i > 0 ? new AIWaypoint[] { waypoints[i - 1] } : new AIWaypoint[0];
-                settings.nextWaypoint = i < waypoints.Count - 1 ? new AIWaypoint[] { waypoints[i + 1] } : new AIWaypoint[0];
-                settings.laneChangePoints = new AIWaypoint[0];
+                settings.previousWaypoint = i > 0 ? CreateSingleWaypointLink(waypoints[i - 1]) : EmptyWaypointLinks;
+                settings.nextWaypoint = i < waypoints.Count - 1 ? CreateSingleWaypointLink(waypoints[i + 1]) : EmptyWaypointLinks;
+                settings.laneChangePoints = EmptyWaypointLinks;
                 waypoint.settings = settings;
             }
         }
 
+        /// <summary>
+        /// Ensures the generated collections exist before generation or cleanup code accesses them.
+        /// </summary>
         private static void EnsureCollections(Road road)
         {
             road.generatedLanes ??= new List<List<Transform>>();
             road.laneObjects ??= new List<AILane>();
         }
 
+        /// <summary>
+        /// Clears lane-change links from every waypoint on the road.
+        /// </summary>
         private static void ClearLaneChangeLinks(Road road, string undoLabel)
         {
             EnsureCollections(road);
@@ -290,13 +331,16 @@ namespace Darkmatter.TrafficSystem.Editor
 
                     Undo.RecordObject(waypoint, undoLabel);
                     WaypointSettings settings = waypoint.settings;
-                    settings.laneChangePoints = new AIWaypoint[0];
+                    settings.laneChangePoints = EmptyWaypointLinks;
                     waypoint.settings = settings;
                     EditorUtility.SetDirty(waypoint);
                 }
             }
         }
 
+        /// <summary>
+        /// Returns whether two adjacent lane indices travel in the same spline direction and can therefore lane-change between each other.
+        /// </summary>
         private static bool CanLinkAdjacentLanes(Road road, int currentLaneIndex, int adjacentLaneIndex, int laneCount)
         {
             if (currentLaneIndex < 0
@@ -313,9 +357,13 @@ namespace Darkmatter.TrafficSystem.Editor
             return LaneTravelsWithSpline(road, currentLaneOffset) == LaneTravelsWithSpline(road, adjacentLaneOffset);
         }
 
-        private static void LinkAdjacentLanes(AILane currentLane, AILane adjacentLane, int linkRoadDistance)
+        /// <summary>
+        /// Builds lane-change links between two adjacent lanes using the configured waypoint-index offset.
+        /// </summary>
+        private static void LinkAdjacentLanes(Road road, AILane currentLane, AILane adjacentLane, int linkOffset)
         {
-            if (currentLane == null
+            if (road == null
+                || currentLane == null
                 || adjacentLane == null
                 || currentLane.waypoints == null
                 || adjacentLane.waypoints == null)
@@ -326,37 +374,41 @@ namespace Darkmatter.TrafficSystem.Editor
             int waypointCount = Mathf.Min(currentLane.waypoints.Count, adjacentLane.waypoints.Count);
             for (int waypointIndex = 0; waypointIndex < waypointCount; waypointIndex++)
             {
-                if (!CanLinkWaypointForLaneChange(currentLane.waypoints, waypointIndex))
-                    continue;
-
                 AIWaypoint currentWaypoint = currentLane.waypoints[waypointIndex];
                 int adjacentTargetIndex = FindOffsetLaneChangeTargetIndex(
+                    road,
                     currentLane.waypoints,
                     adjacentLane.waypoints,
                     waypointIndex,
-                    linkRoadDistance);
+                    linkOffset);
 
                 if (adjacentTargetIndex >= 0)
                     AddLaneChangePoint(currentWaypoint, adjacentLane.waypoints[adjacentTargetIndex]);
 
                 int currentTargetIndex = FindOffsetLaneChangeTargetIndex(
+                    road,
                     adjacentLane.waypoints,
                     currentLane.waypoints,
                     waypointIndex,
-                    linkRoadDistance);
+                    linkOffset);
 
                 if (currentTargetIndex >= 0)
                     AddLaneChangePoint(adjacentLane.waypoints[waypointIndex], currentLane.waypoints[currentTargetIndex]);
             }
         }
 
+        /// <summary>
+        /// Returns the target waypoint index in the adjacent lane using a forward index offset and safety checks.
+        /// </summary>
         private static int FindOffsetLaneChangeTargetIndex(
+            Road road,
             IReadOnlyList<AIWaypoint> sourceWaypoints,
             IReadOnlyList<AIWaypoint> targetWaypoints,
             int sourceWaypointIndex,
-            int linkRoadDistance)
+            int linkOffset)
         {
-            if (sourceWaypoints == null
+            if (road == null
+                || sourceWaypoints == null
                 || targetWaypoints == null
                 || sourceWaypointIndex < 0
                 || sourceWaypointIndex >= sourceWaypoints.Count)
@@ -368,14 +420,17 @@ namespace Darkmatter.TrafficSystem.Editor
             if (sourceWaypoint == null)
                 return -1;
 
+            if (!CanLinkWaypointForLaneChange(road, sourceWaypoints, sourceWaypointIndex))
+                return -1;
+
             if (!TryGetWaypointTravelDirection(sourceWaypoints, sourceWaypointIndex, out Vector3 sourceForward))
                 return -1;
 
-            int targetWaypointIndex = sourceWaypointIndex + linkRoadDistance;
+            int targetWaypointIndex = sourceWaypointIndex + linkOffset;
             if (targetWaypointIndex <= 0 || targetWaypointIndex >= targetWaypoints.Count)
                 return -1;
 
-            if (!CanLinkWaypointForLaneChange(targetWaypoints, targetWaypointIndex))
+            if (!CanLinkWaypointForLaneChange(road, targetWaypoints, targetWaypointIndex))
                 return -1;
 
             AIWaypoint targetWaypoint = targetWaypoints[targetWaypointIndex];
@@ -392,9 +447,12 @@ namespace Darkmatter.TrafficSystem.Editor
             return targetWaypointIndex;
         }
 
-        private static bool CanLinkWaypointForLaneChange(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex)
+        /// <summary>
+        /// Returns whether a waypoint is on a straight enough section to be used as a lane-change source or target.
+        /// </summary>
+        private static bool CanLinkWaypointForLaneChange(Road road, IReadOnlyList<AIWaypoint> waypoints, int waypointIndex)
         {
-            if (waypoints == null || waypointIndex <= 0 || waypointIndex >= waypoints.Count - 1)
+            if (road == null || waypoints == null || waypointIndex <= 0 || waypointIndex >= waypoints.Count - 1)
                 return false;
 
             if (!TryGetWaypointTurnAngle(waypoints, waypointIndex, out float turnAngle))
@@ -402,9 +460,25 @@ namespace Darkmatter.TrafficSystem.Editor
                 return false;
             }
 
-            return turnAngle <= MaxLaneChangeTurnAngle;
+            return turnAngle <= GetMaxLaneChangeTurnAngle(road);
         }
 
+        /// <summary>
+        /// Returns the configured lane-change turn limit while preserving the legacy default for older road assets.
+        /// </summary>
+        private static float GetMaxLaneChangeTurnAngle(Road road)
+        {
+            if (road == null)
+                return DefaultMaxLaneChangeTurnAngle;
+
+            return road.laneChangeMaxTurnAngle > 0f
+                ? road.laneChangeMaxTurnAngle
+                : DefaultMaxLaneChangeTurnAngle;
+        }
+
+        /// <summary>
+        /// Measures the local turn angle around a waypoint using its previous and next neighbors.
+        /// </summary>
         private static bool TryGetWaypointTurnAngle(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex, out float turnAngle)
         {
             turnAngle = 0f;
@@ -426,6 +500,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Builds a normalized travel direction from two waypoint positions while handling near-vertical segments.
+        /// </summary>
         private static bool TryGetWaypointDirection(Vector3 start, Vector3 end, out Vector3 direction)
         {
             Vector3 planarDirection = Vector3.ProjectOnPlane(end - start, Vector3.up);
@@ -446,6 +523,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Returns the best forward travel direction for a waypoint using its neighbors.
+        /// </summary>
         private static bool TryGetWaypointTravelDirection(IReadOnlyList<AIWaypoint> waypoints, int waypointIndex, out Vector3 direction)
         {
             direction = Vector3.zero;
@@ -466,6 +546,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Normalizes a direction vector using the horizontal plane first and a full 3D fallback if needed.
+        /// </summary>
         private static bool TryNormalizeDirection(Vector3 direction, out Vector3 normalizedDirection)
         {
             Vector3 planarDirection = Vector3.ProjectOnPlane(direction, Vector3.up);
@@ -485,6 +568,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Appends a lane-change target to a waypoint while avoiding duplicate links.
+        /// </summary>
         private static void AddLaneChangePoint(AIWaypoint waypoint, AIWaypoint laneChangeTarget)
         {
             if (waypoint == null || laneChangeTarget == null)
@@ -510,6 +596,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorUtility.SetDirty(waypoint);
         }
 
+        /// <summary>
+        /// Returns whether the candidate waypoint already exists inside the provided waypoint array.
+        /// </summary>
         private static bool ContainsWaypoint(IReadOnlyList<AIWaypoint> waypoints, AIWaypoint candidate)
         {
             if (waypoints == null || candidate == null)
@@ -524,6 +613,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Clears the generated waypoint objects that belong to a single lane.
+        /// </summary>
         private static void ClearLaneWaypoints(AILane lane)
         {
             if (lane == null)
@@ -549,6 +641,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorUtility.SetDirty(lane);
         }
 
+        /// <summary>
+        /// Grows or shrinks the generated lane object list so it matches the road lane count.
+        /// </summary>
         private static void EnsureLaneObjectsMatchRoad(Road road)
         {
             EnsureCollections(road);
@@ -575,6 +670,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Destroys one generated lane object and removes it from the road lane list.
+        /// </summary>
         private static void DestroyLaneObject(Road road, int laneIndex)
         {
             AILane lane = road.laneObjects[laneIndex];
@@ -587,11 +685,25 @@ namespace Darkmatter.TrafficSystem.Editor
             road.laneObjects.RemoveAt(laneIndex);
         }
 
+        /// <summary>
+        /// Returns the lateral world-space offset for a lane index around the road centerline.
+        /// </summary>
         private static float GetLaneOffset(int laneIndex, int laneCount, float laneWidth)
         {
             return (laneIndex - (laneCount - 1) / 2f) * laneWidth;
         }
 
+        /// <summary>
+        /// Creates a single-element waypoint array used by serialized prev/next lane links.
+        /// </summary>
+        private static AIWaypoint[] CreateSingleWaypointLink(AIWaypoint waypoint)
+        {
+            return new[] { waypoint };
+        }
+
+        /// <summary>
+        /// Projects a lane sample onto the ground using colliders when available.
+        /// </summary>
         private static Vector3 ProjectOntoGround(Vector3 worldPosition)
         {
             Vector3 origin = worldPosition + Vector3.up * GroundProjectionLift;
@@ -610,6 +722,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return worldPosition;
         }
 
+        /// <summary>
+        /// Returns a stable right vector for lane offsetting based on the spline forward direction.
+        /// </summary>
         private static Vector3 GetRightSide(Vector3 forward)
         {
             Vector3 right = Vector3.Cross(Vector3.up, forward);
@@ -621,6 +736,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return right.normalized;
         }
 
+        /// <summary>
+        /// Returns whether a lane offset should follow the spline order or be reversed based on driving direction.
+        /// </summary>
         private static bool LaneTravelsWithSpline(Road road, float laneOffset)
         {
             if (Mathf.Abs(laneOffset) < 0.001f)

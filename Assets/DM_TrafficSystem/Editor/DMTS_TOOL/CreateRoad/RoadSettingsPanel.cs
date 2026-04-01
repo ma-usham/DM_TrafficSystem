@@ -3,11 +3,17 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Draws editable road-wide settings and applies shared values back onto generated content.
+    /// </summary>
     public static class RoadSettingsPanel
     {
         private const float MinLaneWidth = 0.1f;
         private const float MinSpeedLimit = 0f;
 
+        /// <summary>
+        /// Shows the usage help for the road editing workflow.
+        /// </summary>
         public static void DrawHelpBox()
         {
             EditorGUILayout.HelpBox(
@@ -19,6 +25,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 MessageType.Info);
         }
 
+        /// <summary>
+        /// Draws the editable settings for the active road and handles validation plus bulk apply actions.
+        /// </summary>
         public static void DrawSettings(Road road)
         {
             if (road == null)
@@ -56,17 +65,14 @@ namespace Darkmatter.TrafficSystem.Editor
 
             if (settingsChanged)
             {
-                laneWidthProperty.floatValue = Mathf.Max(MinLaneWidth, laneWidthProperty.floatValue);
-                speedLimitProperty.floatValue = Mathf.Max(MinSpeedLimit, speedLimitProperty.floatValue);
-                serializedRoad.ApplyModifiedProperties();
-                EditorUtility.SetDirty(road);
+                ClampRoadSettings(laneWidthProperty, speedLimitProperty);
+                ApplyRoadSettings(serializedRoad, road);
             }
 
             if (applyGlobalSpeed)
             {
-                laneWidthProperty.floatValue = Mathf.Max(MinLaneWidth, laneWidthProperty.floatValue);
-                speedLimitProperty.floatValue = Mathf.Max(MinSpeedLimit, speedLimitProperty.floatValue);
-                serializedRoad.ApplyModifiedProperties();
+                ClampRoadSettings(laneWidthProperty, speedLimitProperty);
+                ApplyRoadSettings(serializedRoad, road);
                 ApplyGlobalSpeedLimit(road, speedLimitProperty.floatValue);
             }
 
@@ -77,6 +83,27 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.EndVertical();
         }
 
+        /// <summary>
+        /// Clamps road settings that must remain positive before they are saved.
+        /// </summary>
+        private static void ClampRoadSettings(SerializedProperty laneWidthProperty, SerializedProperty speedLimitProperty)
+        {
+            laneWidthProperty.floatValue = Mathf.Max(MinLaneWidth, laneWidthProperty.floatValue);
+            speedLimitProperty.floatValue = Mathf.Max(MinSpeedLimit, speedLimitProperty.floatValue);
+        }
+
+        /// <summary>
+        /// Saves the serialized road settings and marks the road dirty for persistence.
+        /// </summary>
+        private static void ApplyRoadSettings(SerializedObject serializedRoad, Road road)
+        {
+            serializedRoad.ApplyModifiedProperties();
+            EditorUtility.SetDirty(road);
+        }
+
+        /// <summary>
+        /// Pushes the shared road speed limit onto all generated lanes and waypoints.
+        /// </summary>
         private static void ApplyGlobalSpeedLimit(Road road, float speedLimit)
         {
             Undo.RegisterFullObjectHierarchyUndo(road.gameObject, "Apply Global Speed Limit");

@@ -3,8 +3,14 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Draws editable lane properties and applies them back onto generated waypoints.
+    /// </summary>
     public static class LaneSettingsPanel
     {
+        /// <summary>
+        /// Renders the inspector-style controls for one generated lane.
+        /// </summary>
         public static void Draw(AILane lane)
         {
             if (lane == null)
@@ -28,7 +34,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("Apply", GUILayout.Width(100)))
             {
                 serializedLane.ApplyModifiedProperties();
-                ApplyWaypointSpeedLimit(lane);
+                ApplyWaypointSettingsFromLane(lane);
                 EditorUtility.SetDirty(lane);
             }
             EditorGUILayout.EndHorizontal();
@@ -53,10 +59,15 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.EndVertical();
         }
 
-        private static void ApplyWaypointSpeedLimit(AILane lane)
+        /// <summary>
+        /// Copies lane-level speed and vehicle filters onto every waypoint in the lane.
+        /// </summary>
+        private static void ApplyWaypointSettingsFromLane(AILane lane)
         {
             if (lane == null || lane.waypoints == null)
                 return;
+
+            Undo.RecordObject(lane, "Apply Lane Settings");
 
             for (int i = 0; i < lane.waypoints.Count; i++)
             {
@@ -64,6 +75,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (waypoint == null)
                     continue;
 
+                Undo.RecordObject(waypoint, "Apply Lane Settings");
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = lane.laneSpeedLimit;
                 settings.vehicleType = lane.laneVehicleType;

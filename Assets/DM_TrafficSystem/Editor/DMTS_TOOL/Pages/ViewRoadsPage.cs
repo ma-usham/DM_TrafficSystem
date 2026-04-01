@@ -4,15 +4,19 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Lists roads visible to the current scene camera and offers quick edit, frame, delete, and preview actions.
+    /// </summary>
     public class ViewRoadsPage : IPage
     {
-        private readonly List<Road> _visibleRoads = new List<Road>(); //list roads that are only visible to camera.
-
-        private readonly HashSet<Road>_roadsWithGizmoDisabled = new HashSet<Road>(); //list roads that have gizmo disabled. ( mandatory: used roadsWithGizmoDisabled to draw gizmo for all roads by default )
-
+        private readonly List<Road> _visibleRoads = new List<Road>();
+        private readonly HashSet<Road> _roadsWithGizmoDisabled = new HashSet<Road>();
 
         private Vector2 scrollPos;
 
+        /// <summary>
+        /// Draws the list of roads visible to the active scene camera.
+        /// </summary>
         public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("Visible Roads", EditorStyles.boldLabel);
@@ -63,6 +67,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 ctx.pageStack.Pop();
         }
 
+        /// <summary>
+        /// Refreshes the visible-road cache during scene repaints and draws lightweight road previews.
+        /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
             if (Event.current.type == EventType.Repaint)
@@ -76,13 +83,15 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws one road entry with gizmo toggles and common scene-management actions.
+        /// </summary>
         private void DrawRoadEntry(Road road, DMTS_Window ctx)
         {
             EditorGUILayout.BeginVertical("box");
 
             EditorGUILayout.BeginHorizontal();
 
-            // HashSet = opt-out: not in set → gizmos on. Checkbox = gizmo enabled.
             bool gizmoEnabled = !_roadsWithGizmoDisabled.Contains(road);
 
             EditorGUI.BeginChangeCheck();
@@ -130,10 +139,13 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.EndVertical();
         }
 
-
+        /// <summary>
+        /// Rebuilds the cached list of roads whose bounds intersect the current scene camera frustum.
+        /// </summary>
         private bool RefreshVisibility(SceneView sceneView)
         {
-            if (sceneView == null || sceneView.camera == null) return false;
+            if (sceneView == null || sceneView.camera == null)
+                return false;
 
             Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(sceneView.camera);
             Road[] allRoads = Object.FindObjectsByType<Road>(FindObjectsInactive.Include);
@@ -153,22 +165,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 }
             }
 
-            bool changed = false;
-            if (_visibleRoads.Count != newVisibleRoads.Count)
-            {
-                changed = true;
-            }
-            else
-            {
-                for (int i = 0; i < _visibleRoads.Count; i++)
-                {
-                    if (_visibleRoads[i] != newVisibleRoads[i])
-                    {
-                        changed = true;
-                        break;
-                    }
-                }
-            }
+            bool changed = !HaveSameRoadOrder(_visibleRoads, newVisibleRoads);
 
             if (changed)
             {
@@ -179,6 +176,26 @@ namespace Darkmatter.TrafficSystem.Editor
             return changed;
         }
 
+        /// <summary>
+        /// Returns whether two road lists contain the same roads in the same order.
+        /// </summary>
+        private static bool HaveSameRoadOrder(IReadOnlyList<Road> currentRoads, IReadOnlyList<Road> nextRoads)
+        {
+            if (currentRoads.Count != nextRoads.Count)
+                return false;
+
+            for (int i = 0; i < currentRoads.Count; i++)
+            {
+                if (currentRoads[i] != nextRoads[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Computes a padded bounds volume used for framing and frustum visibility tests.
+        /// </summary>
         private static Bounds ComputeRoadBounds(Road road)
         {
             List<Vector3> pts = road.controlPointsList;
@@ -194,6 +211,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return bounds;
         }
 
+        /// <summary>
+        /// Draws simplified bezier previews for roads that are visible and have gizmos enabled.
+        /// </summary>
         private void DrawVisibleRoadGizmos()
         {
             foreach (Road road in _visibleRoads)
