@@ -75,7 +75,9 @@ namespace Darkmatter.TrafficSystem.Editor
             if (Event.current.type == EventType.Repaint)
             {
                 bool changed = RefreshVisibility(sceneView);
-                DrawVisibleRoadGizmos();
+                if (!DMTS_Window.SuppressViewRoadsPagePreviewGizmos)
+                    DrawVisibleRoadGizmos();
+
                 if (changed)
                 {
                     ctx.Repaint();
@@ -114,7 +116,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("View", GUILayout.Width(50)))
             {
                 Selection.activeGameObject = road.gameObject;
-                Bounds b = ComputeRoadBounds(road);
+                Bounds b = RoadSceneVisibilityUtility.ComputeRoadBounds(road);
                 SceneView.lastActiveSceneView?.Frame(b, false);
             }
 
@@ -144,26 +146,10 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private bool RefreshVisibility(SceneView sceneView)
         {
-            if (sceneView == null || sceneView.camera == null)
-                return false;
-
-            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(sceneView.camera);
-            Road[] allRoads = Object.FindObjectsByType<Road>(FindObjectsInactive.Include);
-
-            List<Road> newVisibleRoads = new List<Road>();
-
-            for (int i = 0; i < allRoads.Length; i++)
-            {
-                Road road = allRoads[i];
-                if (road == null || road.controlPointsList.Count == 0) continue;
-
-                Bounds bounds = ComputeRoadBounds(road);
-
-                if (GeometryUtility.TestPlanesAABB(frustumPlanes, bounds))
-                {
-                    newVisibleRoads.Add(road);
-                }
-            }
+            List<Road> newVisibleRoads = RoadSceneVisibilityUtility.GetRoads(
+                sceneView,
+                visibleOnly: true,
+                includeInactive: FindObjectsInactive.Include);
 
             bool changed = !HaveSameRoadOrder(_visibleRoads, newVisibleRoads);
 
@@ -194,24 +180,6 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
-        /// Computes a padded bounds volume used for framing and frustum visibility tests.
-        /// </summary>
-        private static Bounds ComputeRoadBounds(Road road)
-        {
-            List<Vector3> pts = road.controlPointsList;
-            Vector3 first = pts.Count > 0 ? pts[0] : road.transform.position;
-            Bounds bounds = new Bounds(first, Vector3.zero);
-
-            for (int i = 1; i < pts.Count; i++)
-            {
-                bounds.Encapsulate(pts[i]);
-            }
-
-            bounds.Expand(road.laneWidth * road.lanes);
-            return bounds;
-        }
-
-        /// <summary>
         /// Draws simplified bezier previews for roads that are visible and have gizmos enabled.
         /// </summary>
         private void DrawVisibleRoadGizmos()
@@ -220,25 +188,8 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 if (road == null || road.controlPointsList.Count < 2 || _roadsWithGizmoDisabled.Contains(road)) continue;
 
-                for (int i = 0; i < road.controlPointsList.Count - 1; i++)
-                {
-                    Vector3 a = road.controlPointsList[i];
-                    Vector3 b = road.controlPointsList[i + 1];
-
-                    SplineMathUtils.GetSegmentHandles(road.controlPointsList, i, out Vector3 h1, out Vector3 h2);
-                    Handles.DrawBezier(a, b, h1, h2,
-                        DMTSPrefs.ViewRoadCurveColor, null, DMTSPrefs.CurveWidth);
-                }
-
-                string name = road.gameObject.name;
-                List<Vector3> controlPointsList = road.controlPointsList;
-                if (controlPointsList.Count > 0)
-                {
-                    Vector3 firstPoint = controlPointsList[0];
-                    Vector3 lastPoint = controlPointsList[controlPointsList.Count - 1];
-                    Handles.Label(firstPoint, name, EditorStyles.whiteMiniLabel);
-                    Handles.Label(lastPoint, name, EditorStyles.whiteMiniLabel);
-                }
+                RoadSceneGizmoDrawer.DrawRoadCurve(road, DMTSPrefs.ViewRoadCurveColor, DMTSPrefs.CurveWidth);
+                RoadSceneGizmoDrawer.DrawRoadLabels(road);
             }
         }
     }

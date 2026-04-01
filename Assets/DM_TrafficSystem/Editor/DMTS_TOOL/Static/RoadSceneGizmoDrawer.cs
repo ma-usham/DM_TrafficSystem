@@ -1,0 +1,252 @@
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using UnityEditor;
+using UnityEngine;
+
+namespace Darkmatter.TrafficSystem.Editor
+{
+    /// <summary>
+    /// Centralizes passive road and connection Scene view drawing shared across editor tools.
+    /// </summary>
+    public static class RoadSceneGizmoDrawer
+    {
+        private static readonly Color LaneChangeLineColor = new Color(1f, 0.45f, 0.1f, 0.9f);
+        private const float LaneChangeLineScreenSize = 4f;
+        private const float ConnectionGizmoScreenSize = 5f;
+
+        /// <summary>
+        /// Draws the road spline using the provided color and line width.
+        /// </summary>
+        public static void DrawRoadCurve(Road road, Color curveColor, float curveWidth)
+        {
+            if (road == null || road.controlPointsList == null || road.controlPointsList.Count < 2)
+                return;
+
+            Color previousColor = Handles.color;
+
+            for (int i = 0; i < road.controlPointsList.Count - 1; i++)
+            {
+                Vector3 start = road.controlPointsList[i];
+                Vector3 end = road.controlPointsList[i + 1];
+                SplineMathUtils.GetSegmentHandles(road.controlPointsList, i, out Vector3 handle1, out Vector3 handle2);
+                Handles.DrawBezier(start, end, handle1, handle2, curveColor, null, curveWidth);
+            }
+
+            Handles.color = previousColor;
+        }
+
+        /// <summary>
+        /// Draws the editable control points for one road.
+        /// </summary>
+        public static void DrawControlPoints(Road road)
+        {
+            if (road == null || road.controlPointsList == null || road.controlPointsList.Count == 0)
+                return;
+
+            Color previousColor = Handles.color;
+            Handles.color = DMTSPrefs.ControlPointColor;
+
+            for (int i = 0; i < road.controlPointsList.Count; i++)
+            {
+                Handles.SphereHandleCap(
+                    0,
+                    road.controlPointsList[i],
+                    Quaternion.identity,
+                    DMTSPrefs.ControlPointHandleSize * 2f,
+                    EventType.Repaint);
+            }
+
+            Handles.color = previousColor;
+        }
+
+        /// <summary>
+        /// Draws road labels at the first and last control points.
+        /// </summary>
+        public static void DrawRoadLabels(Road road)
+        {
+            if (road == null || road.controlPointsList == null || road.controlPointsList.Count == 0)
+                return;
+
+            string roadName = road.gameObject.name;
+            Vector3 firstPoint = road.controlPointsList[0];
+            Handles.Label(firstPoint, roadName, EditorStyles.whiteMiniLabel);
+
+            if (road.controlPointsList.Count > 1)
+            {
+                Vector3 lastPoint = road.controlPointsList[road.controlPointsList.Count - 1];
+                Handles.Label(lastPoint, roadName, EditorStyles.whiteMiniLabel);
+            }
+        }
+
+        /// <summary>
+        /// Draws generated waypoint lines, direction arrows, and optional lane-change links.
+        /// </summary>
+        public static void DrawGeneratedWaypointGizmos(Road road, bool drawWaypoints, bool drawLaneChangeLinks)
+        {
+            if ((!drawWaypoints && !drawLaneChangeLinks)
+                || road == null
+                || road.laneObjects == null
+                || road.laneObjects.Count == 0)
+            {
+                return;
+            }
+
+            Color previousColor = Handles.color;
+            HashSet<ulong> drawnLaneChangeLines = drawLaneChangeLinks ? new HashSet<ulong>() : null;
+
+            foreach (AILane lane in road.laneObjects)
+            {
+                if (lane == null || lane.waypoints == null || lane.waypoints.Count == 0)
+                    continue;
+
+                IReadOnlyList<AIWaypoint> waypoints = lane.waypoints;
+                int count = waypoints.Count;
+                var waypointPositions = new Vector3[count];
+
+                for (int i = 0; i < count; i++)
+                {
+                    if (waypoints[i] != null)
+                        waypointPositions[i] = waypoints[i].transform.position;
+                }
+
+                if (drawWaypoints)
+                {
+                    if (count > 1)
+                    {
+                        Handles.color = DMTSPrefs.WaypointLineColor;
+                        Handles.DrawPolyLine(waypointPositions);
+                    }
+
+                    Handles.color = DMTSPrefs.WaypointColor;
+                    float baseSize = HandleUtility.GetHandleSize(waypointPositions[count / 2]) * DMTSPrefs.WaypointSizeMultiplier;
+                    var batchedArrowLines = new List<Vector3>(count * 4);
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        Vector3 position = waypointPositions[i];
+                        DrawDirectionArrow(position, GetWaypointForward(waypointPositions, i), baseSize, batchedArrowLines);
+                    }
+
+                    if (batchedArrowLines.Count > 0)
+                        Handles.DrawLines(batchedArrowLines.ToArray());
+                }
+
+                if (drawLaneChangeLinks)
+                    DrawLaneChangeGizmos(waypoints, drawnLaneChangeLines);
+            }
+
+            Handles.color = previousColor;
+        }
+
+        /// <summary>
+        /// Draws passive dotted connection lines between linked road endpoints.
+        /// </summary>
+        public static void DrawRoadConnections(IReadOnlyList<ConnectRoadToolState.ConnectionRecord> connectionRecords)
+        {
+            if (connectionRecords == null)
+                return;
+
+            Color previousColor = Handles.color;
+            Handles.color = DMTSPrefs.ConnectRoadExistingConnectionColor;
+
+            for (int i = 0; i < connectionRecords.Count; i++)
+            {
+                ConnectRoadToolState.ConnectionRecord connection = connectionRecords[i];
+                if (connection.sourceWaypoint == null || connection.targetWaypoint == null)
+                    continue;
+
+                Handles.DrawDottedLine(
+                    connection.sourceWaypoint.transform.position,
+                    connection.targetWaypoint.transform.position,
+                    ConnectionGizmoScreenSize);
+            }
+
+            Handles.color = previousColor;
+        }
+
+        private static Vector3 GetWaypointForward(IReadOnlyList<Vector3> waypointPositions, int waypointIndex)
+        {
+            if (waypointPositions == null || waypointPositions.Count == 0)
+                return Vector3.forward;
+
+            Vector3 position = waypointPositions[waypointIndex];
+            if (waypointIndex < waypointPositions.Count - 1)
+                return (waypointPositions[waypointIndex + 1] - position).normalized;
+
+            if (waypointIndex > 0)
+                return (position - waypointPositions[waypointIndex - 1]).normalized;
+
+            return Vector3.forward;
+        }
+
+        private static void DrawDirectionArrow(Vector3 position, Vector3 forward, float size, List<Vector3> batchedLines)
+        {
+            Vector3 right = GetArrowRight(forward);
+            float headLength = size * 0.7f;
+            float headWidth = size * 0.4f;
+            Vector3 tip = position;
+            Vector3 headBase = tip - forward * headLength;
+
+            batchedLines.Add(tip);
+            batchedLines.Add(headBase + right * headWidth);
+            batchedLines.Add(tip);
+            batchedLines.Add(headBase - right * headWidth);
+        }
+
+        private static Vector3 GetArrowRight(Vector3 forward)
+        {
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.Cross(Vector3.forward, forward);
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.right;
+
+            return right.normalized;
+        }
+
+        private static void DrawLaneChangeGizmos(IReadOnlyList<AIWaypoint> waypoints, HashSet<ulong> drawnLaneChangeLines)
+        {
+            if (waypoints == null || drawnLaneChangeLines == null)
+                return;
+
+            for (int waypointIndex = 0; waypointIndex < waypoints.Count; waypointIndex++)
+            {
+                AIWaypoint waypoint = waypoints[waypointIndex];
+                if (waypoint == null || waypoint.settings.laneChangePoints == null)
+                    continue;
+
+                for (int laneChangeIndex = 0; laneChangeIndex < waypoint.settings.laneChangePoints.Length; laneChangeIndex++)
+                {
+                    AIWaypoint laneChangeTarget = waypoint.settings.laneChangePoints[laneChangeIndex];
+                    if (laneChangeTarget == null)
+                        continue;
+
+                    ulong laneChangeKey = GetLaneChangeKey(waypoint, laneChangeTarget);
+                    if (!drawnLaneChangeLines.Add(laneChangeKey))
+                        continue;
+
+                    Handles.color = LaneChangeLineColor;
+                    Handles.DrawDottedLine(
+                        waypoint.transform.position,
+                        laneChangeTarget.transform.position,
+                        LaneChangeLineScreenSize);
+                }
+            }
+        }
+
+        private static ulong GetLaneChangeKey(AIWaypoint firstWaypoint, AIWaypoint secondWaypoint)
+        {
+            uint firstId = unchecked((uint)RuntimeHelpers.GetHashCode(firstWaypoint));
+            uint secondId = unchecked((uint)RuntimeHelpers.GetHashCode(secondWaypoint));
+
+            if (firstId > secondId)
+            {
+                uint temp = firstId;
+                firstId = secondId;
+                secondId = temp;
+            }
+
+            return ((ulong)firstId << 32) | secondId;
+        }
+    }
+}
