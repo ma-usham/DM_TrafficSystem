@@ -8,15 +8,16 @@ namespace Darkmatter.TrafficSystem.Editor
     [System.Serializable]
     public class GlobalSceneGizmoState
     {
-        public bool isExpanded = true;
+        public bool isExpanded = false;
         public bool enabled = true;
         public bool visibleOnly = true;
         public bool drawRoadCurves = true;
         public bool drawControlPoints;
-        public bool drawRoadNames;
+        public bool drawRoadNames=true;
         public bool drawWaypoints = true;
         public bool drawLaneChangeLinks = true;
         public bool drawConnections = true;
+        public bool drawIntersectionState = true;
 
         public bool DrawsAnyGizmo =>
             drawRoadCurves
@@ -24,6 +25,7 @@ namespace Darkmatter.TrafficSystem.Editor
             || drawRoadNames
             || drawWaypoints
             || drawLaneChangeLinks
-            || drawConnections;
+            || drawConnections
+            || drawIntersectionState;
     }
 }

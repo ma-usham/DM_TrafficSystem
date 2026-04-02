@@ -28,6 +28,9 @@ namespace Darkmatter.TrafficSystem.Editor
         public static bool SuppressViewRoadsPagePreviewGizmos =>
             editorWindow != null && editorWindow.ShouldSuppressViewRoadsPagePreviewGizmos;
 
+        public static bool DrawIntersectionState =>
+            editorWindow != null && editorWindow.globalSceneGizmoState != null && editorWindow.globalSceneGizmoState.drawIntersectionState;
+
         private bool ShouldSuppressInspectorRoadCurveGizmos =>
             globalSceneGizmoState != null
             && globalSceneGizmoState.enabled
@@ -159,6 +162,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     globalSceneGizmoState.drawWaypoints = EditorGUILayout.ToggleLeft("Generated waypoints", globalSceneGizmoState.drawWaypoints);
                     globalSceneGizmoState.drawLaneChangeLinks = EditorGUILayout.ToggleLeft("Lane-change links", globalSceneGizmoState.drawLaneChangeLinks);
                     globalSceneGizmoState.drawConnections = EditorGUILayout.ToggleLeft("Road connections", globalSceneGizmoState.drawConnections);
+                    globalSceneGizmoState.drawIntersectionState = EditorGUILayout.ToggleLeft("Intersection status (Green/Red)", globalSceneGizmoState.drawIntersectionState);
                 }
 
                 if (EditorGUI.EndChangeCheck())
@@ -212,6 +216,74 @@ namespace Darkmatter.TrafficSystem.Editor
                 List<ConnectRoadToolState.ConnectionRecord> connectionRecords =
                     globalConnectionToolState.BuildConnectionRecords(globalSceneGizmoState.visibleOnly, sceneView);
                 RoadSceneGizmoDrawer.DrawRoadConnections(connectionRecords);
+            }
+
+            if (globalSceneGizmoState.drawIntersectionState && Application.isPlaying)
+            {
+                DrawActiveIntersectionGizmos();
+            }
+        }
+
+        private void DrawActiveIntersectionGizmos()
+        {
+            PriorityIntersection[] intersections = Object.FindObjectsOfType<PriorityIntersection>();
+            foreach (var intersection in intersections)
+            {
+                if (intersection == null) continue;
+                foreach (var road in intersection.priorityStopRoads)
+                {
+                    if (road == null || road.stopPoints == null) continue;
+                    foreach (var wp in road.stopPoints)
+                    {
+                        if (wp == null) continue;
+
+                        bool isStopping = wp.settings.isStopPoint;
+                        Color boxColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
+                        Color outlineColor = isStopping ? Color.red : Color.green;
+
+                        Handles.color = boxColor;
+                        Vector3 pos = wp.transform.position;
+                        Vector3[] corners = new Vector3[]
+                        {
+                            pos + new Vector3(-0.4f, 0, -0.4f),
+                            pos + new Vector3(0.4f, 0, -0.4f),
+                            pos + new Vector3(0.4f, 0, 0.4f),
+                            pos + new Vector3(-0.4f, 0, 0.4f)
+                        };
+
+                        Handles.DrawSolidRectangleWithOutline(corners, boxColor, outlineColor);
+                    }
+                }
+            }
+
+            TrafficLightIntersection[] lightIntersections = Object.FindObjectsOfType<TrafficLightIntersection>();
+            foreach (var intersection in lightIntersections)
+            {
+                if (intersection == null) continue;
+                foreach (var road in intersection.trafficLightRoads)
+                {
+                    if (road == null || road.stopPoints == null) continue;
+                    foreach (var wp in road.stopPoints)
+                    {
+                        if (wp == null) continue;
+
+                        bool isStopping = wp.settings.isStopPoint;
+                        Color boxColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
+                        Color outlineColor = isStopping ? Color.red : Color.green;
+
+                        Handles.color = boxColor;
+                        Vector3 pos = wp.transform.position;
+                        Vector3[] corners = new Vector3[]
+                        {
+                            pos + new Vector3(-0.4f, 0, -0.4f),
+                            pos + new Vector3(0.4f, 0, -0.4f),
+                            pos + new Vector3(0.4f, 0, 0.4f),
+                            pos + new Vector3(-0.4f, 0, 0.4f)
+                        };
+
+                        Handles.DrawSolidRectangleWithOutline(corners, boxColor, outlineColor);
+                    }
+                }
             }
         }
     }

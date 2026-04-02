@@ -11,6 +11,12 @@ namespace Darkmatter.TrafficSystem
         /// </summary>
         public float speed;
 
+
+        /// <summary>
+        /// Defines whether this waypoint is a stop point.
+        /// </summary>
+        public bool isStopPoint;
+
         /// <summary>
         /// Restricts which vehicle categories can use this waypoint.
         /// </summary>
