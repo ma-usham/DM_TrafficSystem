@@ -91,6 +91,11 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             EditorGUI.BeginDisabledGroup(toolState.ActiveConnection == null);
+            if (GUILayout.Button("Delete", GUILayout.Width(90)))
+            {
+                toolState.DeleteActiveConnection();
+            }
+
             if (GUILayout.Button("Apply", GUILayout.Width(90)))
             {
                 toolState.ApplyActiveConnection();

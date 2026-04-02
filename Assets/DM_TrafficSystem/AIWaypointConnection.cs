@@ -69,8 +69,12 @@ namespace Darkmatter.TrafficSystem
                 targetForward = (targetPosition - sourcePosition).normalized;
 
             controlPointsList.Add(sourcePosition);
-            controlPointsList.Add(sourcePosition + sourceForward.normalized * tangentDistance);
-            controlPointsList.Add(targetPosition - targetForward.normalized * tangentDistance);
+            Vector3 midPoint = Vector3.Lerp(
+                sourcePosition + sourceForward.normalized * tangentDistance,
+                targetPosition - targetForward.normalized * tangentDistance,
+                0.5f
+            );
+            controlPointsList.Add(midPoint);
             controlPointsList.Add(targetPosition);
         }
 

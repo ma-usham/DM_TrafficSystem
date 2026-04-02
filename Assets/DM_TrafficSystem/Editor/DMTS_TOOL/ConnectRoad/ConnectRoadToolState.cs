@@ -279,6 +279,31 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
+        /// Deletes the actively edited connection and clears the edit state.
+        /// </summary>
+        public void DeleteActiveConnection()
+        {
+            if (activeConnection == null)
+                return;
+
+            string deletedLabel = GetConnectionLabel(activeConnection.sourceWaypoint, activeConnection.targetWaypoint);
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Delete Road Connection");
+
+            WaypointConnectionBuilder.DeleteConnection(activeConnection, "Delete Road Connection");
+
+            activeConnection = null;
+            viewedConnectionSourceWaypoint = null;
+            viewedConnectionTargetWaypoint = null;
+            selectedEndingWaypoint = null;
+            selectedEndingConnectionName = null;
+
+            statusMessage = $"Deleted {deletedLabel}";
+            Undo.CollapseUndoOperations(undoGroup);
+            RepaintViews();
+        }
+
+        /// <summary>
         /// Deletes the selected road connection from the scene.
         /// </summary>
         public void DeleteConnection(ConnectionRecord connection)
