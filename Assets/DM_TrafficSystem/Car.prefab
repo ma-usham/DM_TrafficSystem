@@ -11,9 +11,9 @@ GameObject:
   - component: {fileID: 1301470578808991711}
   - component: {fileID: 3504365210675368397}
   - component: {fileID: 8497669504255784657}
-  - component: {fileID: 2007451519239080074}
-  - component: {fileID: 5705231169371113935}
-  - component: {fileID: 9165534334991042045}
+  - component: {fileID: 6139337680327848008}
+  - component: {fileID: 1385346508820671337}
+  - component: {fileID: 3198873038140663450}
   m_Layer: 0
   m_Name: Car
   m_TagString: Untagged
@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -1.65, y: 0, z: 2.11}
-  m_LocalScale: {x: 0.59341, y: 0.43452, z: 2.3889}
+  m_LocalScale: {x: 1.2960876, y: 0.55714154, z: 3.2532039}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -93,7 +93,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &2007451519239080074
+--- !u!114 &6139337680327848008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3639386321635348361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ea63022ef80bc0469029f379db36389, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
+  maxSpeed: 10
+  lookaheadWaypoints:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  activeWaypointIndex: 0
+  arrayIndex: -1
+--- !u!65 &1385346508820671337
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -112,41 +133,9 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 0.99999994, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5705231169371113935
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3639386321635348361}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 21ba8405f9366c94aa34e672c981d43b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AITrafficCar
-  vehicleType: 0
-  vehicleLength: 2.4
-  speedVariance: 1.5
-  wheelColliders: []
-  wheelMeshes: []
-  wheelRadius: 0.34
-  brakeLightRenderer: {fileID: 0}
-  brakeLightMaterialIndex: 0
-  brakeLightOnColor: {r: 1, g: 0.05, b: 0, a: 1}
-  brakeLightOffColor: {r: 0, g: 0, b: 0, a: 1}
-  frontSensorOffset: 2
-  sideSensorOffset: 1
-  sensorLength: 6
-  sideSensorLength: 4
-  sensorHalfExtentY: 0.5
-  sensorHalfExtentZ: 0.8
-  carIndex: -1
-  currentRoute: {fileID: 0}
-  currentWaypointIndex: 0
-  rb: {fileID: 0}
---- !u!54 &9165534334991042045
+--- !u!54 &3198873038140663450
 Rigidbody:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -154,7 +143,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3639386321635348361}
   serializedVersion: 5
-  m_Mass: 1000
+  m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}

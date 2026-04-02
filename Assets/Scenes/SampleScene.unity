@@ -1382,7 +1382,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08963fed67d832444bf110ba24bbfc3e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.TrafficManager
-  vehicleCount: 5
+  vehicleCount: 1
+  dummyCarPrefab: {fileID: 3639386321635348361, guid: a72a681ace43b654b83811d8824e3f59, type: 3}
+  spawnWaypoints:
+  - {fileID: 1550586195}
+  - {fileID: 1942443283}
 --- !u!1 &95927887
 GameObject:
   m_ObjectHideFlags: 0
