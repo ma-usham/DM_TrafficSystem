@@ -3,43 +3,45 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Draws runtime stop-point state overlays for traffic-light intersections.
+    /// </summary>
     [CustomEditor(typeof(TrafficLightIntersection))]
     public class TrafficLightIntersectionEditor : UnityEditor.Editor
     {
+        /// <summary>
+        /// Draws red or green markers over the stop points owned by the selected traffic-light intersection.
+        /// </summary>
         private void OnSceneGUI()
         {
-            if (!DMTS_Window.DrawIntersectionState) return;
+            if (!DMTS_Window.DrawIntersectionState)
+                return;
 
             TrafficLightIntersection intersection = (TrafficLightIntersection)target;
-            if (intersection == null || !Application.isPlaying) return;
+            if (intersection == null || !Application.isPlaying)
+                return;
 
-            foreach (var road in intersection.trafficLightRoads)
+            foreach (TrafficLightRoad road in intersection.trafficLightRoads)
             {
-                if (road == null || road.stopPoints == null) continue;
+                if (road == null || road.stopPoints == null)
+                    continue;
 
-                foreach (var wp in road.stopPoints)
+                foreach (AIWaypoint waypoint in road.stopPoints)
                 {
-                    if (wp == null) continue;
+                    if (waypoint == null)
+                        continue;
 
-                    bool isStopping = wp.settings.isStopPoint;
-                    Color boxColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
+                    bool isStopping = waypoint.settings.isStopPoint;
+                    Color fillColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
                     Color outlineColor = isStopping ? Color.red : Color.green;
-
-                    Handles.color = boxColor;
-                    Vector3 pos = wp.transform.position;
-                    Vector3[] corners = new Vector3[]
-                    {
-                        pos + new Vector3(-0.4f, 0, -0.4f),
-                        pos + new Vector3(0.4f, 0, -0.4f),
-                        pos + new Vector3(0.4f, 0, 0.4f),
-                        pos + new Vector3(-0.4f, 0, 0.4f)
-                    };
-
-                    Handles.DrawSolidRectangleWithOutline(corners, boxColor, outlineColor);
+                    IntersectionSceneUtility.DrawStopPoint(waypoint, fillColor, outlineColor);
                 }
             }
         }
 
+        /// <summary>
+        /// Draws the default inspector and a runtime-only scene-view status hint.
+        /// </summary>
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();

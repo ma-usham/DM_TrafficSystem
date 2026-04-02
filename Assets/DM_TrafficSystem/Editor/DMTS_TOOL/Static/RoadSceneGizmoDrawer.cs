@@ -242,6 +242,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 Mathf.Max(4, connection.curveResolution));
         }
 
+        /// <summary>
+        /// Returns the best forward direction for a waypoint based on its neighbors in the sampled lane.
+        /// </summary>
         private static Vector3 GetWaypointForward(IReadOnlyList<Vector3> waypointPositions, int waypointIndex)
         {
             if (waypointPositions == null || waypointPositions.Count == 0)
@@ -257,6 +260,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return Vector3.forward;
         }
 
+        /// <summary>
+        /// Appends the line segments needed to draw one direction arrow into a shared batch list.
+        /// </summary>
         private static void DrawDirectionArrow(Vector3 position, Vector3 forward, float size, List<Vector3> batchedLines)
         {
             Vector3 right = GetArrowRight(forward);
@@ -271,6 +277,9 @@ namespace Darkmatter.TrafficSystem.Editor
             batchedLines.Add(headBase - right * headWidth);
         }
 
+        /// <summary>
+        /// Returns a stable right vector for one arrow head based on its forward direction.
+        /// </summary>
         private static Vector3 GetArrowRight(Vector3 forward)
         {
             Vector3 right = Vector3.Cross(Vector3.up, forward);
@@ -282,6 +291,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return right.normalized;
         }
 
+        /// <summary>
+        /// Draws dotted lateral links between waypoints that can lane-change to each other.
+        /// </summary>
         private static void DrawLaneChangeGizmos(IReadOnlyList<AIWaypoint> waypoints, HashSet<ulong> drawnLaneChangeLines)
         {
             if (waypoints == null || drawnLaneChangeLines == null)
@@ -312,6 +324,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Builds an order-independent key so one lane-change link is only drawn once.
+        /// </summary>
         private static ulong GetLaneChangeKey(AIWaypoint firstWaypoint, AIWaypoint secondWaypoint)
         {
             uint firstId = unchecked((uint)RuntimeHelpers.GetHashCode(firstWaypoint));
@@ -325,6 +340,76 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             return ((ulong)firstId << 32) | secondId;
+        }
+    }
+
+    /// <summary>
+    /// Provides shared scene-view drawing and waypoint picking helpers for intersection tools.
+    /// </summary>
+    public static class IntersectionSceneUtility
+    {
+        private const float StopPointHalfExtent = 0.35f;
+        private const float WaypointPickRadius = 0.5f;
+        private const float MaxWaypointPickScreenDistance = 10f;
+
+        /// <summary>
+        /// Draws one flat stop-point marker at the waypoint position.
+        /// </summary>
+        public static void DrawStopPoint(AIWaypoint waypoint, Color fillColor, Color outlineColor)
+        {
+            if (waypoint == null)
+                return;
+
+            Vector3 position = waypoint.transform.position;
+            Vector3[] corners =
+            {
+                position + new Vector3(-StopPointHalfExtent, 0f, -StopPointHalfExtent),
+                position + new Vector3(StopPointHalfExtent, 0f, -StopPointHalfExtent),
+                position + new Vector3(StopPointHalfExtent, 0f, StopPointHalfExtent),
+                position + new Vector3(-StopPointHalfExtent, 0f, StopPointHalfExtent)
+            };
+
+            Handles.DrawSolidRectangleWithOutline(corners, fillColor, outlineColor);
+        }
+
+        /// <summary>
+        /// Draws one marker for each provided stop-point waypoint.
+        /// </summary>
+        public static void DrawStopPoints(IEnumerable<AIWaypoint> stopPoints, Color fillColor, Color outlineColor)
+        {
+            if (stopPoints == null)
+                return;
+
+            foreach (AIWaypoint waypoint in stopPoints)
+            {
+                DrawStopPoint(waypoint, fillColor, outlineColor);
+            }
+        }
+
+        /// <summary>
+        /// Returns the waypoint nearest to the mouse cursor in scene-view screen space.
+        /// </summary>
+        public static AIWaypoint FindWaypointAtMouse(Vector2 mousePosition)
+        {
+            AIWaypoint bestMatch = null;
+            float closestDistance = float.MaxValue;
+            AIWaypoint[] allWaypoints = Object.FindObjectsByType<AIWaypoint>(FindObjectsInactive.Exclude);
+
+            for (int i = 0; i < allWaypoints.Length; i++)
+            {
+                AIWaypoint waypoint = allWaypoints[i];
+                if (waypoint == null)
+                    continue;
+
+                float distanceToWaypoint = HandleUtility.DistanceToCircle(waypoint.transform.position, WaypointPickRadius);
+                if (distanceToWaypoint <= MaxWaypointPickScreenDistance && distanceToWaypoint < closestDistance)
+                {
+                    closestDistance = distanceToWaypoint;
+                    bestMatch = waypoint;
+                }
+            }
+
+            return bestMatch;
         }
     }
 }

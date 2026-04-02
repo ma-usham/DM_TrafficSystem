@@ -4,12 +4,18 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
 {
+    /// <summary>
+    /// Stores one group of stop points that should stop together in a priority intersection.
+    /// </summary>
     [System.Serializable]
     public class PriorityStopRoad
     {
         public List<AIWaypoint> stopPoints = new List<AIWaypoint>();
     }
 
+    /// <summary>
+    /// Cycles stop states across configured priority-road groups at runtime.
+    /// </summary>
     public class PriorityIntersection : MonoBehaviour
     {
         public string intersectionName = "New Intersection";
@@ -22,9 +28,11 @@ namespace Darkmatter.TrafficSystem
 
         private int currentStopRoadIndex = 0;
 
+        /// <summary>
+        /// Initializes all stop points and starts the runtime cycle when road groups exist.
+        /// </summary>
         private void Start()
         {
-            // Initialize: Set all stop points to true (red) initially
             SetAllRoadsToStop();
 
             if (priorityStopRoads.Count > 0)
@@ -33,29 +41,28 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        /// <summary>
+        /// Alternates which configured road group may proceed through the intersection.
+        /// </summary>
         private IEnumerator CycleIntersection()
         {
             while (true)
             {
                 PriorityStopRoad currentRoad = priorityStopRoads[currentStopRoadIndex];
 
-                // Set current road's stop points to false to let cars pass
                 SetRoadStopStatus(currentRoad, false);
-
-                // Wait for the active duration
                 yield return new WaitForSeconds(activeTime);
 
-                // Set current road's stop points to true (red/stop)
                 SetRoadStopStatus(currentRoad, true);
-
-                // Short delay to let cars clear out the intersection
                 yield return new WaitForSeconds(waitTime);
 
-                // Move to next road
                 currentStopRoadIndex = (currentStopRoadIndex + 1) % priorityStopRoads.Count;
             }
         }
 
+        /// <summary>
+        /// Applies one stop-state value to every stop point in the provided road group.
+        /// </summary>
         private void SetRoadStopStatus(PriorityStopRoad road, bool isStop)
         {
             foreach (var wp in road.stopPoints)
@@ -67,6 +74,9 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        /// <summary>
+        /// Forces every configured road group into the stop state.
+        /// </summary>
         private void SetAllRoadsToStop()
         {
             foreach (var road in priorityStopRoads)

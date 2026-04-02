@@ -39,11 +39,11 @@ namespace Darkmatter.TrafficSystem.Editor
             RoadSceneGizmoDrawer.DrawControlPoints(road);
         }
 
-        #region Gizmos
+#region Gizmos
+        [DrawGizmo(GizmoType.Selected)]
         /// <summary>
         /// Draws generated waypoint lines, arrow heads, and lane-change links for the selected road.
         /// </summary>
-        [DrawGizmo(GizmoType.Selected)]
         private static void DrawGeneratedWaypointGizmos(Road road, GizmoType gizmoType)
         {
             if (ConnectRoadPage.isActive || DMTS_Window.SuppressInspectorRoadWaypointGizmos)

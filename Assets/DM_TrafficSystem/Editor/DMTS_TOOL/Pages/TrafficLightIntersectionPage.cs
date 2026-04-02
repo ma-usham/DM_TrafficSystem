@@ -3,12 +3,18 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Configures traffic-light intersections and lets the user pick stop points directly in the Scene view.
+    /// </summary>
     public class TrafficLightIntersectionPage : IPage
     {
         private Vector2 scrollPos;
         private TrafficLightIntersection targetIntersection;
         private int activeRoadIndex = -1;
 
+        /// <summary>
+        /// Draws the traffic-light intersection editor workflow and serialized light-group settings.
+        /// </summary>
         public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("Traffic Light Intersection Setup", EditorStyles.boldLabel);
@@ -30,7 +36,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
             scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
 
-            // General Settings
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Cycle Times", EditorStyles.boldLabel);
             
@@ -54,7 +59,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
             EditorGUILayout.Space(10);
 
-            // Traffic Light Roads
             EditorGUILayout.LabelField("Traffic Light Roads", EditorStyles.boldLabel);
             SerializedProperty roadsProp = so.FindProperty("trafficLightRoads");
 
@@ -127,71 +131,71 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws current stop points and lets the user toggle them for the selected traffic-light road group.
+        /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
-            if (targetIntersection == null) return;
+            if (targetIntersection == null)
+                return;
 
             DrawAllStopPoints();
 
-            if (activeRoadIndex < 0 || activeRoadIndex >= targetIntersection.trafficLightRoads.Count) return;
+            if (activeRoadIndex < 0 || activeRoadIndex >= targetIntersection.trafficLightRoads.Count)
+                return;
 
-            Event e = Event.current;
-            if (e.type == EventType.MouseDown && e.button == 0)
+            Event currentEvent = Event.current;
+            if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
             {
-                AIWaypoint clickedWaypoint = RaycastForWaypoint(e.mousePosition);
+                AIWaypoint clickedWaypoint = FindWaypointAtMouse(currentEvent.mousePosition);
                 if (clickedWaypoint != null)
                 {
                     ToggleStopPoint(clickedWaypoint);
-                    e.Use();
+                    currentEvent.Use();
                     GUI.changed = true;
                 }
             }
             sceneView.Repaint();
         }
 
+        /// <summary>
+        /// Draws colored markers for every stop point across every configured traffic-light road group.
+        /// </summary>
         private void DrawAllStopPoints()
         {
             int roadIdx = 0;
-            foreach (var road in targetIntersection.trafficLightRoads)
+            foreach (TrafficLightRoad road in targetIntersection.trafficLightRoads)
             {
-                if (road == null || road.stopPoints == null) continue;
-                foreach (var wp in road.stopPoints)
-                {
-                    if (wp != null)
-                    {
-                        Handles.color = (activeRoadIndex == roadIdx) ? new Color(0, 1, 1, 0.5f) : new Color(1, 0.6f, 0, 0.5f);
-                        Vector3 pos = wp.transform.position;
-                        Vector3[] corners = new Vector3[] { pos + new Vector3(-0.35f, 0, -0.35f), pos + new Vector3(0.35f, 0, -0.35f), pos + new Vector3(0.35f, 0, 0.35f), pos + new Vector3(-0.35f, 0, 0.35f) };
-                        Handles.DrawSolidRectangleWithOutline(corners, Handles.color, Color.black);
-                    }
-                }
+                if (road == null || road.stopPoints == null)
+                    continue;
+
+                Color fillColor = activeRoadIndex == roadIdx ? new Color(0f, 1f, 1f, 0.5f) : new Color(1f, 0.6f, 0f, 0.5f);
+                IntersectionSceneUtility.DrawStopPoints(road.stopPoints, fillColor, Color.black);
+
                 roadIdx++;
             }
         }
 
-        private AIWaypoint RaycastForWaypoint(Vector2 mousePosition)
+        /// <summary>
+        /// Returns the waypoint closest to the user's current Scene view click.
+        /// </summary>
+        private static AIWaypoint FindWaypointAtMouse(Vector2 mousePosition)
         {
-            AIWaypoint bestMatch = null;
-            float closestDist = float.MaxValue;
-            AIWaypoint[] allWaypoints = Object.FindObjectsOfType<AIWaypoint>();
-            foreach (var wp in allWaypoints)
-            {
-                float distToRay = HandleUtility.DistanceToCircle(wp.transform.position, 0.5f);
-                if (distToRay < 10 && distToRay < closestDist)
-                {
-                    closestDist = distToRay;
-                    bestMatch = wp;
-                }
-            }
-            return bestMatch;
+            return IntersectionSceneUtility.FindWaypointAtMouse(mousePosition);
         }
 
+        /// <summary>
+        /// Adds or removes one waypoint from the currently active traffic-light road group.
+        /// </summary>
         private void ToggleStopPoint(AIWaypoint wp)
         {
             Undo.RecordObject(targetIntersection, "Toggle Stop Point");
-            var road = targetIntersection.trafficLightRoads[activeRoadIndex];
-            if (road.stopPoints.Contains(wp)) road.stopPoints.Remove(wp);
-            else road.stopPoints.Add(wp);
+            TrafficLightRoad road = targetIntersection.trafficLightRoads[activeRoadIndex];
+            if (road.stopPoints.Contains(wp))
+                road.stopPoints.Remove(wp);
+            else
+                road.stopPoints.Add(wp);
+
             EditorUtility.SetDirty(targetIntersection);
         }
     }

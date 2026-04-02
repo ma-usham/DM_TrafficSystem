@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
 {
+    /// <summary>
+    /// Stores the renderers that represent one physical traffic light.
+    /// </summary>
     [System.Serializable]
     public class TrafficLightVisuals
     {
@@ -12,6 +15,9 @@ namespace Darkmatter.TrafficSystem
         public Renderer greenLightRenderer;
     }
 
+    /// <summary>
+    /// Stores one traffic-light road group together with its stop points and light visuals.
+    /// </summary>
     [System.Serializable]
     public class TrafficLightRoad
     {
@@ -19,6 +25,9 @@ namespace Darkmatter.TrafficSystem
         public List<TrafficLightVisuals> visuals = new List<TrafficLightVisuals>();
     }
 
+    /// <summary>
+    /// Cycles stop states and renderer emissions for configured traffic-light road groups at runtime.
+    /// </summary>
     public class TrafficLightIntersection : MonoBehaviour
     {
         public string intersectionName = "New Traffic Light Intersection";
@@ -41,14 +50,19 @@ namespace Darkmatter.TrafficSystem
         private MaterialPropertyBlock propBlock;
         private static readonly int emissionColorId = Shader.PropertyToID("_EmissionColor");
 
+        /// <summary>
+        /// Creates the shared material property block used for light emission updates.
+        /// </summary>
         private void Awake()
         {
             propBlock = new MaterialPropertyBlock();
         }
 
+        /// <summary>
+        /// Initializes all lights to red and starts the runtime cycle when road groups exist.
+        /// </summary>
         private void Start()
         {
-            // Reset all visually to Red upon Start
             foreach (var road in trafficLightRoads)
             {
                 SetRoadVisualState(road, TrafficLightState.Red);
@@ -61,31 +75,33 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        /// <summary>
+        /// Alternates green, yellow, and red states across each configured road group.
+        /// </summary>
         private IEnumerator CycleLights()
         {
             while (true)
             {
                 TrafficLightRoad currentRoad = trafficLightRoads[currentRoadIndex];
 
-                // GREEN
                 SetRoadStopStatus(currentRoad, false);
                 SetRoadVisualState(currentRoad, TrafficLightState.Green);
                 yield return new WaitForSeconds(greenTime);
 
-                // YELLOW (In simple logic we keep it as stop point but maybe it should be a warning)
-                // For now, treat yellow as stop for incoming cars
                 SetRoadStopStatus(currentRoad, true);
                 SetRoadVisualState(currentRoad, TrafficLightState.Yellow);
                 yield return new WaitForSeconds(yellowTime);
 
-                // RED
                 SetRoadVisualState(currentRoad, TrafficLightState.Red);
-                yield return new WaitForSeconds(1f); // Optional all-red delay for safety
+                yield return new WaitForSeconds(1f);
 
                 currentRoadIndex = (currentRoadIndex + 1) % trafficLightRoads.Count;
             }
         }
 
+        /// <summary>
+        /// Applies one light color state to every renderer set in the provided road group.
+        /// </summary>
         private void SetRoadVisualState(TrafficLightRoad road, TrafficLightState state)
         {
             if (propBlock == null) propBlock = new MaterialPropertyBlock();
@@ -100,6 +116,9 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        /// <summary>
+        /// Writes the requested emission color to one renderer using a shared property block.
+        /// </summary>
         private void UpdateRenderer(Renderer renderer, Color targetColor)
         {
             if (renderer == null) return;
@@ -108,6 +127,9 @@ namespace Darkmatter.TrafficSystem
             renderer.SetPropertyBlock(propBlock);
         }
 
+        /// <summary>
+        /// Applies one stop-state value to every stop point in the provided road group.
+        /// </summary>
         private void SetRoadStopStatus(TrafficLightRoad road, bool isStop)
         {
             foreach (var wp in road.stopPoints)
@@ -119,6 +141,9 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        /// <summary>
+        /// Forces every configured traffic-light road group into the stop state.
+        /// </summary>
         private void SetAllRoadsToStop()
         {
             foreach (var road in trafficLightRoads)

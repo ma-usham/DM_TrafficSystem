@@ -23,6 +23,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("Create Priority Intersection", GUILayout.Height(30)))
             {
                 GameObject newIntersection = new GameObject("New Priority Intersection");
+                Undo.RegisterCreatedObjectUndo(newIntersection, "Create Priority Intersection");
+                TrafficSystemHierarchyUtility.ParentIntersection(newIntersection, "Create Priority Intersection");
                 newIntersection.AddComponent<PriorityIntersection>();
                 Selection.activeGameObject = newIntersection;
                 ctx.pageStack.Push(new PriorityIntersectionPage());
@@ -33,6 +35,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("Create Traffic Light Intersection", GUILayout.Height(30)))
             {
                 GameObject newIntersection = new GameObject("New Traffic Light Intersection");
+                Undo.RegisterCreatedObjectUndo(newIntersection, "Create Traffic Light Intersection");
+                TrafficSystemHierarchyUtility.ParentIntersection(newIntersection, "Create Traffic Light Intersection");
                 newIntersection.AddComponent<TrafficLightIntersection>();
                 Selection.activeGameObject = newIntersection;
                 ctx.pageStack.Push(new TrafficLightIntersectionPage());
@@ -45,7 +49,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Priority Intersections", EditorStyles.miniBoldLabel);
             
-            PriorityIntersection[] priorityIntersections = Object.FindObjectsOfType<PriorityIntersection>();
+            PriorityIntersection[] priorityIntersections = Object.FindObjectsByType<PriorityIntersection>(FindObjectsInactive.Exclude);
             
             if (priorityIntersections.Length == 0)
             {
@@ -80,7 +84,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     {
                         if (EditorUtility.DisplayDialog("Delete Intersection", $"Are you sure you want to delete {displayName}?", "Yes", "No"))
                         {
-                            Object.DestroyImmediate(intersection.gameObject);
+                            Undo.DestroyObjectImmediate(intersection.gameObject);
                             GUIUtility.ExitGUI(); // Prevent layout errors during GUI loops
                         }
                     }
@@ -96,7 +100,7 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("Traffic Light Intersections", EditorStyles.miniBoldLabel);
             
-            TrafficLightIntersection[] trafficLightIntersections = Object.FindObjectsOfType<TrafficLightIntersection>();
+            TrafficLightIntersection[] trafficLightIntersections = Object.FindObjectsByType<TrafficLightIntersection>(FindObjectsInactive.Exclude);
             
             if (trafficLightIntersections.Length == 0)
             {
@@ -131,7 +135,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     {
                         if (EditorUtility.DisplayDialog("Delete Intersection", $"Are you sure you want to delete {displayName}?", "Yes", "No"))
                         {
-                            Object.DestroyImmediate(intersection.gameObject);
+                            Undo.DestroyObjectImmediate(intersection.gameObject);
                             GUIUtility.ExitGUI();
                         }
                     }

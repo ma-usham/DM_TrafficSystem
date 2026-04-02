@@ -76,6 +76,9 @@ namespace Darkmatter.TrafficSystem.Editor
             DrawLaneStartSelectionHandles();
         }
 
+        /// <summary>
+        /// Draws selectable handles for every lane-ending waypoint that can start a connection.
+        /// </summary>
         private void DrawLaneEndSelectionHandles()
         {
             IReadOnlyList<ConnectRoadToolState.LaneTerminal> laneEnds = toolState.LaneEnds;
@@ -91,6 +94,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws selectable handles for every lane-start waypoint that can receive a connection.
+        /// </summary>
         private void DrawLaneStartSelectionHandles()
         {
             IReadOnlyList<ConnectRoadToolState.LaneTerminal> laneStarts = toolState.LaneStarts;
@@ -110,6 +116,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Highlights the currently selected ending waypoint while the user chooses a target lane start.
+        /// </summary>
         private void DrawSelectedEndingWaypoint()
         {
             if (toolState.SelectedEndingWaypoint == null)
@@ -124,6 +133,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 EventType.Repaint);
         }
 
+        /// <summary>
+        /// Draws passive connection previews, emphasizing the currently viewed connection when needed.
+        /// </summary>
         private void DrawConnectionGizmos(IReadOnlyList<ConnectRoadToolState.ConnectionRecord> connectionRecords)
         {
             if (connectionRecords == null)
@@ -164,6 +176,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws the editable connection spline, its generated transition waypoints, and edit handles.
+        /// </summary>
         private void DrawActiveConnectionEditor(AIWaypointConnection connection)
         {
             if (connection == null)
@@ -182,6 +197,9 @@ namespace Darkmatter.TrafficSystem.Editor
             DrawConnectionControlPoints(connection);
         }
 
+        /// <summary>
+        /// Draws movable interior control points and locked endpoint markers for the active connection.
+        /// </summary>
         private void DrawConnectionControlPoints(AIWaypointConnection connection)
         {
             if (connection == null || connection.controlPointsList == null)
@@ -225,6 +243,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws the preview marker that shows where Ctrl+Click will insert a new control point.
+        /// </summary>
         private void DrawConnectionInsertPreview(AIWaypointConnection connection)
         {
             Event currentEvent = Event.current;
@@ -260,6 +281,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 EditorStyles.whiteMiniLabel);
         }
 
+        /// <summary>
+        /// Routes mouse input for inserting or deleting active connection control points.
+        /// </summary>
         private void ProcessActiveConnectionInput(AIWaypointConnection connection)
         {
             Event currentEvent = Event.current;
@@ -283,6 +307,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Inserts a control point on the nearest visible spline segment under the mouse cursor.
+        /// </summary>
         private bool TryInsertConnectionControlPoint(AIWaypointConnection connection, Vector2 mousePosition)
         {
             if (connection == null || connection.controlPointsList == null || connection.controlPointsList.Count < 2)
@@ -309,6 +336,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Deletes the nearest interior control point when the cursor is close enough to it.
+        /// </summary>
         private bool TryDeleteConnectionControlPoint(AIWaypointConnection connection, Vector2 mousePosition)
         {
             if (connection == null || connection.controlPointsList == null || connection.controlPointsList.Count <= 2)
@@ -324,6 +354,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Returns the interior control point closest to the mouse cursor in screen space.
+        /// </summary>
         private static int FindNearestInteriorPoint(IReadOnlyList<Vector3> controlPoints, Vector2 mousePosition, out float bestDistance)
         {
             bestDistance = float.MaxValue;
@@ -346,6 +379,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return bestIndex;
         }
 
+        /// <summary>
+        /// Finds the nearest sampled spline segment location to the current mouse position.
+        /// </summary>
         private static void FindNearestSegmentScreenSpace(
             IReadOnlyList<Vector3> controlPoints,
             Vector2 mousePosition,
@@ -383,6 +419,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws one clickable waypoint handle and returns whether it was pressed this frame.
+        /// </summary>
         private static bool TryDrawWaypointButton(AIWaypoint waypoint, Color color)
         {
             if (waypoint == null)
@@ -401,6 +440,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 DrawFilledRectangleCap);
         }
 
+        /// <summary>
+        /// Draws a filled rectangular handle cap used by the connect-road waypoint buttons.
+        /// </summary>
         private static void DrawFilledRectangleCap(int controlId, Vector3 position, Quaternion rotation, float size, EventType eventType)
         {
             switch (eventType)
@@ -426,6 +468,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Returns the screen-scaled handle size used for connect-road waypoint markers.
+        /// </summary>
         private static float GetWaypointHandleSize(Vector3 position)
         {
             return HandleUtility.GetHandleSize(position)
@@ -433,6 +478,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 * DMTSPrefs.ConnectRoadHandleSizeMultiplier;
         }
 
+        /// <summary>
+        /// Returns a billboard rotation so rectangular waypoint handles face the active Scene view camera.
+        /// </summary>
         private static Quaternion GetWaypointHandleRotation()
         {
             SceneView sceneView = SceneView.currentDrawingSceneView ?? SceneView.lastActiveSceneView;

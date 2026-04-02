@@ -62,6 +62,7 @@ namespace Darkmatter.TrafficSystem.Editor
             GameObject roadObject = new GameObject(GetNextRoadName());
             Undo.RegisterCreatedObjectUndo(roadObject, "Create Road");
             roadObject.transform.position = firstClickPosition;
+            TrafficSystemHierarchyUtility.ParentRoad(roadObject, "Create Road");
 
             road = roadObject.AddComponent<Road>();
             initialized = true;

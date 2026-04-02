@@ -3,12 +3,18 @@ using UnityEngine;
 
 namespace Darkmatter.TrafficSystem.Editor
 {
+    /// <summary>
+    /// Configures priority intersections and lets the user pick stop points directly in the Scene view.
+    /// </summary>
     public class PriorityIntersectionPage : IPage
     {
         private Vector2 scrollPos;
         private PriorityIntersection targetIntersection;
         private int activeRoadIndex = -1;
 
+        /// <summary>
+        /// Draws the priority-intersection editor workflow and serialized road-group settings.
+        /// </summary>
         public void OnGUI(DMTS_Window ctx)
         {
             EditorGUILayout.LabelField("Priority Intersection Setup", EditorStyles.boldLabel);
@@ -43,7 +49,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
             scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
 
-            // General Settings Block
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField("General Settings", EditorStyles.boldLabel);
             
@@ -60,7 +65,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
             EditorGUILayout.Space(10);
 
-            // Priority Stop Roads Blocks
             EditorGUILayout.LabelField("Priority Stop Roads", EditorStyles.boldLabel);
 
             SerializedProperty roadsProp = so.FindProperty("priorityStopRoads");
@@ -85,7 +89,6 @@ namespace Darkmatter.TrafficSystem.Editor
                     if (GUILayout.Button("Select Road", GUILayout.Width(100))) activeRoadIndex = i;
                 }
 
-                // Button to remove this road
                 if (GUILayout.Button("Remove", GUILayout.Width(60)))
                 {
                     roadsProp.DeleteArrayElementAtIndex(i);
@@ -99,19 +102,16 @@ namespace Darkmatter.TrafficSystem.Editor
                 SerializedProperty roadProp = roadsProp.GetArrayElementAtIndex(i);
                 SerializedProperty stopPointsProp = roadProp.FindPropertyRelative("stopPoints");
 
-                // Show the Waypoints Array for this specific Priority Road block
                 EditorGUILayout.PropertyField(stopPointsProp, new GUIContent("Stop Waypoints"), true);
                 
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.Space(5);
             }
 
-            // Add Road Button
             if (GUILayout.Button("Add Road", GUILayout.Height(30)))
             {
                 roadsProp.InsertArrayElementAtIndex(roadsProp.arraySize);
                 
-                // Clear the newly created element so it's fresh instead of duplicating
                 SerializedProperty newElement = roadsProp.GetArrayElementAtIndex(roadsProp.arraySize - 1);
                 SerializedProperty stopPointsProp = newElement.FindPropertyRelative("stopPoints");
                 stopPointsProp.ClearArray();
@@ -135,95 +135,71 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws current stop points and lets the user toggle them for the selected road group.
+        /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
-            if (targetIntersection == null) return;
+            if (targetIntersection == null)
+                return;
 
-            // Draw all current stop points for visual reference
             DrawAllStopPoints();
 
             if (activeRoadIndex < 0 || activeRoadIndex >= targetIntersection.priorityStopRoads.Count)
-            {
                 return;
-            }
 
-            // Listen for clicks on waypoints using Raycast (no visible green boxes)
-            Event e = Event.current;
-            if (e.type == EventType.MouseDown && e.button == 0)
+            Event currentEvent = Event.current;
+            if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0)
             {
-                AIWaypoint clickedWaypoint = RaycastForWaypoint(e.mousePosition);
+                AIWaypoint clickedWaypoint = FindWaypointAtMouse(currentEvent.mousePosition);
                 if (clickedWaypoint != null)
                 {
                     ToggleStopPoint(clickedWaypoint);
-                    e.Use();
+                    currentEvent.Use();
                     GUI.changed = true;
                 }
             }
 
-            // Force repaint to show color changes immediately
             sceneView.Repaint();
         }
 
+        /// <summary>
+        /// Draws colored markers for every stop point across every configured priority road.
+        /// </summary>
         private void DrawAllStopPoints()
         {
-            if (targetIntersection == null) return;
+            if (targetIntersection == null)
+                return;
 
             int roadIdx = 0;
-            foreach (var road in targetIntersection.priorityStopRoads)
+            foreach (PriorityStopRoad road in targetIntersection.priorityStopRoads)
             {
-                if (road == null || road.stopPoints == null) continue;
-                foreach (var wp in road.stopPoints)
-                {
-                    if (wp != null)
-                    {
-                        // Current editing road is cyan, others are red
-                        Handles.color = (activeRoadIndex == roadIdx) ? new Color(0, 1, 1, 0.5f) : new Color(1, 0, 0, 0.5f);
-                        // Using a 2D Rectangle Handle instead of a 3D Cube
-                        Handles.DrawSolidRectangleWithOutline(
-                            new Vector3[] {
-                                wp.transform.position + new Vector3(-0.35f, 0, -0.35f),
-                                wp.transform.position + new Vector3(0.35f, 0, -0.35f),
-                                wp.transform.position + new Vector3(0.35f, 0, 0.35f),
-                                wp.transform.position + new Vector3(-0.35f, 0, 0.35f)
-                            },
-                            Handles.color,
-                            (activeRoadIndex == roadIdx) ? Color.cyan : Color.red
-                        );
-                    }
-                }
+                if (road == null || road.stopPoints == null)
+                    continue;
+
+                Color fillColor = activeRoadIndex == roadIdx ? new Color(0f, 1f, 1f, 0.5f) : new Color(1f, 0f, 0f, 0.5f);
+                Color outlineColor = activeRoadIndex == roadIdx ? Color.cyan : Color.red;
+                IntersectionSceneUtility.DrawStopPoints(road.stopPoints, fillColor, outlineColor);
+
                 roadIdx++;
             }
         }
 
-        private AIWaypoint RaycastForWaypoint(Vector2 mousePosition)
+        /// <summary>
+        /// Returns the waypoint closest to the user's current Scene view click.
+        /// </summary>
+        private static AIWaypoint FindWaypointAtMouse(Vector2 mousePosition)
         {
-            // First try picking via handles metadata (if they have specialized editors) 
-            // but for simple AIWaypoints we rely on a cleaner physics approach or simple distance check
-            Ray ray = HandleUtility.GUIPointToWorldRay(mousePosition);
-            
-            // Note: This requires the Waypoint to have a Collider or be an Editor object. 
-            // If the Waypoint has no collider, we check for proximity to the transform position.
-            AIWaypoint bestMatch = null;
-            float closestDist = float.MaxValue;
-            
-            AIWaypoint[] allWaypoints = Object.FindObjectsOfType<AIWaypoint>();
-            foreach (var wp in allWaypoints)
-            {
-                float distToRay = HandleUtility.DistanceToCircle(wp.transform.position, 0.5f);
-                if (distToRay < 10 && distToRay < closestDist) // 10 pixel threshold for clicking
-                {
-                    closestDist = distToRay;
-                    bestMatch = wp;
-                }
-            }
-
-            return bestMatch;
+            return IntersectionSceneUtility.FindWaypointAtMouse(mousePosition);
         }
 
+        /// <summary>
+        /// Adds or removes one waypoint from the currently active priority road group.
+        /// </summary>
         private void ToggleStopPoint(AIWaypoint wp)
         {
             Undo.RecordObject(targetIntersection, "Toggle Stop Point");
-            var road = targetIntersection.priorityStopRoads[activeRoadIndex];
+            PriorityStopRoad road = targetIntersection.priorityStopRoads[activeRoadIndex];
 
             if (road.stopPoints.Contains(wp))
             {

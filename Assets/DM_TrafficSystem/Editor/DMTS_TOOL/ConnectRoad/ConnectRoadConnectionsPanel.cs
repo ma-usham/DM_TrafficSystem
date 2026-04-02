@@ -96,6 +96,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 toolState.ViewConnection(pendingConnection);
         }
 
+        /// <summary>
+        /// Groups connection records by their source road name for a shorter UI list.
+        /// </summary>
         private static List<ConnectionGroup> BuildSourceRoadGroups(IReadOnlyList<ConnectRoadToolState.ConnectionRecord> visibleConnections)
         {
             var groups = new List<ConnectionGroup>();
@@ -121,6 +124,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return groups;
         }
 
+        /// <summary>
+        /// Returns the index of the group that matches the provided source road name.
+        /// </summary>
         private static int FindGroupIndex(IReadOnlyList<ConnectionGroup> groups, string roadName)
         {
             for (int i = 0; i < groups.Count; i++)
@@ -132,6 +138,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return -1;
         }
 
+        /// <summary>
+        /// Returns the source road name shown for one connection record.
+        /// </summary>
         private static string GetSourceRoadName(ConnectRoadToolState.ConnectionRecord connection)
         {
             if (connection.sourceWaypoint == null)

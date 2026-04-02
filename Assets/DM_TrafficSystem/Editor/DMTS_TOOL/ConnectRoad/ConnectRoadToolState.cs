@@ -408,6 +408,9 @@ namespace Darkmatter.TrafficSystem.Editor
             SceneView.RepaintAll();
         }
 
+        /// <summary>
+        /// Returns the cached lane-start terminal record for the provided waypoint when one exists.
+        /// </summary>
         private bool TryGetLaneStartTerminal(AIWaypoint waypoint, out LaneTerminal terminal)
         {
             for (int i = 0; i < laneStarts.Count; i++)
@@ -423,6 +426,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Returns the cached lane-end terminal record for the provided waypoint when one exists.
+        /// </summary>
         private bool TryGetLaneEndTerminal(AIWaypoint waypoint, out LaneTerminal terminal)
         {
             for (int i = 0; i < laneEnds.Count; i++)
@@ -438,6 +444,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Returns the editable connection object that already links the provided source and target waypoints.
+        /// </summary>
         private AIWaypointConnection FindExistingConnection(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
         {
             AIWaypointConnection[] connections = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Exclude);
@@ -455,6 +464,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return null;
         }
 
+        /// <summary>
+        /// Returns whether one connection's curve or straight segment is visible in the current Scene view.
+        /// </summary>
         private bool IsConnectionVisible(AIWaypointConnection connection, SceneView sceneView)
         {
             List<Vector3> curvePoints = RoadSceneGizmoDrawer.GetConnectionCurvePoints(connection);
@@ -477,6 +489,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return RoadSceneVisibilityUtility.IsBoundsVisible(sceneView, bounds);
         }
 
+        /// <summary>
+        /// Computes framing bounds for the provided connection record.
+        /// </summary>
         private static Bounds ComputeConnectionBounds(ConnectionRecord connection)
         {
             if (connection.connection != null)
@@ -501,6 +516,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return fallbackBounds;
         }
 
+        /// <summary>
+        /// Removes one waypoint link from the chosen previous or next array on the owner waypoint.
+        /// </summary>
         private bool RemoveWaypointLink(AIWaypoint ownerWaypoint, AIWaypoint linkedWaypoint, bool useNextWaypoint)
         {
             if (ownerWaypoint == null || linkedWaypoint == null)
@@ -529,6 +547,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Returns a deduplicated waypoint array with the requested waypoint removed.
+        /// </summary>
         private static AIWaypoint[] BuildFilteredWaypointLinkArray(IReadOnlyList<AIWaypoint> existingLinks, AIWaypoint candidateToRemove)
         {
             var remainingLinks = new List<AIWaypoint>();
@@ -550,6 +571,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : System.Array.Empty<AIWaypoint>();
         }
 
+        /// <summary>
+        /// Returns whether two waypoint link arrays contain the same references in the same order.
+        /// </summary>
         private static bool WaypointArraysEqual(IReadOnlyList<AIWaypoint> first, IReadOnlyList<AIWaypoint> second)
         {
             int firstCount = first != null ? first.Count : 0;
@@ -566,6 +590,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Returns whether one waypoint still exists inside the provided cached terminal list.
+        /// </summary>
         private static bool IsWaypointStillAvailable(AIWaypoint waypoint, IReadOnlyList<LaneTerminal> terminals)
         {
             if (waypoint == null || terminals == null)
@@ -580,6 +607,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return false;
         }
 
+        /// <summary>
+        /// Returns the most descriptive lane-terminal label available for the provided waypoint.
+        /// </summary>
         private string GetLaneTerminalName(AIWaypoint waypoint)
         {
             if (TryGetLaneEndTerminal(waypoint, out LaneTerminal laneEnd))
@@ -591,11 +621,17 @@ namespace Darkmatter.TrafficSystem.Editor
             return waypoint != null ? waypoint.name : "waypoint";
         }
 
+        /// <summary>
+        /// Builds the display label used for one source-to-target road connection.
+        /// </summary>
         private string GetConnectionLabel(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
         {
             return $"{GetLaneTerminalName(sourceWaypoint)} --> {GetLaneTerminalName(targetWaypoint)}";
         }
 
+        /// <summary>
+        /// Builds a unique key for one source-to-target waypoint pair.
+        /// </summary>
         private static ulong GetConnectionKey(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
         {
             uint sourceId = sourceWaypoint != null ? unchecked((uint)RuntimeHelpers.GetHashCode(sourceWaypoint)) : 0u;
@@ -603,6 +639,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return ((ulong)sourceId << 32) | targetId;
         }
 
+        /// <summary>
+        /// Returns the best currently active Scene view for framing and visibility queries.
+        /// </summary>
         private static SceneView GetActiveSceneView()
         {
             return SceneView.lastActiveSceneView ?? SceneView.currentDrawingSceneView;

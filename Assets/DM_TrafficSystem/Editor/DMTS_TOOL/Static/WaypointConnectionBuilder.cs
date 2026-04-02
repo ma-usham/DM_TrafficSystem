@@ -9,7 +9,6 @@ namespace Darkmatter.TrafficSystem.Editor
     /// </summary>
     public static class WaypointConnectionBuilder
     {
-        private const string ConnectionRootName = "WaypointConnections";
         private const float MinWaypointSeparation = 0.1f;
 
         private static readonly AIWaypoint[] EmptyWaypointLinks = System.Array.Empty<AIWaypoint>();
@@ -105,6 +104,9 @@ namespace Darkmatter.TrafficSystem.Editor
             RemoveWaypointReferences(affectedWaypoints, undoLabel);
         }
 
+        /// <summary>
+        /// Returns whether the connection still references both required endpoint waypoints.
+        /// </summary>
         private static bool HasValidEndpoints(AIWaypointConnection connection)
         {
             return connection != null
@@ -112,6 +114,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 && connection.targetWaypoint != null;
         }
 
+        /// <summary>
+        /// Builds a unique waypoint set while filtering out null entries.
+        /// </summary>
         private static HashSet<AIWaypoint> BuildWaypointSet(IEnumerable<AIWaypoint> waypoints)
         {
             var uniqueWaypoints = new HashSet<AIWaypoint>();
@@ -127,6 +132,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return uniqueWaypoints;
         }
 
+        /// <summary>
+        /// Removes all graph links that were created for the provided connection.
+        /// </summary>
         private static void RemoveConnectionLinks(AIWaypointConnection connection, string undoLabel)
         {
             if (connection == null)
@@ -143,6 +151,9 @@ namespace Darkmatter.TrafficSystem.Editor
             RemoveWaypointLink(connection.targetWaypoint, connection.sourceWaypoint, useNextWaypoint: false, undoLabel);
         }
 
+        /// <summary>
+        /// Removes stale waypoint references to any waypoint that is about to be deleted.
+        /// </summary>
         private static void RemoveWaypointReferences(HashSet<AIWaypoint> affectedWaypoints, string undoLabel)
         {
             if (affectedWaypoints == null || affectedWaypoints.Count == 0)
@@ -176,6 +187,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Deletes all generated transition waypoints that belong to one connection object.
+        /// </summary>
         private static void ClearGeneratedWaypoints(AIWaypointConnection connection, string undoLabel)
         {
             if (connection == null)
@@ -205,6 +219,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorUtility.SetDirty(connection);
         }
 
+        /// <summary>
+        /// Samples the connection spline into evenly spaced transition waypoint positions.
+        /// </summary>
         private static List<Vector3> BuildTransitionWaypointPositions(AIWaypointConnection connection)
         {
             var positions = new List<Vector3>();
@@ -270,6 +287,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return positions;
         }
 
+        /// <summary>
+        /// Creates generated transition waypoint objects at the provided sampled positions.
+        /// </summary>
         private static void CreateGeneratedWaypoints(
             AIWaypointConnection connection,
             IReadOnlyList<Vector3> positions,
@@ -308,6 +328,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorUtility.SetDirty(connection);
         }
 
+        /// <summary>
+        /// Rebuilds previous and next links across the generated connection waypoint chain.
+        /// </summary>
         private static void LinkConnectionWaypoints(AIWaypointConnection connection, string undoLabel)
         {
             if (!HasValidEndpoints(connection))
@@ -345,6 +368,9 @@ namespace Darkmatter.TrafficSystem.Editor
             AppendWaypointLink(connection.targetWaypoint, generatedWaypoints[generatedCount - 1], useNextWaypoint: false, undoLabel);
         }
 
+        /// <summary>
+        /// Adds one waypoint reference to the chosen previous or next array when it is not already present.
+        /// </summary>
         private static bool AppendWaypointLink(
             AIWaypoint ownerWaypoint,
             AIWaypoint linkedWaypoint,
@@ -377,6 +403,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Removes one waypoint reference from the chosen previous or next array when present.
+        /// </summary>
         private static bool RemoveWaypointLink(
             AIWaypoint ownerWaypoint,
             AIWaypoint linkedWaypoint,
@@ -409,6 +438,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Returns the first waypoint reached after leaving the connection source endpoint.
+        /// </summary>
         private static AIWaypoint GetEntryWaypoint(AIWaypointConnection connection)
         {
             if (connection == null)
@@ -419,6 +451,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : connection.targetWaypoint;
         }
 
+        /// <summary>
+        /// Returns the last generated waypoint before the connection target endpoint.
+        /// </summary>
         private static AIWaypoint GetExitWaypoint(AIWaypointConnection connection)
         {
             if (connection == null)
@@ -429,6 +464,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : connection.sourceWaypoint;
         }
 
+        /// <summary>
+        /// Returns a deduplicated waypoint link array that includes the provided candidate.
+        /// </summary>
         private static AIWaypoint[] BuildUniqueWaypointLinkArray(IReadOnlyList<AIWaypoint> existingLinks, AIWaypoint candidate)
         {
             var uniqueLinks = new List<AIWaypoint>();
@@ -451,6 +489,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : EmptyWaypointLinks;
         }
 
+        /// <summary>
+        /// Returns a deduplicated waypoint link array with the provided candidate removed.
+        /// </summary>
         private static AIWaypoint[] BuildFilteredWaypointLinkArray(IReadOnlyList<AIWaypoint> existingLinks, AIWaypoint candidateToRemove)
         {
             var remainingLinks = new List<AIWaypoint>();
@@ -472,6 +513,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : EmptyWaypointLinks;
         }
 
+        /// <summary>
+        /// Returns a deduplicated waypoint link array with all blocked waypoints removed.
+        /// </summary>
         private static AIWaypoint[] FilterWaypointLinks(IReadOnlyList<AIWaypoint> existingLinks, HashSet<AIWaypoint> blockedWaypoints)
         {
             var remainingLinks = new List<AIWaypoint>();
@@ -497,6 +541,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : EmptyWaypointLinks;
         }
 
+        /// <summary>
+        /// Returns whether two waypoint link arrays contain the same references in the same order.
+        /// </summary>
         private static bool WaypointArraysEqual(IReadOnlyList<AIWaypoint> first, IReadOnlyList<AIWaypoint> second)
         {
             int firstCount = first != null ? first.Count : 0;
@@ -513,12 +560,18 @@ namespace Darkmatter.TrafficSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// Returns whether one sampled point is too close to either endpoint to create a transition waypoint.
+        /// </summary>
         private static bool IsNearEndpoint(Vector3 position, Vector3 sourcePosition, Vector3 targetPosition)
         {
             return Vector3.Distance(position, sourcePosition) <= MinWaypointSeparation
                 || Vector3.Distance(position, targetPosition) <= MinWaypointSeparation;
         }
 
+        /// <summary>
+        /// Returns the speed limit that should be applied to generated transition waypoints.
+        /// </summary>
         private static float GetConnectionSpeed(AIWaypointConnection connection)
         {
             if (connection == null)
@@ -532,6 +585,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return Mathf.Min(sourceSpeed, targetSpeed);
         }
 
+        /// <summary>
+        /// Returns the vehicle filter that should be applied to generated transition waypoints.
+        /// </summary>
         private static VehicleType[] GetConnectionVehicleTypes(AIWaypointConnection connection)
         {
             if (connection == null)
@@ -556,6 +612,9 @@ namespace Darkmatter.TrafficSystem.Editor
             return new[] { VehicleType.Default };
         }
 
+        /// <summary>
+        /// Returns the preferred forward direction to seed the source side of a new connection spline.
+        /// </summary>
         private static Vector3 GetSourceForward(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
         {
             if (sourceWaypoint != null
@@ -571,6 +630,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : Vector3.forward;
         }
 
+        /// <summary>
+        /// Returns the preferred forward direction to seed the target side of a new connection spline.
+        /// </summary>
         private static Vector3 GetTargetForward(AIWaypoint targetWaypoint, AIWaypoint sourceWaypoint)
         {
             if (targetWaypoint != null
@@ -586,6 +648,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 : Vector3.forward;
         }
 
+        /// <summary>
+        /// Builds the default scene object name for a connection between two lane terminals.
+        /// </summary>
         private static string BuildConnectionObjectName(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
         {
             string sourceName = sourceWaypoint != null ? sourceWaypoint.transform.parent.name : "Source";
@@ -593,15 +658,12 @@ namespace Darkmatter.TrafficSystem.Editor
             return $"{sourceName}_To_{targetName}_Connection";
         }
 
+        /// <summary>
+        /// Returns the shared scene root used for all editable connection objects.
+        /// </summary>
         private static GameObject GetOrCreateConnectionRoot()
         {
-            GameObject rootObject = GameObject.Find(ConnectionRootName);
-            if (rootObject != null)
-                return rootObject;
-
-            rootObject = new GameObject(ConnectionRootName);
-            Undo.RegisterCreatedObjectUndo(rootObject, "Create Road Connection Root");
-            return rootObject;
+            return TrafficSystemHierarchyUtility.GetOrCreateConnectionsRoot("Create Road Connection Root").gameObject;
         }
     }
 }

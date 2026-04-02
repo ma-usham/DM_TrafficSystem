@@ -53,10 +53,10 @@ namespace Darkmatter.TrafficSystem.Editor
             && globalSceneGizmoState.enabled
             && (globalSceneGizmoState.drawRoadCurves || globalSceneGizmoState.drawRoadNames);
 
+        [MenuItem("Tools/DarkMatter Traffic System Tool", false, 2)]
         /// <summary>
         /// Opens the traffic system window from the Unity Tools menu.
         /// </summary>
-        [MenuItem("Tools/DarkMatter Traffic System Tool", false, 2)]
         private static void ShowWindowFromMenu()
         {
             ShowWindow();
@@ -84,6 +84,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private void OnEnable()
         {
             editorWindow = this;
+            TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
             pageStack.Clear();
             pageStack.Push(new MainPage());
             SceneView.duringSceneGui -= OnSceneGUI;
@@ -135,6 +136,9 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws the foldout UI that controls which shared scene gizmos are enabled.
+        /// </summary>
         private void DrawGlobalSceneGizmoPanel()
         {
             EditorGUILayout.BeginVertical("box");
@@ -176,6 +180,9 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.Space(6);
         }
 
+        /// <summary>
+        /// Draws the enabled shared road, connection, and runtime intersection gizmos in the Scene view.
+        /// </summary>
         private void DrawGlobalSceneGizmos(SceneView sceneView)
         {
             if (globalSceneGizmoState == null
@@ -224,66 +231,59 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        /// <summary>
+        /// Draws play-mode stop-state markers for all configured intersections in the scene.
+        /// </summary>
         private void DrawActiveIntersectionGizmos()
         {
-            PriorityIntersection[] intersections = Object.FindObjectsOfType<PriorityIntersection>();
-            foreach (var intersection in intersections)
+            PriorityIntersection[] intersections = Object.FindObjectsByType<PriorityIntersection>(FindObjectsInactive.Exclude);
+            foreach (PriorityIntersection intersection in intersections)
             {
-                if (intersection == null) continue;
-                foreach (var road in intersection.priorityStopRoads)
+                if (intersection == null)
+                    continue;
+
+                foreach (PriorityStopRoad road in intersection.priorityStopRoads)
                 {
-                    if (road == null || road.stopPoints == null) continue;
-                    foreach (var wp in road.stopPoints)
-                    {
-                        if (wp == null) continue;
+                    if (road == null || road.stopPoints == null)
+                        continue;
 
-                        bool isStopping = wp.settings.isStopPoint;
-                        Color boxColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
-                        Color outlineColor = isStopping ? Color.red : Color.green;
-
-                        Handles.color = boxColor;
-                        Vector3 pos = wp.transform.position;
-                        Vector3[] corners = new Vector3[]
-                        {
-                            pos + new Vector3(-0.4f, 0, -0.4f),
-                            pos + new Vector3(0.4f, 0, -0.4f),
-                            pos + new Vector3(0.4f, 0, 0.4f),
-                            pos + new Vector3(-0.4f, 0, 0.4f)
-                        };
-
-                        Handles.DrawSolidRectangleWithOutline(corners, boxColor, outlineColor);
-                    }
+                    DrawIntersectionRoadStatus(road.stopPoints);
                 }
             }
 
-            TrafficLightIntersection[] lightIntersections = Object.FindObjectsOfType<TrafficLightIntersection>();
-            foreach (var intersection in lightIntersections)
+            TrafficLightIntersection[] lightIntersections = Object.FindObjectsByType<TrafficLightIntersection>(FindObjectsInactive.Exclude);
+            foreach (TrafficLightIntersection intersection in lightIntersections)
             {
-                if (intersection == null) continue;
-                foreach (var road in intersection.trafficLightRoads)
+                if (intersection == null)
+                    continue;
+
+                foreach (TrafficLightRoad road in intersection.trafficLightRoads)
                 {
-                    if (road == null || road.stopPoints == null) continue;
-                    foreach (var wp in road.stopPoints)
-                    {
-                        if (wp == null) continue;
+                    if (road == null || road.stopPoints == null)
+                        continue;
 
-                        bool isStopping = wp.settings.isStopPoint;
-                        Color boxColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
-                        Color outlineColor = isStopping ? Color.red : Color.green;
-
-                        Handles.color = boxColor;
-                        Vector3 pos = wp.transform.position;
-                        Vector3[] corners = new Vector3[]
-                        {
-                            pos + new Vector3(-0.4f, 0, -0.4f),
-                            pos + new Vector3(0.4f, 0, -0.4f),
-                            pos + new Vector3(0.4f, 0, 0.4f),
-                            pos + new Vector3(-0.4f, 0, 0.4f)
-                        };
-
-                        Handles.DrawSolidRectangleWithOutline(corners, boxColor, outlineColor);
-                    }
+                    DrawIntersectionRoadStatus(road.stopPoints);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Draws stop-point state colors for one intersection road while the game is running.
+        /// </summary>
+        private static void DrawIntersectionRoadStatus(IEnumerable<AIWaypoint> stopPoints)
+        {
+            if (stopPoints == null)
+                return;
+
+            foreach (AIWaypoint waypoint in stopPoints)
+            {
+                if (waypoint == null)
+                    continue;
+
+                bool isStopping = waypoint.settings.isStopPoint;
+                Color fillColor = isStopping ? new Color(1f, 0f, 0f, 0.4f) : new Color(0f, 1f, 0f, 0.4f);
+                Color outlineColor = isStopping ? Color.red : Color.green;
+                IntersectionSceneUtility.DrawStopPoint(waypoint, fillColor, outlineColor);
             }
         }
     }

@@ -32,6 +32,7 @@ namespace Darkmatter.TrafficSystem.Editor
             GameObject go = new GameObject("TrafficManager");
             trafficManager = go.AddComponent<TrafficManager>();
             Undo.RegisterCreatedObjectUndo(go, "Create TrafficManager");
+            TrafficSystemHierarchyUtility.ParentTrafficManager(go, "Create TrafficManager");
             Selection.activeGameObject = go;
         }
 
