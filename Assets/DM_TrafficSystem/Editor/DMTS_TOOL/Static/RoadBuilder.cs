@@ -25,6 +25,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             EnsureCollections(road);
+            RemoveAttachedConnections(road, "Clear Road Waypoints");
             Undo.RecordObject(road, "Clear Road Waypoints");
 
             road.generatedLanes.Clear();
@@ -301,12 +302,50 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
+        /// Removes road-to-road connections before this road destroys and recreates its generated waypoints.
+        /// </summary>
+        private static void RemoveAttachedConnections(Road road, string undoLabel)
+        {
+            List<AIWaypoint> roadWaypoints = CollectRoadWaypoints(road);
+            if (roadWaypoints.Count == 0)
+                return;
+
+            WaypointConnectionBuilder.RemoveConnectionsForWaypoints(roadWaypoints, undoLabel);
+        }
+
+        /// <summary>
         /// Ensures the generated collections exist before generation or cleanup code accesses them.
         /// </summary>
         private static void EnsureCollections(Road road)
         {
             road.generatedLanes ??= new List<List<Transform>>();
             road.laneObjects ??= new List<AILane>();
+        }
+
+        /// <summary>
+        /// Collects all currently generated waypoints that belong to the provided road.
+        /// </summary>
+        private static List<AIWaypoint> CollectRoadWaypoints(Road road)
+        {
+            var roadWaypoints = new List<AIWaypoint>();
+            if (road == null || road.laneObjects == null)
+                return roadWaypoints;
+
+            for (int laneIndex = 0; laneIndex < road.laneObjects.Count; laneIndex++)
+            {
+                AILane lane = road.laneObjects[laneIndex];
+                if (lane == null || lane.waypoints == null)
+                    continue;
+
+                for (int waypointIndex = 0; waypointIndex < lane.waypoints.Count; waypointIndex++)
+                {
+                    AIWaypoint waypoint = lane.waypoints[waypointIndex];
+                    if (waypoint != null)
+                        roadWaypoints.Add(waypoint);
+                }
+            }
+
+            return roadWaypoints;
         }
 
         /// <summary>

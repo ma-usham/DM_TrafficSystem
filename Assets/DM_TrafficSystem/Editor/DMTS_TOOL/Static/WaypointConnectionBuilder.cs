@@ -82,11 +82,49 @@ namespace Darkmatter.TrafficSystem.Editor
             Undo.DestroyObjectImmediate(connection.gameObject);
         }
 
+        /// <summary>
+        /// Deletes curved connections that touch any provided waypoint and removes stale waypoint references to them.
+        /// </summary>
+        public static void RemoveConnectionsForWaypoints(IEnumerable<AIWaypoint> waypoints, string undoLabel)
+        {
+            HashSet<AIWaypoint> affectedWaypoints = BuildWaypointSet(waypoints);
+            if (affectedWaypoints.Count == 0)
+                return;
+
+            AIWaypointConnection[] connectionObjects = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < connectionObjects.Length; i++)
+            {
+                AIWaypointConnection connection = connectionObjects[i];
+                if (connection == null)
+                    continue;
+
+                if (affectedWaypoints.Contains(connection.sourceWaypoint) || affectedWaypoints.Contains(connection.targetWaypoint))
+                    DeleteConnection(connection, undoLabel);
+            }
+
+            RemoveWaypointReferences(affectedWaypoints, undoLabel);
+        }
+
         private static bool HasValidEndpoints(AIWaypointConnection connection)
         {
             return connection != null
                 && connection.sourceWaypoint != null
                 && connection.targetWaypoint != null;
+        }
+
+        private static HashSet<AIWaypoint> BuildWaypointSet(IEnumerable<AIWaypoint> waypoints)
+        {
+            var uniqueWaypoints = new HashSet<AIWaypoint>();
+            if (waypoints == null)
+                return uniqueWaypoints;
+
+            foreach (AIWaypoint waypoint in waypoints)
+            {
+                if (waypoint != null)
+                    uniqueWaypoints.Add(waypoint);
+            }
+
+            return uniqueWaypoints;
         }
 
         private static void RemoveConnectionLinks(AIWaypointConnection connection, string undoLabel)
@@ -103,6 +141,39 @@ namespace Darkmatter.TrafficSystem.Editor
             // Remove any legacy direct endpoint-to-endpoint link when the connection is converted from a straight link.
             RemoveWaypointLink(connection.sourceWaypoint, connection.targetWaypoint, useNextWaypoint: true, undoLabel);
             RemoveWaypointLink(connection.targetWaypoint, connection.sourceWaypoint, useNextWaypoint: false, undoLabel);
+        }
+
+        private static void RemoveWaypointReferences(HashSet<AIWaypoint> affectedWaypoints, string undoLabel)
+        {
+            if (affectedWaypoints == null || affectedWaypoints.Count == 0)
+                return;
+
+            AIWaypoint[] allWaypoints = Object.FindObjectsByType<AIWaypoint>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < allWaypoints.Length; i++)
+            {
+                AIWaypoint waypoint = allWaypoints[i];
+                if (waypoint == null)
+                    continue;
+
+                WaypointSettings settings = waypoint.settings;
+                AIWaypoint[] previousWaypoint = FilterWaypointLinks(settings.previousWaypoint, affectedWaypoints);
+                AIWaypoint[] nextWaypoint = FilterWaypointLinks(settings.nextWaypoint, affectedWaypoints);
+                AIWaypoint[] laneChangePoints = FilterWaypointLinks(settings.laneChangePoints, affectedWaypoints);
+
+                if (WaypointArraysEqual(settings.previousWaypoint, previousWaypoint)
+                    && WaypointArraysEqual(settings.nextWaypoint, nextWaypoint)
+                    && WaypointArraysEqual(settings.laneChangePoints, laneChangePoints))
+                {
+                    continue;
+                }
+
+                Undo.RecordObject(waypoint, undoLabel);
+                settings.previousWaypoint = previousWaypoint;
+                settings.nextWaypoint = nextWaypoint;
+                settings.laneChangePoints = laneChangePoints;
+                waypoint.settings = settings;
+                EditorUtility.SetDirty(waypoint);
+            }
         }
 
         private static void ClearGeneratedWaypoints(AIWaypointConnection connection, string undoLabel)
@@ -391,6 +462,31 @@ namespace Darkmatter.TrafficSystem.Editor
                     AIWaypoint existingLink = existingLinks[i];
                     if (existingLink == null || existingLink == candidateToRemove || remainingLinks.Contains(existingLink))
                         continue;
+
+                    remainingLinks.Add(existingLink);
+                }
+            }
+
+            return remainingLinks.Count > 0
+                ? remainingLinks.ToArray()
+                : EmptyWaypointLinks;
+        }
+
+        private static AIWaypoint[] FilterWaypointLinks(IReadOnlyList<AIWaypoint> existingLinks, HashSet<AIWaypoint> blockedWaypoints)
+        {
+            var remainingLinks = new List<AIWaypoint>();
+
+            if (existingLinks != null)
+            {
+                for (int i = 0; i < existingLinks.Count; i++)
+                {
+                    AIWaypoint existingLink = existingLinks[i];
+                    if (existingLink == null
+                        || (blockedWaypoints != null && blockedWaypoints.Contains(existingLink))
+                        || remainingLinks.Contains(existingLink))
+                    {
+                        continue;
+                    }
 
                     remainingLinks.Add(existingLink);
                 }
