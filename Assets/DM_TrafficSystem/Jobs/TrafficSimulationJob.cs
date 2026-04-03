@@ -49,15 +49,15 @@ namespace Darkmatter.TrafficSystem
             distance = dir.magnitude;
 
             // Behavior 1: Traffic Light / Stop Point Braking
-            if (state.isApproachingStopPoint && distance < 5.0f)
+            if (state.isApproachingStopPoint && distance < state.stoppingDistance * 2f)
             {
-                state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * 3f);
+                state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower);
                 if (state.currentSpeed < 0.1f) state.currentSpeed = 0f;
             }
             else
             {
                 // Accelerate up to speed limit
-                state.currentSpeed = Mathf.Lerp(state.currentSpeed, state.maxSpeed, deltaTime * 2f);
+                state.currentSpeed = Mathf.Lerp(state.currentSpeed, state.maxSpeed, deltaTime * state.acceleration);
             }
 
             // Behavior 2: Intersecting the Waypoint
@@ -81,21 +81,29 @@ namespace Darkmatter.TrafficSystem
             // If we are fully stopped or waiting for the graph, skip the heavy math
             if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.001f)
             {
+                state.desiredVelocity = Vector3.zero;
+                state.desiredRotation = transform.rotation;
                 return;
             }
 
             Vector3 currentPos = transform.position;
 
-            // Translation (Applying the target speed from the Braking logic)
+            // Instead of translating transform directly, calculate desired velocity output
             dir.Normalize();
-            Vector3 newPos = Vector3.MoveTowards(currentPos, targetPos, state.currentSpeed * deltaTime);
-            transform.position = newPos;
+            state.desiredVelocity = dir * state.currentSpeed;
 
-            // Smooth Rotation interpolation
+            // Smooth Rotation interpolation target
             if (dir.sqrMagnitude > 0.001f)
             {
-                Quaternion targetRot = Quaternion.LookRotation(dir);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, deltaTime * 5f); 
+                // In TransformAccess, 'up' is calculated by rotating Vector3.up by the current rotation
+                Vector3 currentUp = transform.rotation * Vector3.up;
+                Quaternion targetRot = Quaternion.LookRotation(dir, currentUp);
+                // We keep the spherical interpolation to give realistic turning limits based on turnSpeed
+                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRot, deltaTime * state.turnSpeed); 
+            }
+            else
+            {
+                state.desiredRotation = transform.rotation;
             }
         }
     }

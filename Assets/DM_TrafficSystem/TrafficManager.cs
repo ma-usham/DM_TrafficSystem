@@ -16,22 +16,29 @@ namespace Darkmatter.TrafficSystem
 
         [FormerlySerializedAs("VehicleCount")]
         [Min(0)]
-        public int vehicleCount = 5;
+        public int vehicleCount = 1;
 
         [Header("Testing setup")]
-        public GameObject dummyCarPrefab;
+        public AIVehicle dummyCarPrefab;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
 
         // Native memory arrays for the Jobs
         private NativeArray<VehicleState> _vehicleStates;
-        private NativeArray<Vector3> _waypointBuffer; 
+        private NativeArray<Vector3> _waypointBuffer;
         private TransformAccessArray _transformAccessArray;
-        
+
+        // Suspension physics arrays
+        private NativeArray<RaycastCommand> _raycastCommands;
+        private NativeArray<RaycastHit> _raycastHits;
+        private NativeArray<WheelPhysicsData> _wheelDataArray;
+        private int _totalWheels = 0;
+        private QueryParameters _raycastQueryParams;
+
         // Job execution handling
         private JobHandle _finalJobHandle;
-        
-        // Systems
-        private TrafficRouteSystem _routeSystem;
+
+        // Helper Classes
+        private TrafficWaypointUpdater _trafficWaypointUpdater;
 
         // Main thread references required to traverse the actual AIWaypoint graph
         private List<AIVehicle> _activeVehicles = new List<AIVehicle>();
@@ -39,7 +46,7 @@ namespace Darkmatter.TrafficSystem
 
         void Start()
         {
-            _routeSystem = new TrafficRouteSystem();
+            _trafficWaypointUpdater = new TrafficWaypointUpdater();
             InitializeBuffers();
             SpawnInitialVehicles();
         }
@@ -49,7 +56,18 @@ namespace Darkmatter.TrafficSystem
             _vehicleStates = new NativeArray<VehicleState>(vehicleCount, Allocator.Persistent);
             _waypointBuffer = new NativeArray<Vector3>(vehicleCount * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
             _transformAccessArray = new TransformAccessArray(vehicleCount);
-            
+
+            // We calculate how many wheels total (assuming all prefabs have similar counts)
+            _totalWheels = 0;
+            // Raycast query params initialized with global raycast behaviors
+            _raycastQueryParams = new QueryParameters
+            {
+                hitMultipleFaces = false,
+                hitBackfaces = false,
+                hitTriggers = QueryTriggerInteraction.Ignore,
+                layerMask = 0 // Will be set per raycast
+            };
+
             _isInitialized = true;
         }
 
@@ -60,32 +78,47 @@ namespace Darkmatter.TrafficSystem
             // Simple spawner for now: spawn one car per waypoint until we hit vehicleCount
             for (int i = 0; i < vehicleCount; i++)
             {
-                AIWaypoint spawnPoint = spawnWaypoints[i % spawnWaypoints.Length];
-                GameObject carObj = Instantiate(dummyCarPrefab, spawnPoint.transform.position, spawnPoint.transform.rotation);
-                
-               AIVehicle vehicle = carObj.GetComponent<AIVehicle>();
+                AIWaypoint spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
+                AIVehicle vehicle = Instantiate(dummyCarPrefab, spawnPoint.transform.position+ new Vector3(0, 1f, 0), spawnPoint.transform.rotation);
+
                 vehicle.arrayIndex = i;
                 vehicle.lookaheadWaypoints[0] = spawnPoint;
-                
+
                 _activeVehicles.Add(vehicle);
-                _transformAccessArray.Add(carObj.transform);
+                _transformAccessArray.Add(vehicle.transform);
 
                 // Initialize state
                 VehicleState state = new VehicleState
                 {
                     currentSpeed = 10f, // test speed
-                    maxSpeed = 15f,
+                    maxSpeed = vehicle.maxSpeed,
+                    acceleration = vehicle.acceleration,
+                    brakingPower = vehicle.brakingPower,
+                    turnSpeed = vehicle.turnSpeed,
+                    stoppingDistance = vehicle.stoppingDistance,
                     waypointBufferStartIndex = i * WAYPOINT_LOOKAHEAD,
                     currentTargetIndexOffset = 0,
                     reachedCurrentWaypoint = false,
-                    isApproachingStopPoint = false
+                    isApproachingStopPoint = false,
+                    desiredVelocity = Vector3.zero,
+                    desiredRotation = vehicle.transform.rotation
                 };
-                
+
                 _vehicleStates[i] = state;
-                
+
                 // Warm up the 5 waypoint buffer 
                 WarmupWaypoints(vehicle, state);
+
+                if (vehicle.wheels != null)
+                {
+                    _totalWheels += vehicle.wheels.Length;
+                }
             }
+
+            // Allocate Suspension Job memory based on total wheels
+            _raycastCommands = new NativeArray<RaycastCommand>(_totalWheels, Allocator.Persistent);
+            _raycastHits = new NativeArray<RaycastHit>(_totalWheels, Allocator.Persistent);
+            _wheelDataArray = new NativeArray<WheelPhysicsData>(_totalWheels, Allocator.Persistent);
         }
 
         private void WarmupWaypoints(AIVehicle vehicle, VehicleState state)
@@ -119,33 +152,111 @@ namespace Darkmatter.TrafficSystem
             _vehicleStates[vehicle.arrayIndex] = state;
         }
 
-        void Update()
+        void FixedUpdate()
         {
             if (!_isInitialized) return;
-            
-            // 1. Route Management System processes completed waypoints and reads stop points
-            _routeSystem.HandleRouteRefills(_activeVehicles, _vehicleStates, _waypointBuffer);
-            _routeSystem.PollDynamicStopStates(_activeVehicles, _vehicleStates);
 
-            // Schedule Single Monolithic Job (Optimized for Mobile/Android to minimize ram bandwidth)
+            // --- 0. Prepare Suspension Raycast Data ---
+            int wheelIndex = 0;
+            for (int i = 0; i < _activeVehicles.Count; i++)
+            {
+                AIVehicle vehicle = _activeVehicles[i];
+                Rigidbody rb = vehicle.rb;
+                
+                if (vehicle.wheels == null) continue;
+
+                for (int w = 0; w < vehicle.wheels.Length; w++)
+                {
+                    Transform wheelT = vehicle.wheels[w];
+                    if (wheelT == null) continue;
+
+                    Vector3 origin = wheelT.position;
+                    Vector3 dir = -vehicle.transform.up; // Down relative to vehicle
+                    float rayLength = vehicle.suspensionRestLength + vehicle.wheelRadius;
+
+                    _raycastQueryParams.layerMask = vehicle.groundMask;
+
+                    // Set up the Raycast command
+                    _raycastCommands[wheelIndex] = new RaycastCommand(origin, dir, _raycastQueryParams, rayLength);
+
+                    // Set up the Physics Math input data
+                    _wheelDataArray[wheelIndex] = new WheelPhysicsData
+                    {
+                        vehicleIndex = i,
+                        origin = origin,
+                        upDir = vehicle.transform.up,
+                        wheelWorldVel = rb.GetPointVelocity(origin),
+                        suspensionRestLength = vehicle.suspensionRestLength,
+                        wheelRadius = vehicle.wheelRadius,
+                        springStrength = vehicle.springStrength,
+                        springDamper = vehicle.springDamper
+                    };
+
+                    wheelIndex++;
+                }
+            }
+
+            // 1. Route Management System processes completed waypoints and reads stop points
+            _trafficWaypointUpdater.UpdateWaypoint(_activeVehicles, _vehicleStates, _waypointBuffer);
+            _trafficWaypointUpdater.UpdateStopWaypoints(_activeVehicles, _vehicleStates);
+
+            // --- 2. Schedule Jobs ---
+            
+            // Job 1: Raycast Batch for finding Floor distance
+            JobHandle raycastJobHandle = RaycastCommand.ScheduleBatch(_raycastCommands, _raycastHits, 32);
+
+            // Job 2: Suspension Math calculation (depends on Raycast)
+            SuspensionPhysicsJob suspJob = new SuspensionPhysicsJob
+            {
+                raycastHits = _raycastHits,
+                wheelDataArray = _wheelDataArray
+            };
+            JobHandle suspJobHandle = suspJob.Schedule(_totalWheels, 32, raycastJobHandle);
+
+            // Job 3: Movement Simulation (independent of Suspension)
             TrafficSimulationJob simulationJob = new TrafficSimulationJob
             {
                 vehicleStates = _vehicleStates,
                 waypointBuffer = _waypointBuffer,
-                deltaTime = Time.deltaTime,
+                deltaTime = Time.fixedDeltaTime,
                 arrivalDistance = 1.0f
             };
 
-            // Final handle allows the Main Thread to wait for ALL jobs to finish
-            _finalJobHandle = simulationJob.Schedule(_transformAccessArray);
-        }
-
-        void LateUpdate()
-        {
-            if (!_isInitialized) return;
-
-            // Wait for the end of the Job chain
+            // Final handle allows the Main Thread to wait for all simulation and physics
+            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, suspJobHandle);
+            
+            // Wait for everything to complete before applying
             _finalJobHandle.Complete();
+
+            // --- 3. Apply the Calculated Physics Results ---
+
+            // Apply Suspension Springs
+            for (int w = 0; w < _totalWheels; w++)
+            {
+                WheelPhysicsData wData = _wheelDataArray[w];
+                if (wData.isGrounded)
+                {
+                    AIVehicle vehicle = _activeVehicles[wData.vehicleIndex];
+                    vehicle.rb.AddForceAtPosition(wData.resultingForce, wData.origin);
+                }
+            }
+
+            // Apply Rigidbody movement using the computed values
+            for (int i = 0; i < _activeVehicles.Count; i++)
+            {
+                AIVehicle vehicle = _activeVehicles[i];
+                VehicleState state = _vehicleStates[i];
+
+                Rigidbody rb = vehicle.rb;
+                
+                // Keep the Rigidbody's current vertical velocity (for gravity/suspension)
+                Vector3 finalVelocity = new Vector3(state.desiredVelocity.x, rb.linearVelocity.y, state.desiredVelocity.z);
+                rb.linearVelocity = finalVelocity;
+                
+                // Keep the Rigidbody's current up-vector slightly blended or directly apply rotation
+                // Apply rotation via Rigidbody to keep the physics intact
+                rb.MoveRotation(state.desiredRotation);
+            }
         }
 
         void OnDestroy()
@@ -156,6 +267,10 @@ namespace Darkmatter.TrafficSystem
                 if (_vehicleStates.IsCreated) _vehicleStates.Dispose();
                 if (_waypointBuffer.IsCreated) _waypointBuffer.Dispose();
                 if (_transformAccessArray.isCreated) _transformAccessArray.Dispose(); // Note the lowercase 'i' on isCreated here
+                
+                if (_raycastCommands.IsCreated) _raycastCommands.Dispose();
+                if (_raycastHits.IsCreated) _raycastHits.Dispose();
+                if (_wheelDataArray.IsCreated) _wheelDataArray.Dispose();
             }
         }
     }

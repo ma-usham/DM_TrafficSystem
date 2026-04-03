@@ -10,7 +10,15 @@ namespace Darkmatter.TrafficSystem
     {
         public float currentSpeed;
         public float maxSpeed;
+        public float acceleration;
+        public float brakingPower;
+        public float turnSpeed;
+        public float stoppingDistance;
         
+        // Output from the job to be applied to Rigidbody
+        public Vector3 desiredVelocity;
+        public Quaternion desiredRotation;
+
         // Index pointing to the start of this vehicle's 5-waypoint block in the global waypoint buffer
         public int waypointBufferStartIndex;
         
