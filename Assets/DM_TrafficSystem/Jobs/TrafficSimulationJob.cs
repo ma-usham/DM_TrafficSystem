@@ -97,9 +97,22 @@ namespace Darkmatter.TrafficSystem
             {
                 // In TransformAccess, 'up' is calculated by rotating Vector3.up by the current rotation
                 Vector3 currentUp = transform.rotation * Vector3.up;
-                Quaternion targetRot = Quaternion.LookRotation(dir, currentUp);
-                // We keep the spherical interpolation to give realistic turning limits based on turnSpeed
-                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRot, deltaTime * state.turnSpeed); 
+                
+                // CRITICAL FIX: Project the direction onto the car's local horizontal plane!
+                // Because waypoints are on the floor and the car is floating, 'dir' points downward.
+                // Projecting it flat prevents the car from pitching forward into the ground.
+                Vector3 flatDir = Vector3.ProjectOnPlane(dir, currentUp).normalized;
+                
+                if (flatDir.sqrMagnitude > 0.001f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(flatDir, currentUp);
+                    // We keep the spherical interpolation to give realistic turning limits based on turnSpeed
+                    state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRot, deltaTime * state.turnSpeed); 
+                }
+                else
+                {
+                    state.desiredRotation = transform.rotation;
+                }
             }
             else
             {

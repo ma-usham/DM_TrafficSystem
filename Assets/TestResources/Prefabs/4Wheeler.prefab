@@ -45,10 +45,10 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2671978861168198747}
   serializedVersion: 5
-  m_Mass: 300
-  m_LinearDamping: 0.01
-  m_AngularDamping: 0.5
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_Mass: 500
+  m_LinearDamping: 0
+  m_AngularDamping: 0
+  m_CenterOfMass: {x: 0, y: -0.2, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
@@ -97,18 +97,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ea63022ef80bc0469029f379db36389, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
-  maxSpeed: 15
+  maxSpeed: 10
   acceleration: 5
   brakingPower: 10
   turnSpeed: 5
   stoppingDistance: 2.5
   wheels:
-  - {fileID: 2673307364944004523}
-  - {fileID: 2673307367105461391}
-  - {fileID: 2673307363217229741}
-  - {fileID: 2673307365321215291}
-  suspensionRestLength: 0.37
-  wheelRadius: 0.4
+  - wheelTransform: {fileID: 2673307364944004523}
+    radius: 0.38
+    restLength: 0.375
+  - wheelTransform: {fileID: 2673307367105461391}
+    radius: 0.38
+    restLength: 0.375
+  - wheelTransform: {fileID: 2673307363217229741}
+    radius: 0.38
+    restLength: 0.375
+  - wheelTransform: {fileID: 2673307365321215291}
+    radius: 0.38
+    restLength: 0.375
   springStrength: 30000
   springDamper: 3000
   groundMask:
@@ -238,7 +244,7 @@ Transform:
   m_GameObject: {fileID: 2671978862118953201}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.756279, y: 0.106, z: 0.764}
+  m_LocalPosition: {x: 0.756279, y: 0.1, z: 0.764}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -539,7 +545,7 @@ Transform:
   m_GameObject: {fileID: 2671978864238340485}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.756279, y: 0.083000034, z: -0.6970001}
+  m_LocalPosition: {x: -0.756279, y: 0.1, z: -0.6970001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -570,7 +576,7 @@ Transform:
   m_GameObject: {fileID: 2671978864393915647}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.756279, y: 0.083000034, z: -0.697}
+  m_LocalPosition: {x: 0.756279, y: 0.1, z: -0.697}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
