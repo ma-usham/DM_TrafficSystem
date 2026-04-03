@@ -1881,59 +1881,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2015933356}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &123040692
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 123040694}
-  - component: {fileID: 123040693}
-  m_Layer: 0
-  m_Name: ConnectionWaypoint_0
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &123040693
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 123040692}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e69147057ff98d4889fb57a6b576786, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIWaypoint
-  settings:
-    speed: 20
-    isStopPoint: 0
-    vehicleType: 00000000
-    previousWaypoint:
-    - {fileID: 1249416706}
-    nextWaypoint:
-    - {fileID: 1442795168}
-    laneChangePoints: []
---- !u!4 &123040694
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 123040692}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.21251678, y: 0, z: 1.988678}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1309530780}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &124326454
 GameObject:
   m_ObjectHideFlags: 0
@@ -7814,59 +7761,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1665619319}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &553114411
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 553114413}
-  - component: {fileID: 553114412}
-  m_Layer: 0
-  m_Name: ConnectionWaypoint_2
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &553114412
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 553114411}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e69147057ff98d4889fb57a6b576786, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIWaypoint
-  settings:
-    speed: 20
-    isStopPoint: 0
-    vehicleType: 00000000
-    previousWaypoint:
-    - {fileID: 1442795168}
-    nextWaypoint:
-    - {fileID: 1289941021}
-    laneChangePoints: []
---- !u!4 &553114413
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 553114411}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.63752747, y: 0, z: 5.966034}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1309530780}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &554044569
 GameObject:
   m_ObjectHideFlags: 0
@@ -11535,7 +11429,6 @@ MonoBehaviour:
     vehicleType: 00000000
     previousWaypoint:
     - {fileID: 1520884721}
-    - {fileID: 1187153740}
     nextWaypoint:
     - {fileID: 1047098407}
     laneChangePoints: []
@@ -13434,7 +13327,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1309530780}
   - {fileID: 106094943}
   - {fileID: 1829385094}
   - {fileID: 558556518}
@@ -14040,7 +13932,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.TrafficManager
   vehicleCount: 1
-  dummyCarPrefab: {fileID: 3076017061292102493, guid: b83885ef725e62d4aa27e8ba5d599444, type: 3}
+  dummyCarPrefab: {fileID: 5529785408247996689, guid: 0c015dbff2c36e94089df72dedec0b0e, type: 3}
   spawnWaypoints:
   - {fileID: 1550586195}
 --- !u!1 &985916552
@@ -17113,59 +17005,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2015933356}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1187153739
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1187153741}
-  - component: {fileID: 1187153740}
-  m_Layer: 0
-  m_Name: ConnectionWaypoint_4
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1187153740
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1187153739}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e69147057ff98d4889fb57a6b576786, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIWaypoint
-  settings:
-    speed: 20
-    isStopPoint: 0
-    vehicleType: 00000000
-    previousWaypoint:
-    - {fileID: 1289941021}
-    nextWaypoint:
-    - {fileID: 790322375}
-    laneChangePoints: []
---- !u!4 &1187153741
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1187153739}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1.0625534, y: 0, z: 9.94339}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1309530780}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1195100161
 GameObject:
   m_ObjectHideFlags: 0
@@ -18276,7 +18115,6 @@ MonoBehaviour:
     previousWaypoint:
     - {fileID: 1899550831}
     nextWaypoint:
-    - {fileID: 123040693}
     - {fileID: 1826170584}
     laneChangePoints: []
 --- !u!1 &1255381777
@@ -18544,59 +18382,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2062110639}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1289941020
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1289941022}
-  - component: {fileID: 1289941021}
-  m_Layer: 0
-  m_Name: ConnectionWaypoint_3
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1289941021
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1289941020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e69147057ff98d4889fb57a6b576786, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIWaypoint
-  settings:
-    speed: 20
-    isStopPoint: 0
-    vehicleType: 00000000
-    previousWaypoint:
-    - {fileID: 553114412}
-    nextWaypoint:
-    - {fileID: 1187153740}
-    laneChangePoints: []
---- !u!4 &1289941022
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1289941020}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.8500366, y: 0, z: 7.954712}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1309530780}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1297558315
 GameObject:
   m_ObjectHideFlags: 0
@@ -18809,70 +18594,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2062110639}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1309530779
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1309530780}
-  - component: {fileID: 1309530781}
-  m_Layer: 0
-  m_Name: Lane_0_To_Lane_0_Connection
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1309530780
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1309530779}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 79.20739, y: 0, z: 229.50089}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 123040694}
-  - {fileID: 1442795169}
-  - {fileID: 553114413}
-  - {fileID: 1289941022}
-  - {fileID: 1187153741}
-  m_Father: {fileID: 941256691}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1309530781
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1309530779}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98eb669cbaed0284f9e038002d59fa93, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIWaypointConnection
-  sourceWaypoint: {fileID: 1249416706}
-  targetWaypoint: {fileID: 790322375}
-  connectionSpeedLimit: 20
-  connectionVehicleTypes: 00000000
-  waypointSpacing: 2
-  curveResolution: 30
-  controlPointsList:
-  - {x: 79.20739, y: 0, z: 229.50089}
-  - {x: 77.925415, y: 0, z: 241.49768}
-  transitionWaypoints:
-  - {fileID: 123040693}
-  - {fileID: 1442795168}
-  - {fileID: 553114412}
-  - {fileID: 1289941021}
-  - {fileID: 1187153740}
 --- !u!1 &1318081074
 GameObject:
   m_ObjectHideFlags: 0
@@ -20532,59 +20253,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2062110639}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1442795167
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1442795169}
-  - component: {fileID: 1442795168}
-  m_Layer: 0
-  m_Name: ConnectionWaypoint_1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1442795168
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1442795167}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e69147057ff98d4889fb57a6b576786, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIWaypoint
-  settings:
-    speed: 20
-    isStopPoint: 0
-    vehicleType: 00000000
-    previousWaypoint:
-    - {fileID: 123040693}
-    nextWaypoint:
-    - {fileID: 553114412}
-    laneChangePoints: []
---- !u!4 &1442795169
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1442795167}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.42502594, y: 0, z: 3.977356}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1309530780}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1446254226
 GameObject:

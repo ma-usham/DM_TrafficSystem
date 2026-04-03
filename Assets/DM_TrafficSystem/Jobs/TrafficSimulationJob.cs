@@ -86,8 +86,6 @@ namespace Darkmatter.TrafficSystem
                 return;
             }
 
-            Vector3 currentPos = transform.position;
-
             // Instead of translating transform directly, calculate desired velocity output
             dir.Normalize();
             state.desiredVelocity = dir * state.currentSpeed;
