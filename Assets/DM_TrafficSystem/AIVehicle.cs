@@ -10,9 +10,6 @@ namespace Darkmatter.TrafficSystem
         public bool isFrontWheel;
         public float radius = 0.35f;
         public float restLength = 0.5f;
-        
-        [HideInInspector]
-        public float currentRotation = 0f; // Track cumulative rotation for rolling
     }
 
     /// <summary>
@@ -68,39 +65,6 @@ namespace Darkmatter.TrafficSystem
         {
             if (wheels == null || wheels.Length == 0) return;
 
-            // Calculate steering angle based on angular velocity and forward speed (Ackermann approximation)
-            float localSpeed = transform.InverseTransformDirection(rb.linearVelocity).z;
-            float localTurnVelocity = transform.InverseTransformDirection(rb.angularVelocity).y; // rad/s
-            float wheelbase = 2.5f; // Estimated wheelbase
-            float steerAngle = 0f;
-
-            if (Mathf.Abs(localSpeed) > 0.1f)
-            {
-                steerAngle = Mathf.Atan2(wheelbase * localTurnVelocity, localSpeed) * Mathf.Rad2Deg;
-            }
-            else
-            {
-                steerAngle = Mathf.Clamp(localTurnVelocity * 10f * Mathf.Rad2Deg, -45f, 45f); // Approximation for stationary steering
-            }
-            steerAngle = Mathf.Clamp(steerAngle, -45f, 45f);
-
-            for (int i = 0; i < wheels.Length; i++)
-            {
-                if (wheels[i] == null || wheels[i].visualMesh == null) continue;
-
-                // 1. Rotate the wheel according to speed
-                float wheelCircumference = 2f * Mathf.PI * wheels[i].radius;
-                float rotationDelta = (localSpeed / wheelCircumference) * 360f * Time.deltaTime;
-                wheels[i].currentRotation += rotationDelta;
-
-                // 2. Turn the front two wheels according to the steer angle
-                float currentSteer = wheels[i].isFrontWheel ? steerAngle : 0f;
-
-                // Combine the continuous rolling with the steering angle
-                // Note: The X axis is typically the roll/pitch axis for rolling wheels,
-                // and the Y axis is the yaw for steering.
-                wheels[i].visualMesh.localRotation = Quaternion.Euler(wheels[i].currentRotation, currentSteer, 0f);
-            }
         }
 
         private void ApplySuspension()

@@ -72,7 +72,7 @@ namespace Darkmatter.TrafficSystem
                 // Initialize state
                 VehicleState state = new VehicleState
                 {
-                    currentSpeed = 10f, // test speed
+                    currentSpeed = 1f, // test speed
                     maxSpeed = vehicle.maxSpeed,
                     acceleration = vehicle.acceleration,
                     brakingPower = vehicle.brakingPower,

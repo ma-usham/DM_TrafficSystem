@@ -14,7 +14,7 @@ namespace Darkmatter.TrafficSystem
     {
         public NativeArray<VehicleState> vehicleStates;
         [ReadOnly] public NativeArray<Vector3> waypointBuffer;
-        
+
         public float deltaTime;
         public float arrivalDistance;
 
@@ -44,7 +44,7 @@ namespace Darkmatter.TrafficSystem
 
             int targetBufferIndex = state.waypointBufferStartIndex + state.currentTargetIndexOffset;
             targetPos = waypointBuffer[targetBufferIndex];
-            
+
             dir = targetPos - transform.position;
             distance = dir.magnitude;
 
@@ -90,32 +90,21 @@ namespace Darkmatter.TrafficSystem
             dir.Normalize();
             state.desiredVelocity = dir * state.currentSpeed;
 
-            // Smooth Rotation interpolation target
-            if (dir.sqrMagnitude > 0.001f)
+            //calculate current up vector since TransfromAccess doesnt have .up property
+            Vector3 currentUp = transform.rotation * Vector3.up;
+            Vector3 projectedDir = Vector3.ProjectOnPlane(dir, currentUp);
+
+            if(projectedDir.sqrMagnitude > 0.001f)
             {
-                // In TransformAccess, 'up' is calculated by rotating Vector3.up by the current rotation
-                Vector3 currentUp = transform.rotation * Vector3.up;
-                
-                // CRITICAL FIX: Project the direction onto the car's local horizontal plane!
-                // Because waypoints are on the floor and the car is floating, 'dir' points downward.
-                // Projecting it flat prevents the car from pitching forward into the ground.
-                Vector3 flatDir = Vector3.ProjectOnPlane(dir, currentUp).normalized;
-                
-                if (flatDir.sqrMagnitude > 0.001f)
-                {
-                    Quaternion targetRot = Quaternion.LookRotation(flatDir, currentUp);
-                    // We keep the spherical interpolation to give realistic turning limits based on turnSpeed
-                    state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRot, deltaTime * state.turnSpeed); 
-                }
-                else
-                {
-                    state.desiredRotation = transform.rotation;
-                }
+                // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
+                Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
+                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
             }
             else
             {
                 state.desiredRotation = transform.rotation;
             }
+
         }
     }
 }
