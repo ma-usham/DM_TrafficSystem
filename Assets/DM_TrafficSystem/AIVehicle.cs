@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
@@ -5,7 +6,7 @@ namespace Darkmatter.TrafficSystem
     [System.Serializable]
     public class SuspensionWheel
     {
-        public Transform wheelTransform;
+        public Transform raycastTransform;
         public Transform visualMesh; // The actual wheel mesh to rotate and steer
         public bool isFrontWheel;
         public float radius = 0.35f;
@@ -45,6 +46,8 @@ namespace Darkmatter.TrafficSystem
         
         [HideInInspector] 
         public Rigidbody rb;
+        [HideInInspector]
+        public float steeringAngle;
 
         private void Awake ()
         {
@@ -64,7 +67,23 @@ namespace Darkmatter.TrafficSystem
         private void UpdateWheelVisuals()
         {
             if (wheels == null || wheels.Length == 0) return;
+            float forwardSpeed = Vector3.Dot(transform.forward, rb.linearVelocity);
+            float steerAngle = Mathf.Clamp(steeringAngle, -45f, 45f);
+            for(int i=0;i<wheels.Length;i++)
+            {
+                if (wheels[i] == null || wheels[i].visualMesh == null) continue;
 
+                // Rotate the wheel based on forward speed
+                float rotationAmount = (forwardSpeed / (2 * Mathf.PI * wheels[i].radius)) * 360f * Time.deltaTime;
+                wheels[i].visualMesh.Rotate(Vector3.right, rotationAmount, Space.Self);
+
+                if(wheels[i].isFrontWheel && wheels[i].raycastTransform != null)
+                {
+                    // Steer the front wheels
+                    Vector3 currentEuler = wheels[i].raycastTransform.localEulerAngles;
+                    wheels[i].raycastTransform.localEulerAngles = new Vector3(currentEuler.x, steerAngle, currentEuler.z);
+                }
+            }
         }
 
         private void ApplySuspension()
@@ -73,9 +92,9 @@ namespace Darkmatter.TrafficSystem
 
             for (int i = 0; i < wheels.Length; i++)
             {
-                if (wheels[i] == null || wheels[i].wheelTransform == null) continue;
+                if (wheels[i] == null || wheels[i].raycastTransform == null) continue;
 
-                Vector3 origin = wheels[i].wheelTransform.position;
+                Vector3 origin = wheels[i].raycastTransform.position;
                 float currentRestLength = wheels[i].restLength;
                 float currentRadius = wheels[i].radius;
                 float rayLength = currentRestLength + currentRadius;
@@ -104,9 +123,9 @@ namespace Darkmatter.TrafficSystem
 
             for (int i = 0; i < wheels.Length; i++)
             {
-                if (wheels[i] == null || wheels[i].wheelTransform == null) continue;
+                if (wheels[i] == null || wheels[i].raycastTransform == null) continue;
 
-                Vector3 origin = wheels[i].wheelTransform.position;
+                Vector3 origin = wheels[i].raycastTransform.position;
                 float currentRestLength = wheels[i].restLength;
                 float currentRadius = wheels[i].radius;
                 float totalRayLength = currentRestLength + currentRadius;
@@ -124,6 +143,33 @@ namespace Darkmatter.TrafficSystem
                 {
                     Gizmos.color = Color.yellow;
                     Gizmos.DrawSphere(hit.point, 0.05f);
+                }
+            }
+            
+            // Visualize vehicle's arrival distance trigger sphere
+            Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.5f);
+            Gizmos.DrawWireSphere(transform.position, 2.0f);
+
+            // Visualize lookahead waypoints
+            if (lookaheadWaypoints != null)
+            {
+                for (int i = 0; i < lookaheadWaypoints.Length; i++)
+                {
+                    if (lookaheadWaypoints[i] == null) continue;
+
+                    Gizmos.color = i == activeWaypointIndex ? Color.green : Color.cyan;
+                    Gizmos.DrawWireSphere(lookaheadWaypoints[i].transform.position, 0.75f);
+
+                    if (i > 0 && lookaheadWaypoints[i - 1] != null)
+                    {
+                        Gizmos.color = Color.cyan;
+                        Gizmos.DrawLine(lookaheadWaypoints[i - 1].transform.position, lookaheadWaypoints[i].transform.position);
+                    }
+                    else if (i == 0)
+                    {
+                        Gizmos.color = Color.green;
+                        Gizmos.DrawLine(transform.position, lookaheadWaypoints[0].transform.position);
+                    }
                 }
             }
         }

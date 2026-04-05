@@ -17,12 +17,12 @@ namespace Darkmatter.TrafficSystem
 
             for (int i = 0; i < vehicle.wheels.Length; i++)
             {
-                if (vehicle.wheels[i] == null || vehicle.wheels[i].wheelTransform == null) continue;
+                if (vehicle.wheels[i] == null || vehicle.wheels[i].raycastTransform == null) continue;
 
                 EditorGUI.BeginChangeCheck();
 
                 // The physics wheel rests at origin - up * restLength
-                Vector3 origin = vehicle.wheels[i].wheelTransform.position;
+                Vector3 origin = vehicle.wheels[i].raycastTransform.position;
                 Vector3 wheelRestPosition = origin - vehicle.transform.up * vehicle.wheels[i].restLength;
 
                 // Draw a radius handle aligned with the wheel

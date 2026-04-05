@@ -140,7 +140,7 @@ namespace Darkmatter.TrafficSystem
                 vehicleStates = _vehicleStates,
                 waypointBuffer = _waypointBuffer,
                 deltaTime = Time.fixedDeltaTime,
-                arrivalDistance = 1.0f
+                arrivalDistance = 2.0f
             };
 
             // Final handle allows the Main Thread to wait for all simulation
@@ -158,6 +158,9 @@ namespace Darkmatter.TrafficSystem
                 VehicleState state = _vehicleStates[i];
 
                 Rigidbody rb = vehicle.rb;
+
+                //copy Steering Angle to the vehicle for visual purposes
+                vehicle.steeringAngle = state.steeringAngle;
                 
                 // Keep the Rigidbody's current vertical velocity (for gravity/suspension)
                 Vector3 finalVelocity = new Vector3(state.desiredVelocity.x, rb.linearVelocity.y, state.desiredVelocity.z);
