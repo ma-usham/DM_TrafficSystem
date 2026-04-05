@@ -22,7 +22,7 @@ namespace Darkmatter.TrafficSystem
         public LayerMask obstacleMask;
 
         [Header("Testing setup")]
-        public AIVehicle dummyCarPrefab;
+        public VehicleCollection vehicleCollection;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
 
         // Native memory arrays for the Jobs
@@ -43,10 +43,16 @@ namespace Darkmatter.TrafficSystem
         // Main thread references required to traverse the actual AIWaypoint graph
         private List<AIVehicle> _activeVehicles = new List<AIVehicle>();
         private bool _isInitialized = false;
+        private VehiclePool _vehiclePool;
 
         void Start()
         {
             _trafficWaypointUpdater = new TrafficWaypointUpdater();
+            
+            GameObject poolContainer = new GameObject("VehiclePoolContainer");
+            poolContainer.transform.SetParent(this.transform);
+            _vehiclePool = new VehiclePool(vehicleCollection, poolContainer.transform);
+
             InitializeBuffers();
             SpawnInitialVehicles();
         }
@@ -71,7 +77,9 @@ namespace Darkmatter.TrafficSystem
             for (int i = 0; i < vehicleCount; i++)
             {
                 AIWaypoint spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
-                AIVehicle vehicle = Instantiate(dummyCarPrefab, spawnPoint.transform.position + new Vector3(0, 1f, 0), spawnPoint.transform.rotation);
+                AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
+
+                if (vehicle == null) continue;
 
                 vehicle.arrayIndex = i;
                 vehicle.lookaheadWaypoints[0] = spawnPoint;
