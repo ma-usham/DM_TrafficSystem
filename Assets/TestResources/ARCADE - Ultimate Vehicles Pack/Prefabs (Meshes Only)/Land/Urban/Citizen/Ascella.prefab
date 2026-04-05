@@ -522,7 +522,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
   vehicleType: 1
-  maxSpeed: 10
+  maxSpeed: 8
   acceleration: 2
   brakingPower: 5
   turnSpeed: 2

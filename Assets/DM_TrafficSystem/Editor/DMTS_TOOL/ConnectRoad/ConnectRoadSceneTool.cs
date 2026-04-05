@@ -229,9 +229,19 @@ namespace Darkmatter.TrafficSystem.Editor
                     HandleUtility.GetHandleSize(controlPoint) * 0.08f,
                     Vector3.zero,
                     Handles.SphereHandleCap);
+                
+                // Project the point down to the mesh/road to keep it from floating or going under
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(connection, "Move Connection Control Point");
+                    
+                    // Raycast down from slightly above the new position to find the ground
+                    Ray downwardRay = new Ray(newPosition + Vector3.up * 50f, Vector3.down);
+                    if (Physics.Raycast(downwardRay, out RaycastHit hit, 100f))
+                    {
+                        newPosition = hit.point; // Snap to the actual mesh surface
+                    }
+                    
                     connection.controlPointsList[i] = newPosition;
                     toolState.RebuildActiveConnection("Move Connection Control Point");
                 }

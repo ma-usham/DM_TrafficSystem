@@ -70,7 +70,7 @@ namespace Darkmatter.TrafficSystem
                 {
                     state.playerDetectedFar = true;
                 }
-                else if (hit.point != Vector3.zero) 
+                else if (hit.point != Vector3.zero)
                 {
                     // Fallback for overlap with no distance
                     state.obstacleDetected = true;
@@ -122,7 +122,7 @@ namespace Darkmatter.TrafficSystem
         private void ProcessMovement(ref VehicleState state, TransformAccess transform, float distance, Vector3 dir, Vector3 targetPos)
         {
             // If we are fully stopped or waiting for the graph, skip the heavy math
-            if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.001f)
+            if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.1f)
             {
                 state.desiredVelocity = Vector3.zero;
                 state.desiredRotation = transform.rotation;
@@ -145,7 +145,8 @@ namespace Darkmatter.TrafficSystem
 
                 // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
                 Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
-                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
+                if(state.currentSpeed>3f) state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
+
             }
             else
             {
