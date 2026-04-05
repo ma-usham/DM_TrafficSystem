@@ -40,5 +40,6 @@ namespace Darkmatter.TrafficSystem
         
         // Sensor status output
         public bool obstacleDetected;
+        public bool playerDetectedFar;
     }
 }

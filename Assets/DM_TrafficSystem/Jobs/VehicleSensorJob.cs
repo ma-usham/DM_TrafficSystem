@@ -35,14 +35,15 @@ namespace Darkmatter.TrafficSystem
             // so we don't start the sweep already inside a collider, but rather sweep through the space.
             Vector3 halfExtents = new Vector3(state.sensorSize.x * 0.5f, state.sensorSize.y * 0.5f, 0.01f);
             
-            // Generate the command
+            // Generate the command with an extra 5m for far player detection
+            float extendedDistance = state.sensorSize.z + 5f;
             boxcastCommands[index] = new BoxcastCommand(
                 origin,
                 halfExtents,
                 transform.rotation,
                 direction,
                 new QueryParameters(state.obstacleMask, false, QueryTriggerInteraction.Ignore, false),
-                state.sensorSize.z // The sweep depth equates perfectly to the Box depth
+                extendedDistance // The sweep depth plus the 10m extension
             );
         }
     }

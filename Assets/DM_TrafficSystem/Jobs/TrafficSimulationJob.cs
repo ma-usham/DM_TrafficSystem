@@ -53,7 +53,29 @@ namespace Darkmatter.TrafficSystem
             // A Boxcast command returns a RaycastHit struct where "normal" and "distance/point" might be non-zero.
             // Using hit.distance != 0 and point != Vector3.zero is a job-safe way to know if we hit something.
             RaycastHit hit = sensorHits[index];
-            state.obstacleDetected = (hit.distance > 0f || hit.normal != Vector3.zero);
+            bool hitSomething = (hit.distance > 0f || hit.normal != Vector3.zero);
+
+            state.obstacleDetected = false;
+            state.playerDetectedFar = false;
+
+            if (hitSomething)
+            {
+                // If it hits within the original sensor bounds, it's an immediate obstacle
+                // If it hits beyond the original bounds (in the +10m extension), it's far
+                if (hit.distance <= state.sensorSize.z && hit.distance > 0f)
+                {
+                    state.obstacleDetected = true;
+                }
+                else if (hit.distance > state.sensorSize.z)
+                {
+                    state.playerDetectedFar = true;
+                }
+                else if (hit.point != Vector3.zero) 
+                {
+                    // Fallback for overlap with no distance
+                    state.obstacleDetected = true;
+                }
+            }
 
             if (state.obstacleDetected)
             {

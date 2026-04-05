@@ -161,10 +161,22 @@ namespace Darkmatter.TrafficSystem
             {
                 Matrix4x4 oldGizmoMatrix = Gizmos.matrix;
                 Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+                
+                // Normal Sensor Box
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.3f); // Semi-Transparent Orange
                 Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.8f);
                 Gizmos.DrawWireCube(frontSensor.localPosition, frontSensor.localScale);
+
+                // Extended Sensor Box (5m ahead of normal sensor)
+                Vector3 extendedSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, 5f);
+                Vector3 extendedCenter = frontSensor.localPosition + new Vector3(0, 0, frontSensor.localScale.z * 0.5f + extendedSize.z * 0.5f);
+                
+                Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.3f); // Semi-Transparent Light Blue
+                Gizmos.DrawCube(extendedCenter, extendedSize);
+                Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.8f);
+                Gizmos.DrawWireCube(extendedCenter, extendedSize);
+                
                 Gizmos.matrix = oldGizmoMatrix;
             }
 

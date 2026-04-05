@@ -18,6 +18,7 @@ namespace Darkmatter.TrafficSystem.Editor
         public bool drawLaneChangeLinks = true;
         public bool drawConnections = true;
         public bool drawIntersectionState = true;
+        public bool drawSpawnPoints = true;
 
         public bool DrawsAnyGizmo =>
             drawRoadCurves
@@ -26,6 +27,7 @@ namespace Darkmatter.TrafficSystem.Editor
             || drawWaypoints
             || drawLaneChangeLinks
             || drawConnections
-            || drawIntersectionState;
+            || drawIntersectionState
+            || drawSpawnPoints;
     }
 }

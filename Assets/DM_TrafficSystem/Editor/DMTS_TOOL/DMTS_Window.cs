@@ -167,6 +167,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     globalSceneGizmoState.drawLaneChangeLinks = EditorGUILayout.ToggleLeft("Lane-change links", globalSceneGizmoState.drawLaneChangeLinks);
                     globalSceneGizmoState.drawConnections = EditorGUILayout.ToggleLeft("Road connections", globalSceneGizmoState.drawConnections);
                     globalSceneGizmoState.drawIntersectionState = EditorGUILayout.ToggleLeft("Intersection status (Green/Red)", globalSceneGizmoState.drawIntersectionState);
+                    globalSceneGizmoState.drawSpawnPoints = EditorGUILayout.ToggleLeft("Spawn points", globalSceneGizmoState.drawSpawnPoints);
                 }
 
                 if (EditorGUI.EndChangeCheck())
@@ -225,9 +226,33 @@ namespace Darkmatter.TrafficSystem.Editor
                 RoadSceneGizmoDrawer.DrawRoadConnections(connectionRecords);
             }
 
+            if (globalSceneGizmoState.drawSpawnPoints)
+            {
+                DrawTrafficManagerSpawnPoints();
+            }
+
             if (globalSceneGizmoState.drawIntersectionState && Application.isPlaying)
             {
                 DrawActiveIntersectionGizmos();
+            }
+        }
+
+        /// <summary>
+        /// Draws the bakes spawn points for the scene's Traffic Manager.
+        /// </summary>
+        private void DrawTrafficManagerSpawnPoints()
+        {
+            TrafficManager manager = Object.FindAnyObjectByType<TrafficManager>();
+            if (manager == null || manager.spawnWaypoints == null)
+                return;
+
+            Handles.color = new Color(0f, 0f, 1f, 0.4f);
+            foreach (var sp in manager.spawnWaypoints)
+            {
+                if (sp != null)
+                {
+                    Handles.CubeHandleCap(0, sp.transform.position, Quaternion.identity, 1.5f, EventType.Repaint);
+                }
             }
         }
 

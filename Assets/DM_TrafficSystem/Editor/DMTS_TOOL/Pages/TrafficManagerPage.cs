@@ -68,6 +68,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (GUILayout.Button("Select in Hierarchy", GUILayout.Height(22)))
                     Selection.activeGameObject = manager.gameObject;
 
+
                 EditorGUILayout.Space(6);
 
                 if (editor == null || editor.target != manager)
@@ -79,7 +80,16 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
                 editor.OnInspectorGUI();
+
+                EditorGUILayout.Space(4);
+
+                if (GUILayout.Button("Bake Spawn Points", GUILayout.Height(22)))
+                {
+                    BakeSpawnPoints(manager);
+                }
                 EditorGUILayout.EndScrollView();
+
+
             }
 
             EditorGUILayout.Space(10);
@@ -94,6 +104,51 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
+        }
+
+        private void BakeSpawnPoints(TrafficManager manager)
+        {
+            float angleThreshold = 10f; // Set a threshold for straightness
+            AILane[] lanes = Object.FindObjectsByType<AILane>(FindObjectsSortMode.None);
+            
+            if (lanes == null || lanes.Length == 0)
+            {
+                Debug.LogWarning("No AILanes found in the scene to bake spawn points from.");
+                return;
+            }
+
+            System.Collections.Generic.List<AIWaypoint> validSpawnPoints = new System.Collections.Generic.List<AIWaypoint>();
+
+            Undo.RecordObject(manager, "Bake Spawn Points");
+
+            foreach (var lane in lanes)
+            {
+                if (lane == null || lane.waypoints == null || lane.waypoints.Count < 3) continue;
+
+                for (int i = 1; i < lane.waypoints.Count - 1; i++)
+                {
+                    AIWaypoint prev = lane.waypoints[i - 1];
+                    AIWaypoint current = lane.waypoints[i];
+                    AIWaypoint next = lane.waypoints[i + 1];
+
+                    if (prev == null || current == null || next == null) continue;
+
+                    Vector3 dirIn = (current.transform.position - prev.transform.position).normalized;
+                    Vector3 dirOut = (next.transform.position - current.transform.position).normalized;
+
+                    float angle = Vector3.Angle(dirIn, dirOut);
+
+                    if (angle <= angleThreshold)
+                    {
+                        validSpawnPoints.Add(current);
+                    }
+                }
+            }
+
+            manager.spawnWaypoints = validSpawnPoints.ToArray();
+            EditorUtility.SetDirty(manager);
+
+            Debug.Log($"Baked {validSpawnPoints.Count} safe spawn points from {lanes.Length} AILanes into Traffic Manager.");
         }
     }
 }
