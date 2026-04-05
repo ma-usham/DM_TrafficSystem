@@ -18,6 +18,9 @@ namespace Darkmatter.TrafficSystem
         [Min(0)]
         public int vehicleCount = 1;
 
+        [Header("Global Physics Layers")]
+        public LayerMask obstacleMask;
+
         [Header("Testing setup")]
         public AIVehicle dummyCarPrefab;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
@@ -26,6 +29,10 @@ namespace Darkmatter.TrafficSystem
         private NativeArray<VehicleState> _vehicleStates;
         private NativeArray<Vector3> _waypointBuffer;
         private TransformAccessArray _transformAccessArray;
+
+        // Sensor memory
+        private NativeArray<BoxcastCommand> _boxcastCommands;
+        private NativeArray<RaycastHit> _raycastHits;
 
         // Job execution handling
         private JobHandle _finalJobHandle;
@@ -50,6 +57,9 @@ namespace Darkmatter.TrafficSystem
             _waypointBuffer = new NativeArray<Vector3>(vehicleCount * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
             _transformAccessArray = new TransformAccessArray(vehicleCount);
 
+            _boxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
+            _raycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+
             _isInitialized = true;
         }
 
@@ -61,13 +71,15 @@ namespace Darkmatter.TrafficSystem
             for (int i = 0; i < vehicleCount; i++)
             {
                 AIWaypoint spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
-                AIVehicle vehicle = Instantiate(dummyCarPrefab, spawnPoint.transform.position+ new Vector3(0, 1f, 0), spawnPoint.transform.rotation);
+                AIVehicle vehicle = Instantiate(dummyCarPrefab, spawnPoint.transform.position + new Vector3(0, 1f, 0), spawnPoint.transform.rotation);
 
                 vehicle.arrayIndex = i;
                 vehicle.lookaheadWaypoints[0] = spawnPoint;
 
                 _activeVehicles.Add(vehicle);
                 _transformAccessArray.Add(vehicle.transform);
+
+                bool sensorActive = vehicle.frontSensor != null && vehicle.frontSensor.gameObject.activeInHierarchy;
 
                 // Initialize state
                 VehicleState state = new VehicleState
@@ -83,7 +95,12 @@ namespace Darkmatter.TrafficSystem
                     reachedCurrentWaypoint = false,
                     isApproachingStopPoint = false,
                     desiredVelocity = Vector3.zero,
-                    desiredRotation = vehicle.transform.rotation
+                    desiredRotation = vehicle.transform.rotation,
+                    isSensorActive = sensorActive,
+                    sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
+                    sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
+                    obstacleMask = obstacleMask.value,
+                    obstacleDetected = false
                 };
 
                 _vehicleStates[i] = state;
@@ -133,19 +150,36 @@ namespace Darkmatter.TrafficSystem
             _trafficWaypointUpdater.UpdateStopWaypoints(_activeVehicles, _vehicleStates);
 
             // --- 2. Schedule Jobs ---
-            
+
+            // Job 1: Build Boxcast Commands
+            VehicleSensorJob sensorJob = new VehicleSensorJob
+            {
+                vehicleStates = _vehicleStates,
+                boxcastCommands = _boxcastCommands
+            };
+            JobHandle sensorJobHandle = sensorJob.Schedule(_transformAccessArray);
+
+            // Job 2: Process Physics Overlaps
+            JobHandle physicsJobHandle = BoxcastCommand.ScheduleBatch(
+                _boxcastCommands,
+                _raycastHits,
+                64,
+                sensorJobHandle
+            );
+
             // Job 3: Movement Simulation
             TrafficSimulationJob simulationJob = new TrafficSimulationJob
             {
                 vehicleStates = _vehicleStates,
                 waypointBuffer = _waypointBuffer,
+                sensorHits = _raycastHits,
                 deltaTime = Time.fixedDeltaTime,
                 arrivalDistance = 2.0f
             };
 
             // Final handle allows the Main Thread to wait for all simulation
-            _finalJobHandle = simulationJob.Schedule(_transformAccessArray);
-            
+            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, physicsJobHandle);
+
             // Wait for everything to complete before applying
             _finalJobHandle.Complete();
 
@@ -161,11 +195,21 @@ namespace Darkmatter.TrafficSystem
 
                 //copy Steering Angle to the vehicle for visual purposes
                 vehicle.steeringAngle = state.steeringAngle;
-                
-                // Keep the Rigidbody's current vertical velocity (for gravity/suspension)
-                Vector3 finalVelocity = new Vector3(state.desiredVelocity.x, rb.linearVelocity.y, state.desiredVelocity.z);
-                rb.linearVelocity = finalVelocity;
-                
+
+                //Anti-Roll/ Braking
+                if (state.currentSpeed < 0.1f)
+                {
+                    rb.isKinematic = true; // Freeze the car when stopped to prevent sliding
+                }
+                else
+                {
+                    if(rb.isKinematic) rb.isKinematic = false; // Unfreeze when we start moving again
+                    // The car is moving normally. 
+                    // Keep the Rigidbody's current vertical velocity (for gravity/suspension)
+                    Vector3 finalVelocity = new Vector3(state.desiredVelocity.x, rb.linearVelocity.y, state.desiredVelocity.z);
+                    rb.linearVelocity = finalVelocity;
+                }
+
                 // Keep the Rigidbody's current up-vector slightly blended or directly apply rotation
                 // Apply rotation via Rigidbody to keep the physics intact
                 rb.MoveRotation(state.desiredRotation);
@@ -180,6 +224,8 @@ namespace Darkmatter.TrafficSystem
                 if (_vehicleStates.IsCreated) _vehicleStates.Dispose();
                 if (_waypointBuffer.IsCreated) _waypointBuffer.Dispose();
                 if (_transformAccessArray.isCreated) _transformAccessArray.Dispose(); // Note the lowercase 'i' on isCreated here
+                if (_boxcastCommands.IsCreated) _boxcastCommands.Dispose();
+                if (_raycastHits.IsCreated) _raycastHits.Dispose();
             }
         }
     }

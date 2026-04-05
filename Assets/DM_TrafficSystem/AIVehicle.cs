@@ -20,6 +20,8 @@ namespace Darkmatter.TrafficSystem
     [RequireComponent(typeof(Rigidbody))]
     public class AIVehicle : MonoBehaviour
     {
+
+        public VehicleType vehicleType = VehicleType.Car;
         [Header("Driving Behavior")]
         public float maxSpeed = 15f;
         public float acceleration = 5f;
@@ -32,6 +34,10 @@ namespace Darkmatter.TrafficSystem
         public float springStrength = 30000f;
         public float springDamper = 3000f;
         public LayerMask groundMask;
+
+
+        [Header("Front Sensor")]
+        public Transform frontSensor;
         
         // We'll store the actual MonoBehaviour waypoints here so the Main Thread
         // can traverse the graph and feed 'Vector3' positions to the Job System.
@@ -149,6 +155,18 @@ namespace Darkmatter.TrafficSystem
             // Visualize vehicle's arrival distance trigger sphere
             Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.5f);
             Gizmos.DrawWireSphere(transform.position, 2.0f);
+
+            // Visualize Front Sensor
+            if (frontSensor != null)
+            {
+                Matrix4x4 oldGizmoMatrix = Gizmos.matrix;
+                Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+                Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.3f); // Semi-Transparent Orange
+                Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
+                Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.8f);
+                Gizmos.DrawWireCube(frontSensor.localPosition, frontSensor.localScale);
+                Gizmos.matrix = oldGizmoMatrix;
+            }
 
             // Visualize lookahead waypoints
             if (lookaheadWaypoints != null)

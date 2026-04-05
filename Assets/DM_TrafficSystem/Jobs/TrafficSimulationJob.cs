@@ -14,6 +14,7 @@ namespace Darkmatter.TrafficSystem
     {
         public NativeArray<VehicleState> vehicleStates;
         [ReadOnly] public NativeArray<Vector3> waypointBuffer;
+        [ReadOnly] public NativeArray<RaycastHit> sensorHits;
 
         public float deltaTime;
         public float arrivalDistance;
@@ -23,7 +24,7 @@ namespace Darkmatter.TrafficSystem
             VehicleState state = vehicleStates[index];
 
             // Helper 1: Braking and target selection
-            ProcessBraking(ref state, transform, out float distance, out Vector3 dir, out Vector3 targetPos);
+            ProcessBraking(index, ref state, transform, out float distance, out Vector3 dir, out Vector3 targetPos);
 
             // Helper 2: Movement
             ProcessMovement(ref state, transform, distance, dir, targetPos);
@@ -32,7 +33,7 @@ namespace Darkmatter.TrafficSystem
             vehicleStates[index] = state;
         }
 
-        private void ProcessBraking(ref VehicleState state, TransformAccess transform, out float distance, out Vector3 dir, out Vector3 targetPos)
+        private void ProcessBraking(int index, ref VehicleState state, TransformAccess transform, out float distance, out Vector3 dir, out Vector3 targetPos)
         {
             if (state.reachedCurrentWaypoint)
             {
@@ -48,8 +49,20 @@ namespace Darkmatter.TrafficSystem
             dir = targetPos - transform.position;
             distance = dir.magnitude;
 
+            // Behavior 0: Obstacle Collision Check
+            // A Boxcast command returns a RaycastHit struct where "normal" and "distance/point" might be non-zero.
+            // Using hit.distance != 0 and point != Vector3.zero is a job-safe way to know if we hit something.
+            RaycastHit hit = sensorHits[index];
+            state.obstacleDetected = (hit.distance > 0f || hit.normal != Vector3.zero);
+
+            if (state.obstacleDetected)
+            {
+                // Brake due to an obstacle ahead
+                state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower);
+                if (state.currentSpeed < 0.1f) state.currentSpeed = 0f;
+            }
             // Behavior 1: Traffic Light / Stop Point Braking
-            if (state.isApproachingStopPoint && distance < state.stoppingDistance * 2f)
+            else if (state.isApproachingStopPoint && distance < state.stoppingDistance * 2f)
             {
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower);
                 if (state.currentSpeed < 0.1f) state.currentSpeed = 0f;

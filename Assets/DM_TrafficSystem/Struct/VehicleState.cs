@@ -31,5 +31,14 @@ namespace Darkmatter.TrafficSystem
         
         // Flag set by the Main Thread if the currently requested waypoint is a stop point (like a traffic light)
         public bool isApproachingStopPoint;
+
+        // Sensor configuration for obstacle detection
+        public bool isSensorActive;
+        public Vector3 sensorSize;
+        public Vector3 sensorOffset;
+        public int obstacleMask;
+        
+        // Sensor status output
+        public bool obstacleDetected;
     }
 }
