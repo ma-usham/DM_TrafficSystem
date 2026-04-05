@@ -265,6 +265,25 @@ namespace Darkmatter.TrafficSystem.Editor
                 Undo.RegisterCreatedObjectUndo(waypointObject, "Generate Road Waypoints");
                 waypointObject.transform.SetParent(lane.transform);
                 waypointObject.transform.position = lanePositions[waypointIndex];
+                
+                // Align Waypoint Transform Z axis to face the next waypoint, or keep the last one's direction
+                if (waypointIndex < lanePositions.Count - 1)
+                {
+                    Vector3 direction = (lanePositions[waypointIndex + 1] - lanePositions[waypointIndex]).normalized;
+                    if (direction != Vector3.zero)
+                    {
+                        waypointObject.transform.rotation = Quaternion.LookRotation(direction);
+                    }
+                }
+                else if (waypointIndex > 0)
+                {
+                    // If it's the last waypoint, use the direction from the previous point
+                    Vector3 direction = (lanePositions[waypointIndex] - lanePositions[waypointIndex - 1]).normalized;
+                    if (direction != Vector3.zero)
+                    {
+                        waypointObject.transform.rotation = Quaternion.LookRotation(direction);
+                    }
+                }
 
                 AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
                 WaypointSettings settings = waypoint.settings;

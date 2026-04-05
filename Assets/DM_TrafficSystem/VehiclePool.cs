@@ -18,13 +18,11 @@ namespace Darkmatter.TrafficSystem
 
         public AIVehicle Spawn(AIWaypoint waypoint)
         {
-
             if (waypoint.settings.vehicleType == null || waypoint.settings.vehicleType.Length == 0)
             {
                 Debug.LogWarning("Waypoint has no allowed VehicleTypes assigned.");
                 return null;
             }
-
             VehicleType requiredType = waypoint.settings.vehicleType[Random.Range(0, waypoint.settings.vehicleType.Length)];
 
             if (!_pool.ContainsKey(requiredType))
@@ -33,10 +31,15 @@ namespace Darkmatter.TrafficSystem
             }
 
             AIVehicle instance = null;
+            Vector3 spawnPos = waypoint.transform.position + new Vector3(0, 1f, 0);
+            Quaternion spawnRot = waypoint.transform.rotation;
 
             if (_pool[requiredType].Count > 0)
             {
                 instance = _pool[requiredType].Dequeue();
+                instance.transform.position = spawnPos;
+                instance.transform.rotation = spawnRot;
+                instance.transform.SetParent(_container);   
             }
             else
             {
@@ -45,17 +48,13 @@ namespace Darkmatter.TrafficSystem
                     AIVehicle prefab = _collection.GetRandomPrefabOfType(requiredType);
                     if (prefab != null)
                     {
-                        instance = Object.Instantiate(prefab, _container);
+                        instance = Object.Instantiate(prefab, spawnPos, spawnRot, _container);
                     }
                 }
             }
 
             if (instance != null)
             {
-                instance.transform.SetPositionAndRotation(
-                    waypoint.transform.position + new Vector3(0, 1f, 0), 
-                    waypoint.transform.rotation
-                );
                 instance.gameObject.SetActive(true);
             }
             else

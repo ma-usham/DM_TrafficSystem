@@ -312,6 +312,34 @@ namespace Darkmatter.TrafficSystem.Editor
                 waypointObject.transform.SetParent(connection.transform);
                 waypointObject.transform.position = positions[i];
 
+                // Align Waypoint Transform Z axis to face the next waypoint, or keep the last one's direction
+                if (i < positions.Count - 1)
+                {
+                    Vector3 direction = (positions[i + 1] - positions[i]).normalized;
+                    if (direction != Vector3.zero)
+                    {
+                        waypointObject.transform.rotation = Quaternion.LookRotation(direction);
+                    }
+                }
+                else if (i > 0)
+                {
+                    // If it's the last waypoint, use the direction from the previous point
+                    Vector3 direction = (positions[i] - positions[i - 1]).normalized;
+                    if (direction != Vector3.zero)
+                    {
+                        waypointObject.transform.rotation = Quaternion.LookRotation(direction);
+                    }
+                }
+                else if (connection.targetWaypoint != null)
+                {
+                    // Only 1 waypoint in the connection, point it at the final target
+                    Vector3 direction = (connection.targetWaypoint.transform.position - positions[i]).normalized;
+                    if (direction != Vector3.zero)
+                    {
+                        waypointObject.transform.rotation = Quaternion.LookRotation(direction);
+                    }
+                }
+
                 AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = speedLimit;
