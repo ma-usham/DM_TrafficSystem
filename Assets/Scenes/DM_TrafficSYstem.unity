@@ -1001,6 +1001,7 @@ MonoBehaviour:
   - {fileID: 720206928}
   - {fileID: 695438453}
   - {fileID: 1854150642}
+  initialPoolSize: 50
 --- !u!1 &366961260
 GameObject:
   m_ObjectHideFlags: 0

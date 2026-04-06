@@ -81,19 +81,31 @@ namespace Darkmatter.TrafficSystem
             for (int i = 0; i < vehicleCount; i++)
             {
                 AIWaypoint spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
-
-                // Perform the Physics check before spawning
-                // If the area is blocked, we just continue (which moves to the next attempt)
-                if (Physics.CheckSphere(spawnPoint.transform.position, 5f, obstacleMask))
-                {
-                    Debug.Log($"Skipping spawn at {spawnPoint.name} - area is blocked.");
-                    continue;
-                }
-
+                //pull the vehicle formt he pool First
                 AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
 
                 if (vehicle == null) continue;
 
+                Vector3 halfExtents = vehicle.GetSpawnBoxHalfExtents();
+                Vector3 offset = vehicle.GetSpawnBoxCenterOffset();
+
+                // 2. Calculate the exact center of the CheckBox based on the waypoint's position & rotation and collider offset
+                Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);
+                if(vehicle.vehicleCollider!=null)vehicle.vehicleCollider.enabled = false; // Disable the collider temporarily to avoid detecting itself in the CheckBox
+
+                // 3. Do a CheckBox using the auto-calculated half-extents
+                if (Physics.CheckBox(boxCenter, halfExtents, spawnPoint.transform.rotation, obstacleMask))
+                {
+                    Debug.Log($"Skipping spawn at {spawnPoint.name} - area is blocked for vehicle {vehicle.name}.");
+
+                    // The area is blocked! Return the vehicle to the pool and skip this attempt
+                    _vehiclePool.Despawn(vehicle);
+                    continue;
+                }
+                if(vehicle.vehicleCollider!=null)vehicle.vehicleCollider.enabled = true; // Re-enable the collider after the check
+
+
+                // --- Area is clear! Proceed with normal setup ---
                 vehicle.arrayIndex = spawnedCount;
                 vehicle.lookaheadWaypoints[0] = spawnPoint;
 

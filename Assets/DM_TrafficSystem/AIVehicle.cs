@@ -38,26 +38,57 @@ namespace Darkmatter.TrafficSystem
 
         [Header("Front Sensor")]
         public Transform frontSensor;
-        
+
         // We'll store the actual MonoBehaviour waypoints here so the Main Thread
         // can traverse the graph and feed 'Vector3' positions to the Job System.
         public AIWaypoint[] lookaheadWaypoints = new AIWaypoint[TrafficManager.WAYPOINT_LOOKAHEAD];
-        
+
         // Track our current target index inside the lookahead buffer (0 to 4)
         public int activeWaypointIndex = 0;
-        
+
         // The index assigned to this vehicle in the NativeArrays by the TrafficManager
-        [HideInInspector] 
-        public int arrayIndex = -1; 
-        
-        [HideInInspector] 
+        [HideInInspector]
+        public int arrayIndex = -1;
+
+        [HideInInspector]
         public Rigidbody rb;
+        
+        [HideInInspector]
+        public BoxCollider vehicleCollider;
+        
         [HideInInspector]
         public float steeringAngle;
 
-        private void Awake ()
+        [Header("Spawning Clearance")]
+        [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]
+        public float spawnPadding = 2f;
+
+        public Vector3 GetSpawnBoxHalfExtents()
+        {
+            if (vehicleCollider == null) vehicleCollider = GetComponent<BoxCollider>();
+            
+            if (vehicleCollider != null)
+            {
+                return (vehicleCollider.size / 2f) + new Vector3(spawnPadding, 0f, spawnPadding);
+            }
+            return new Vector3(1f, 1f, 2.5f);
+        }
+
+        public Vector3 GetSpawnBoxCenterOffset()
+        {
+            if (vehicleCollider == null) vehicleCollider = GetComponent<BoxCollider>();
+            
+            if (vehicleCollider != null)
+            {
+                return vehicleCollider.center;
+            }
+            return new Vector3(0f, 1f, 0f);
+        }
+
+        private void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            vehicleCollider = GetComponent<BoxCollider>();
         }
 
         private void FixedUpdate()
@@ -75,7 +106,7 @@ namespace Darkmatter.TrafficSystem
             if (wheels == null || wheels.Length == 0) return;
             float forwardSpeed = Vector3.Dot(transform.forward, rb.linearVelocity);
             float steerAngle = Mathf.Clamp(steeringAngle, -45f, 45f);
-            for(int i=0;i<wheels.Length;i++)
+            for (int i = 0; i < wheels.Length; i++)
             {
                 if (wheels[i] == null || wheels[i].visualMesh == null) continue;
 
@@ -83,7 +114,7 @@ namespace Darkmatter.TrafficSystem
                 float rotationAmount = (forwardSpeed / (2 * Mathf.PI * wheels[i].radius)) * 360f * Time.deltaTime;
                 wheels[i].visualMesh.Rotate(Vector3.right, rotationAmount, Space.Self);
 
-                if(wheels[i].isFrontWheel && wheels[i].raycastTransform != null)
+                if (wheels[i].isFrontWheel && wheels[i].raycastTransform != null)
                 {
                     // Steer the front wheels
                     Vector3 currentEuler = wheels[i].raycastTransform.localEulerAngles;
@@ -109,14 +140,14 @@ namespace Darkmatter.TrafficSystem
                 {
                     // Calculate spring force
                     Vector3 springDir = transform.up;
-                    
+
                     Vector3 wheelWorldVel = rb.GetPointVelocity(origin);
                     float relVel = Vector3.Dot(springDir, wheelWorldVel);
-                    
+
                     float offset = currentRestLength - (hit.distance - currentRadius);
-                    
+
                     float suspensionForce = (offset * springStrength) - (relVel * springDamper);
-                    
+
                     rb.AddForceAtPosition(springDir * suspensionForce, origin);
                 }
             }
@@ -125,6 +156,22 @@ namespace Darkmatter.TrafficSystem
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
+            // Draw the Spawning Box based on BoxCollider
+            Vector3 halfExtents = GetSpawnBoxHalfExtents();
+            Vector3 centerOffset = GetSpawnBoxCenterOffset();
+
+            // Draw the Spawning Box
+            Gizmos.color = new Color(0f, 1f, 1f, 0.8f); // Cyan outline
+            Matrix4x4 oldMatrix = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+            
+            // DrawWireCube takes FULL size, so multiply half extents by 2
+            Gizmos.DrawWireCube(centerOffset, halfExtents * 2f);
+            
+            Gizmos.color = new Color(0f, 1f, 1f, 0.2f); // Cyan semi-transparent fill
+            Gizmos.DrawCube(centerOffset, halfExtents * 2f);
+            Gizmos.matrix = oldMatrix;
+
             if (wheels == null) return;
 
             for (int i = 0; i < wheels.Length; i++)
@@ -151,7 +198,7 @@ namespace Darkmatter.TrafficSystem
                     Gizmos.DrawSphere(hit.point, 0.05f);
                 }
             }
-            
+
             // Visualize vehicle's arrival distance trigger sphere
             Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.5f);
             Gizmos.DrawWireSphere(transform.position, 4.0f);
@@ -161,7 +208,7 @@ namespace Darkmatter.TrafficSystem
             {
                 Matrix4x4 oldGizmoMatrix = Gizmos.matrix;
                 Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
-                
+
                 // Normal Sensor Box
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.3f); // Semi-Transparent Orange
                 Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
@@ -171,12 +218,12 @@ namespace Darkmatter.TrafficSystem
                 // Extended Sensor Box (5m ahead of normal sensor)
                 Vector3 extendedSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, 5f);
                 Vector3 extendedCenter = frontSensor.localPosition + new Vector3(0, 0, frontSensor.localScale.z * 0.5f + extendedSize.z * 0.5f);
-                
+
                 Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.3f); // Semi-Transparent Light Blue
                 Gizmos.DrawCube(extendedCenter, extendedSize);
                 Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.8f);
                 Gizmos.DrawWireCube(extendedCenter, extendedSize);
-                
+
                 Gizmos.matrix = oldGizmoMatrix;
             }
 

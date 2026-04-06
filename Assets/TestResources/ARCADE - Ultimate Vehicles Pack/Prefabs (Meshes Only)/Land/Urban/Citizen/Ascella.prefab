@@ -554,6 +554,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   frontSensor: {fileID: 6214215657933725345}
+  spawnBoxSize: {x: 2, y: 3, z: 4}
+  spawnBoxOffset: {x: 0, y: 0, z: 2}
   lookaheadWaypoints:
   - {fileID: 0}
   - {fileID: 0}
