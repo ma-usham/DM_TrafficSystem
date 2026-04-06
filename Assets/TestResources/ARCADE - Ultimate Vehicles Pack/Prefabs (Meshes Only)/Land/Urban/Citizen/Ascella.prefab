@@ -589,7 +589,7 @@ MonoBehaviour:
   maxSpeed: 8
   acceleration: 2
   brakingPower: 5
-  turnSpeed: 5
+  turnSpeed: 2
   stoppingDistance: 2.5
   wheels:
   - raycastTransform: {fileID: 6727201906626693153}
@@ -631,6 +631,7 @@ MonoBehaviour:
   rb: {fileID: 0}
   vehicleCollider: {fileID: 3057065673938476419}
   steeringAngle: 0
+  isGrounded: 0
   spawnPadding: 2
 --- !u!1 &5775598084471942225
 GameObject:

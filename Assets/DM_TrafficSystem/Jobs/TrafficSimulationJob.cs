@@ -138,10 +138,10 @@ namespace Darkmatter.TrafficSystem
             // If the dot product is less than 0, the waypoint is behind the vehicle.
             // We also add a reasonable distance check so it doesn't accidentally skip waypoints 
             // that are far away just because it's facing away from them temporarily.
-            //bool passedWaypoint = Vector3.Dot(currentForward, dir) < 0f && distance < (arrivalDistance * 3f);
+            bool passedWaypoint = Vector3.Dot(currentForward, dir) < 0f && distance < (arrivalDistance * 3f);
 
             // Behavior 2: Intersecting the Waypoint
-            if (distance <= arrivalDistance)
+            if (distance <= arrivalDistance|| passedWaypoint)
             {
                 if (state.isApproachingStopPoint)
                 {
@@ -169,7 +169,7 @@ namespace Darkmatter.TrafficSystem
             dir.Normalize();
 
 
-           // calculate current up vector since TransfromAccess doesnt have .up property
+            // calculate current up vector since TransfromAccess doesnt have .up property
             Vector3 currentUp = transform.rotation * Vector3.up;
             Vector3 projectedDir = Vector3.ProjectOnPlane(dir, currentUp);
 
@@ -180,10 +180,17 @@ namespace Darkmatter.TrafficSystem
                 state.steeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
 
 
+                if (state.currentSpeed > 3f)
+                {
+                    // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
+                    Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
+                    state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
+                }
+                else
+                {
+                    state.desiredRotation = transform.rotation;
+                }
 
-                // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
-                Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
-                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
 
             }
             else

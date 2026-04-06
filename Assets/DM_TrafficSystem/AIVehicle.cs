@@ -63,6 +63,8 @@ namespace Darkmatter.TrafficSystem
         [HideInInspector]
         public float steeringAngle;
 
+        public bool isGrounded;
+
         [Header("Spawning Clearance")]
         [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]
         public float spawnPadding = 2f;
@@ -129,7 +131,10 @@ namespace Darkmatter.TrafficSystem
 
         private void ApplySuspension()
         {
+            isGrounded = false;
             if (wheels == null || wheels.Length == 0) return;
+
+            int groundedCount = 0;
 
             for (int i = 0; i < wheels.Length; i++)
             {
@@ -142,6 +147,8 @@ namespace Darkmatter.TrafficSystem
 
                 if (Physics.Raycast(origin, -transform.up, out RaycastHit hit, rayLength, groundMask))
                 {
+                    groundedCount++;
+
                     // Calculate spring force
                     Vector3 springDir = transform.up;
 
@@ -155,6 +162,8 @@ namespace Darkmatter.TrafficSystem
                     rb.AddForceAtPosition(springDir * suspensionForce, origin);
                 }
             }
+
+            isGrounded = groundedCount > 0;
         }
 
 #if UNITY_EDITOR

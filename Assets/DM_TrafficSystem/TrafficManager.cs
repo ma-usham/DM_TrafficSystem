@@ -263,7 +263,7 @@ namespace Darkmatter.TrafficSystem
                 leftSensorHits = _leftRaycastHits,
                 rightSensorHits = _rightRaycastHits,
                 deltaTime = Time.fixedDeltaTime,
-                arrivalDistance = 1f
+                arrivalDistance = 2f
             };
 
             // Final handle allows the Main Thread to wait for all simulation
@@ -284,6 +284,13 @@ namespace Darkmatter.TrafficSystem
 
                 //copy Steering Angle to the vehicle for visual purposes
                 vehicle.steeringAngle = state.steeringAngle;
+
+                // Stop AI forces if the vehicle is airborne. Let gravity take over fully.
+                if (!vehicle.isGrounded)
+                {
+                    if (rb.isKinematic) rb.isKinematic = false;
+                    continue; // Skip the rest of the loop for this car
+                }
 
                 //Anti-Roll/ Braking
                 if (state.currentSpeed < 0.1f)
