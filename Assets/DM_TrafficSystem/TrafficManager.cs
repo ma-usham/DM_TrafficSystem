@@ -19,12 +19,17 @@ namespace Darkmatter.TrafficSystem
         public int vehicleCount = 1;
 
         [Header("Global Physics Layers")]
-        public LayerMask obstacleMask;
+        public LayerMask groundMask;
+        public LayerMask trafficMask;
+        public LayerMask playerMask;
+
 
         [Header("Testing setup")]
         public VehicleCollection vehicleCollection;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
         [Min(0)] public int initialPoolSize = 50; // Pre-instantiate this many vehicles in the pool at Start for better performance when spawning during gameplay
+
+        public Transform playerTransform; // Assign your Player in the Inspector
 
         // Native memory arrays for the Jobs
         private NativeArray<VehicleState> _vehicleStates;
@@ -35,21 +40,23 @@ namespace Darkmatter.TrafficSystem
         private NativeArray<BoxcastCommand> _boxcastCommands;
         private NativeArray<RaycastHit> _raycastHits;
 
+        private NativeArray<BoxcastCommand> _playerBoxcastCommands;
+        private NativeArray<RaycastHit> _playerRaycastHits;
+
         private NativeArray<BoxcastCommand> _leftBoxcastCommands;
         private NativeArray<RaycastHit> _leftRaycastHits;
-        
+
         private NativeArray<BoxcastCommand> _rightBoxcastCommands;
         private NativeArray<RaycastHit> _rightRaycastHits;
 
         // Suspension Raycasts
         private NativeArray<RaycastCommand> _wheelRaycastCommands;
         private NativeArray<RaycastHit> _wheelRaycastHits;
-        
+
         // Wheel Job setup Data
         private NativeArray<int> _wheelCounts;
         private NativeArray<Vector3> _wheelLocalOffsets;
         private NativeArray<float> _wheelRayLengths;
-        private NativeArray<int> _wheelGroundMasks;
 
         // Job execution handling
         private JobHandle _finalJobHandle;
@@ -85,9 +92,12 @@ namespace Darkmatter.TrafficSystem
             _boxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
             _raycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
 
+            _playerBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
+            _playerRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+
             _leftBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
             _leftRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
-            
+
             _rightBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
             _rightRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
 
@@ -97,7 +107,6 @@ namespace Darkmatter.TrafficSystem
             _wheelCounts = new NativeArray<int>(vehicleCount, Allocator.Persistent);
             _wheelLocalOffsets = new NativeArray<Vector3>(vehicleCount * 4, Allocator.Persistent);
             _wheelRayLengths = new NativeArray<float>(vehicleCount * 4, Allocator.Persistent);
-            _wheelGroundMasks = new NativeArray<int>(vehicleCount, Allocator.Persistent);
 
             _isInitialized = true;
         }
@@ -125,11 +134,12 @@ namespace Darkmatter.TrafficSystem
 
                 // 2. Calculate the exact center of the CheckBox based on the waypoint's position & rotation and collider offset
                 Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);
-                if(vehicle.vehicleCollider!=null)vehicle.vehicleCollider.enabled = false; // Disable the collider temporarily to avoid detecting itself in the CheckBox
+                if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = false; // Disable the collider temporarily to avoid detecting itself in the CheckBox
 
 
-                // 3. Do a CheckBox using the auto-calculated half-extents
-                if (Physics.CheckBox(boxCenter, halfExtents, spawnPoint.transform.rotation, obstacleMask))
+                // 3. Do a CheckBox using the auto-calculated half-extents (check both traffic and player)
+                int combinedMask = trafficMask.value | playerMask.value;
+                if (Physics.CheckBox(boxCenter, halfExtents, spawnPoint.transform.rotation, combinedMask))
                 {
                     Debug.Log($"Skipping spawn at {spawnPoint.name} - area is blocked for vehicle {vehicle.name}.");
 
@@ -137,7 +147,7 @@ namespace Darkmatter.TrafficSystem
                     _vehiclePool.Despawn(vehicle);
                     continue;
                 }
-                if(vehicle.vehicleCollider!=null)vehicle.vehicleCollider.enabled = true; // Re-enable the collider after the check
+                if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = true; // Re-enable the collider after the check
 
 
                 // --- Area is clear! Proceed with normal setup ---
@@ -148,9 +158,12 @@ namespace Darkmatter.TrafficSystem
                 _transformAccessArray.Add(vehicle.transform);
 
                 bool sensorActive = vehicle.frontSensor != null && vehicle.frontSensor.gameObject.activeInHierarchy;
-                bool sideSensorActive = vehicle.leftSensor != null && vehicle.rightSensor != null && 
+                bool sideSensorActive = vehicle.leftSensor != null && vehicle.rightSensor != null &&
                                         vehicle.leftSensor.gameObject.activeInHierarchy && vehicle.rightSensor.gameObject.activeInHierarchy;
 
+
+                float randomFrustration = Random.Range(vehicle.frustrationTime.x, vehicle.frustrationTime.y);
+                float randomCooldown = Random.Range(vehicle.laneChangeCooldown.x, vehicle.laneChangeCooldown.y);
                 // Initialize state
                 VehicleState state = new VehicleState
                 {
@@ -166,23 +179,35 @@ namespace Darkmatter.TrafficSystem
                     isApproachingStopPoint = false,
                     desiredVelocity = Vector3.zero,
                     desiredRotation = vehicle.transform.rotation,
-                    
+
                     isSensorActive = sensorActive,
+                    sensorFacesWaypoint = vehicle.sensorFacesWaypoint,
                     sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
                     sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
-                    
+
                     isSideSensorActive = sideSensorActive,
                     leftSensorSize = sideSensorActive ? vehicle.leftSensor.localScale : Vector3.zero,
                     leftSensorOffset = sideSensorActive ? vehicle.leftSensor.localPosition : Vector3.zero,
                     rightSensorSize = sideSensorActive ? vehicle.rightSensor.localScale : Vector3.zero,
                     rightSensorOffset = sideSensorActive ? vehicle.rightSensor.localPosition : Vector3.zero,
-                    
-                    obstacleMask = obstacleMask.value,
-                    obstacleDetected = false,
-                    playerDetectedFar = false,
+
+                    obstacleMask = trafficMask.value,
+                    playerMask = playerMask.value,
+                    trafficDetected = false,
+                    detectedTrafficFar = false,
                     leftLaneBlocked = false,
                     rightLaneBlocked = false,
-                    emergencySideStop = false
+                    emergencySideStop = false,
+
+                    // Overtaking & Personality
+                    isLaneChangingVehicle = vehicle.willChangeLane,
+                    frustrationTime = randomFrustration,
+                    laneChangeCooldown = randomCooldown,
+                    overtakeProbability = vehicle.aiOvertakeProbability,
+                    playerOvertakeProbability = vehicle.playerOvertakeProbability,
+                    impatienceTimer = randomFrustration, // Start with full patience
+                    wantsToOvertake = false,
+                    wantsToHonk = false
                 };
 
                 _vehicleStates[i] = state;
@@ -193,10 +218,9 @@ namespace Darkmatter.TrafficSystem
                 // Setup wheel data for the vehicle
                 int wCount = vehicle.wheels != null ? Mathf.Min(vehicle.wheels.Length, 4) : 0;
                 _wheelCounts[vehicle.arrayIndex] = wCount;
-                _wheelGroundMasks[vehicle.arrayIndex] = vehicle.groundMask.value;
-                
+
                 int startWIndex = vehicle.arrayIndex * 4;
-                for(int w = 0; w < wCount; w++)
+                for (int w = 0; w < wCount; w++)
                 {
                     _wheelLocalOffsets[startWIndex + w] = vehicle.wheels[w].localPosition;
                     _wheelRayLengths[startWIndex + w] = vehicle.wheels[w].restLength + vehicle.wheels[w].radius;
@@ -254,7 +278,9 @@ namespace Darkmatter.TrafficSystem
                 vehicleStates = _vehicleStates,
                 boxcastCommands = _boxcastCommands,
                 leftBoxcastCommands = _leftBoxcastCommands,
-                rightBoxcastCommands = _rightBoxcastCommands
+                rightBoxcastCommands = _rightBoxcastCommands,
+                playerBoxcastCommands = _playerBoxcastCommands,
+                waypointBuffer = _waypointBuffer
             };
             JobHandle sensorJobHandle = sensorJob.Schedule(_transformAccessArray);
 
@@ -262,6 +288,14 @@ namespace Darkmatter.TrafficSystem
             JobHandle physicsJobHandle = BoxcastCommand.ScheduleBatch(
                 _boxcastCommands,
                 _raycastHits,
+                64,
+                sensorJobHandle
+            );
+
+            // Process Player Overlaps
+            JobHandle playerPhysicsJobHandle = BoxcastCommand.ScheduleBatch(
+                _playerBoxcastCommands,
+                _playerRaycastHits,
                 64,
                 sensorJobHandle
             );
@@ -281,9 +315,9 @@ namespace Darkmatter.TrafficSystem
                 64,
                 sensorJobHandle
             );
-            
+
             // Combine both side jobs and the front job
-            JobHandle combinedPhysicsHandle = JobHandle.CombineDependencies(physicsJobHandle, leftPhysicsJobHandle, rightPhysicsJobHandle);
+            JobHandle combinedPhysicsHandle = JobHandle.CombineDependencies(JobHandle.CombineDependencies(physicsJobHandle, playerPhysicsJobHandle), leftPhysicsJobHandle, rightPhysicsJobHandle);
 
             // Job 2.5: Build Wheel Raycasts using Job System
             BuildWheelRaycastCommandsJob buildWheelJob = new BuildWheelRaycastCommandsJob
@@ -291,7 +325,7 @@ namespace Darkmatter.TrafficSystem
                 wheelCounts = _wheelCounts,
                 wheelLocalOffsets = _wheelLocalOffsets,
                 wheelRayLengths = _wheelRayLengths,
-                groundMasks = _wheelGroundMasks,
+                groundMask = groundMask.value,
                 wheelRaycastCommands = _wheelRaycastCommands
             };
             JobHandle buildWheelHandle = buildWheelJob.Schedule(_transformAccessArray);
@@ -314,8 +348,11 @@ namespace Darkmatter.TrafficSystem
                 sensorHits = _raycastHits,
                 leftSensorHits = _leftRaycastHits,
                 rightSensorHits = _rightRaycastHits,
+                playerSensorHits = _playerRaycastHits,
+                playerForward = playerTransform != null ? playerTransform.forward : Vector3.forward,
                 deltaTime = Time.fixedDeltaTime,
-                arrivalDistance = 2f
+                arrivalDistance = 2f,
+                timeSinceLevelLoad = Time.timeSinceLevelLoad
             };
 
             // Final handle allows the Main Thread to wait for all simulation
@@ -338,23 +375,23 @@ namespace Darkmatter.TrafficSystem
                 for (int w = 0; w < wCount; w++)
                 {
                     RaycastHit hit = _wheelRaycastHits[startWIndex + w];
-                    
+
                     // ONLY run physics math if the wheel actually hit the ground
                     if (hit.distance > 0f)
                     {
                         isGrounded = true;
-                        
+
                         // Read the pre-calculated Native origin and direction 
                         RaycastCommand cmd = _wheelRaycastCommands[startWIndex + w];
                         Vector3 origin = cmd.from;
                         Vector3 springDir = -cmd.direction; // Inverse of down is up
-                        
+
                         // Pass the fast Math
                         vehicle.ApplySuspensionFast(
-                            hit, 
-                            origin, 
-                            springDir, 
-                            vehicle.wheels[w].restLength, 
+                            hit,
+                            origin,
+                            springDir,
+                            vehicle.wheels[w].restLength,
                             vehicle.wheels[w].radius
                         );
                     }
@@ -381,12 +418,12 @@ namespace Darkmatter.TrafficSystem
                 else
                 {
                     if (rb.isKinematic) rb.isKinematic = false; // Unfreeze when we start moving again
-                    
+
                     // The car is moving normally. 
                     // Calculate velocity difference on X and Z axis to allow physics to keep gravity and collision forces intact
                     Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;
                     velocityDifference.y = 0; // Don't interfere with gravity/suspension
-                    
+
                     // Add force as a velocity change for stable, mass-independent movement that works with the physics solver
                     rb.AddForce(velocityDifference, ForceMode.VelocityChange);
                 }
@@ -394,14 +431,14 @@ namespace Darkmatter.TrafficSystem
                 // Calculate the rotation difference to use AddTorque instead of MoveRotation (stops physics fighting)
                 Quaternion rotDifference = state.desiredRotation * Quaternion.Inverse(rb.rotation);
                 rotDifference.ToAngleAxis(out float angle, out Vector3 axis);
-                
+
                 if (angle > 180f) angle -= 360f;
 
                 if (Mathf.Abs(angle) > 0.01f)
                 {
                     Vector3 desiredAngularVelocity = (axis * (angle * Mathf.Deg2Rad)) / Time.fixedDeltaTime;
                     Vector3 angularVelocityDifference = desiredAngularVelocity - rb.angularVelocity;
-                    
+
                     rb.AddTorque(angularVelocityDifference, ForceMode.VelocityChange);
                 }
             }
@@ -415,13 +452,16 @@ namespace Darkmatter.TrafficSystem
                 if (_vehicleStates.IsCreated) _vehicleStates.Dispose();
                 if (_waypointBuffer.IsCreated) _waypointBuffer.Dispose();
                 if (_transformAccessArray.isCreated) _transformAccessArray.Dispose(); // Note the lowercase 'i' on isCreated here
-                
+
                 if (_boxcastCommands.IsCreated) _boxcastCommands.Dispose();
                 if (_raycastHits.IsCreated) _raycastHits.Dispose();
-                
+
+                if (_playerBoxcastCommands.IsCreated) _playerBoxcastCommands.Dispose();
+                if (_playerRaycastHits.IsCreated) _playerRaycastHits.Dispose();
+
                 if (_leftBoxcastCommands.IsCreated) _leftBoxcastCommands.Dispose();
                 if (_leftRaycastHits.IsCreated) _leftRaycastHits.Dispose();
-                
+
                 if (_rightBoxcastCommands.IsCreated) _rightBoxcastCommands.Dispose();
                 if (_rightRaycastHits.IsCreated) _rightRaycastHits.Dispose();
 
@@ -431,7 +471,6 @@ namespace Darkmatter.TrafficSystem
                 if (_wheelCounts.IsCreated) _wheelCounts.Dispose();
                 if (_wheelLocalOffsets.IsCreated) _wheelLocalOffsets.Dispose();
                 if (_wheelRayLengths.IsCreated) _wheelRayLengths.Dispose();
-                if (_wheelGroundMasks.IsCreated) _wheelGroundMasks.Dispose();
             }
         }
     }

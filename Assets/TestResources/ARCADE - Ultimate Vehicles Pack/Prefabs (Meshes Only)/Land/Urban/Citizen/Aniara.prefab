@@ -783,26 +783,28 @@ MonoBehaviour:
     isFrontWheel: 1
     radius: 0.37674612
     restLength: 0.40307587
+    localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 4881855343964104100}
     visualMesh: {fileID: 4794382752735696153}
     isFrontWheel: 1
     radius: 0.37674612
     restLength: 0.40307587
+    localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 507745478127205945}
     visualMesh: {fileID: 6237217901199794556}
     isFrontWheel: 0
     radius: 0.37674612
     restLength: 0.39972207
+    localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 4659767193756277940}
     visualMesh: {fileID: 2480291060529105190}
     isFrontWheel: 0
     radius: 0.37674612
     restLength: 0.39972204
+    localPosition: {x: 0, y: 0, z: 0}
   springStrength: 30000
   springDamper: 3000
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 64
+  sensorFacesWaypoint: 1
   frontSensor: {fileID: 1997585314265276491}
   leftSensor: {fileID: 5823510284588927058}
   rightSensor: {fileID: 3071636954982558131}
@@ -818,6 +820,11 @@ MonoBehaviour:
   vehicleCollider: {fileID: 7519925572664834760}
   steeringAngle: 0
   isGrounded: 0
+  willChangeLane: 1
+  frustrationTime: {x: 5, y: 15}
+  laneChangeCooldown: {x: 5, y: 10}
+  aiOvertakeProbability: 0.2
+  playerOvertakeProbability: 0.5
   laneChangeCooldownTimer: 0
   isChangingLanes: 0
   spawnPadding: 3

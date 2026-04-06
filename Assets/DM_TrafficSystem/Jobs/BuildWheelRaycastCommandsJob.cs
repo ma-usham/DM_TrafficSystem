@@ -12,7 +12,7 @@ namespace Darkmatter.TrafficSystem
         [ReadOnly] public NativeArray<int> wheelCounts;
         [ReadOnly] public NativeArray<Vector3> wheelLocalOffsets;
         [ReadOnly] public NativeArray<float> wheelRayLengths;
-        [ReadOnly] public NativeArray<int> groundMasks;
+        public int groundMask;
         
         [WriteOnly] 
         [NativeDisableParallelForRestriction] 
@@ -31,8 +31,7 @@ namespace Darkmatter.TrafficSystem
             Quaternion rotation = transform.rotation;
             Vector3 down = rotation * Vector3.down; // Same as -transform.up
             
-            int mask = groundMasks[index];
-            QueryParameters queryParameters = new QueryParameters(mask, false, QueryTriggerInteraction.UseGlobal, false);
+            QueryParameters queryParameters = new QueryParameters(groundMask, false, QueryTriggerInteraction.UseGlobal, false);
 
             for (int w = 0; w < wheelCount; w++)
             {

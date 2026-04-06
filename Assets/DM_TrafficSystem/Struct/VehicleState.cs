@@ -34,6 +34,7 @@ namespace Darkmatter.TrafficSystem
 
         // Sensor configuration for obstacle detection
         public bool isSensorActive;
+        public bool sensorFacesWaypoint;
         public Vector3 sensorSize;
         public Vector3 sensorOffset;
         public int obstacleMask;
@@ -44,16 +45,32 @@ namespace Darkmatter.TrafficSystem
         public Vector3 rightSensorSize;
         public Vector3 rightSensorOffset;
         
+        public int playerMask;
+
         // Sensor status output
-        public bool obstacleDetected;
-        public bool playerDetectedFar;
+        public bool trafficDetected;
+        public bool detectedTrafficFar;
+        public bool detectedPlayerFar;
         
         // Side sensor status
         public bool leftLaneBlocked;
         public bool rightLaneBlocked;
         public bool emergencySideStop;
-        
+
+        // Internal Lane Changing States
         public bool readyToChangeLane;
         public bool isChangingLanes;
+
+        // Overtaking & Personality
+        public bool isLaneChangingVehicle;
+        public float frustrationTime;
+        public float laneChangeCooldown;
+        public float overtakeProbability;
+        public float playerOvertakeProbability;
+
+        // Runtime states
+        public float impatienceTimer;
+        public bool wantsToOvertake;
+        public bool wantsToHonk;
     }
 }

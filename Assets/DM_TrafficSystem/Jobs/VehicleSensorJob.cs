@@ -11,20 +11,26 @@ namespace Darkmatter.TrafficSystem
     public struct VehicleSensorJob : IJobParallelForTransform
     {
         [ReadOnly] public NativeArray<VehicleState> vehicleStates;
+        [ReadOnly] public NativeArray<Vector3> waypointBuffer;
+
         [WriteOnly] public NativeArray<BoxcastCommand> boxcastCommands;
         
         [WriteOnly] public NativeArray<BoxcastCommand> leftBoxcastCommands;
         [WriteOnly] public NativeArray<BoxcastCommand> rightBoxcastCommands;
 
+        [WriteOnly] public NativeArray<BoxcastCommand> playerBoxcastCommands;
+
         public void Execute(int index, TransformAccess transform)
         {
             VehicleState state = vehicleStates[index];
             QueryParameters queryParams = new QueryParameters(state.obstacleMask, false, QueryTriggerInteraction.Ignore, false);
+            QueryParameters playerQueryParams = new QueryParameters(state.playerMask, false, QueryTriggerInteraction.Ignore, false);
 
             if (!state.isSensorActive)
             {
                 // Generate a dummy command that does nothing if sensor is off
                 boxcastCommands[index] = new BoxcastCommand();
+                playerBoxcastCommands[index] = new BoxcastCommand();
             }
             else
             {
@@ -34,6 +40,23 @@ namespace Darkmatter.TrafficSystem
 
                 Vector3 origin = transform.position + transform.rotation * centerOffset;
                 Vector3 direction = transform.rotation * Vector3.forward;
+                Quaternion boxRotation = transform.rotation;
+
+                if (state.sensorFacesWaypoint)
+                {
+                    int targetBufferIndex = state.waypointBufferStartIndex + state.currentTargetIndexOffset;
+                    Vector3 targetPos = waypointBuffer[targetBufferIndex];
+                    Vector3 waypontDir = targetPos - transform.position;
+                    waypontDir.y = 0; // Ignore vertical difference
+                    
+                    if (waypontDir.sqrMagnitude > 0.001f)
+                    {
+                        direction = waypontDir.normalized;
+                        // Avoid using Quaternion.LookRotation if current up vector is zero or not perfectly vertical.
+                        // We use transform.rotation * Vector3.up to maintain the local up vector
+                        boxRotation = Quaternion.LookRotation(direction, transform.rotation * Vector3.up);
+                    }
+                }
 
                 Vector3 halfExtents = new Vector3(state.sensorSize.x * 0.5f, state.sensorSize.y * 0.5f, 0.01f);
                 
@@ -41,9 +64,18 @@ namespace Darkmatter.TrafficSystem
                 boxcastCommands[index] = new BoxcastCommand(
                     origin,
                     halfExtents,
-                    transform.rotation,
+                    boxRotation,
                     direction,
                     queryParams,
+                    extendedDistance 
+                );
+                
+                playerBoxcastCommands[index] = new BoxcastCommand(
+                    origin,
+                    halfExtents,
+                    boxRotation,
+                    direction,
+                    playerQueryParams,
                     extendedDistance 
                 );
             }

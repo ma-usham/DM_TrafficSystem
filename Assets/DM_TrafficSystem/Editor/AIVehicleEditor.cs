@@ -9,6 +9,21 @@ namespace Darkmatter.TrafficSystem
     {
         private BoxBoundsHandle _sensorBoundsHandle = new BoxBoundsHandle();
 
+        private SerializedProperty willChangeLaneProp;
+        private SerializedProperty frustrationTimeProp;
+        private SerializedProperty laneChangeCooldownProp;
+        private SerializedProperty aiOvertakeProbabilityProp;
+        private SerializedProperty playerOvertakeProbabilityProp;
+
+        private void OnEnable()
+        {
+            willChangeLaneProp = serializedObject.FindProperty("willChangeLane");
+            frustrationTimeProp = serializedObject.FindProperty("frustrationTime");
+            laneChangeCooldownProp = serializedObject.FindProperty("laneChangeCooldown");
+            aiOvertakeProbabilityProp = serializedObject.FindProperty("aiOvertakeProbability");
+            playerOvertakeProbabilityProp = serializedObject.FindProperty("playerOvertakeProbability");
+        }
+
         private void OnSceneGUI()
         {
             AIVehicle vehicle = (AIVehicle)target;
@@ -115,9 +130,66 @@ namespace Darkmatter.TrafficSystem
 
         public override void OnInspectorGUI()
         {
-            base.OnInspectorGUI();
+            serializedObject.Update();
 
             AIVehicle vehicle = (AIVehicle)target;
+
+            // Loop through and draw properties manually so we can intercept Personality & Overtaking
+            SerializedProperty prop = serializedObject.GetIterator();
+            bool enterChildren = true;
+            
+            while (prop.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+
+                // Skip the script reference field if you want, but usually it's fine
+                if (prop.name == "m_Script")
+                {
+                    using (new EditorGUI.DisabledScope(true))
+                    {
+                        EditorGUILayout.PropertyField(prop);
+                    }
+                    continue;
+                }
+
+                // If we hit our specific Overtaking/Lane properties, handle them conditionally
+                if (prop.name == "frustrationTime" || 
+                    prop.name == "laneChangeCooldown" || 
+                    prop.name == "aiOvertakeProbability" || 
+                    prop.name == "playerOvertakeProbability")
+                {
+                    // Only draw these if willChangeLane is true
+                    if (willChangeLaneProp != null && willChangeLaneProp.boolValue)
+                    {
+                        if (prop.name == "frustrationTime")
+                        {
+                            EditorGUILayout.LabelField(new GUIContent("Frustration Time", "Min and Max time to follow a slow vehicle before trying to overtake."));
+                            EditorGUI.indentLevel++;
+                            EditorGUILayout.PropertyField(frustrationTimeProp.FindPropertyRelative("x"), new GUIContent("Min"));
+                            EditorGUILayout.PropertyField(frustrationTimeProp.FindPropertyRelative("y"), new GUIContent("Max"));
+                            EditorGUI.indentLevel--;
+                        }
+                        else if (prop.name == "laneChangeCooldown")
+                        {
+                            EditorGUILayout.LabelField(new GUIContent("Lane Change Cooldown", "Min and Max cooldown after changing a lane before it can change again."));
+                            EditorGUI.indentLevel++;
+                            EditorGUILayout.PropertyField(laneChangeCooldownProp.FindPropertyRelative("x"), new GUIContent("Min"));
+                            EditorGUILayout.PropertyField(laneChangeCooldownProp.FindPropertyRelative("y"), new GUIContent("Max"));
+                            EditorGUI.indentLevel--;
+                        }
+                        else
+                        {
+                            EditorGUILayout.PropertyField(prop, true);
+                        }
+                    }
+                    continue;
+                }
+
+                // Draw everything else normally
+                EditorGUILayout.PropertyField(prop, true);
+            }
+
+            serializedObject.ApplyModifiedProperties();
 
             GUILayout.Space(15);
             GUI.backgroundColor = new Color(0.2f, 0.8f, 0.2f);

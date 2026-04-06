@@ -58974,9 +58974,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.TrafficManager
   vehicleCount: 30
-  obstacleMask:
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 64
+  trafficMask:
     serializedVersion: 2
     m_Bits: 128
+  playerMask:
+    serializedVersion: 2
+    m_Bits: 8
   vehicleCollection: {fileID: 11400000, guid: 2190a845144e14f4990546b130eafcc2, type: 2}
   spawnWaypoints:
   - {fileID: 2024687703}
@@ -63136,6 +63142,7 @@ MonoBehaviour:
   - {fileID: 476727747}
   - {fileID: 2089050605}
   initialPoolSize: 50
+  playerTransform: {fileID: 1920785914}
 --- !u!1 &557735619
 GameObject:
   m_ObjectHideFlags: 0
@@ -92779,7 +92786,7 @@ Terrain:
   m_StaticShadowCaster: 0
   m_IgnoreQualitySettings: 0
   m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: 2100000, guid: 594ea882c5a793440b60ff72d896021e, type: 2}
+  m_MaterialTemplate: {fileID: 2100000, guid: f182e2714eb8a714a99ed091081ce16c, type: 2}
   m_BakeLightProbesForTrees: 1
   m_PreserveTreePrototypeLayers: 0
   m_DeringLightProbesForTrees: 1
@@ -213578,7 +213585,7 @@ GameObject:
   - component: {fileID: 1920785913}
   - component: {fileID: 1920785912}
   - component: {fileID: 1920785911}
-  m_Layer: 7
+  m_Layer: 3
   m_Name: player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -213631,7 +213638,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 8cd2b498534ea4747b28d827b1b39531, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -213672,8 +213679,8 @@ Transform:
   m_GameObject: {fileID: 1920785910}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.112904295, z: -0, w: 0.99360585}
-  m_LocalPosition: {x: 273.7, y: -0, z: 511.4}
-  m_LocalScale: {x: 3.1848, y: 1, z: 7.1249}
+  m_LocalPosition: {x: 273.7, y: 0.82, z: 511.4}
+  m_LocalScale: {x: 3.1848, y: 2.0597, z: 7.1249}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}

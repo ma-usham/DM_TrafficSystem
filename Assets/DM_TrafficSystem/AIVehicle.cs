@@ -35,10 +35,11 @@ namespace Darkmatter.TrafficSystem
         public SuspensionWheel[] wheels;
         public float springStrength = 30000f;
         public float springDamper = 3000f;
-        public LayerMask groundMask;
 
 
         [Header("Front Sensor")]
+        [Tooltip("If true, the front sensor rotates to face the next waypoint")]
+        public bool sensorFacesWaypoint = true;
         public Transform frontSensor;
 
         [Header("Side Sensors")]
@@ -47,27 +48,44 @@ namespace Darkmatter.TrafficSystem
 
         // We'll store the actual MonoBehaviour waypoints here so the Main Thread
         // can traverse the graph and feed 'Vector3' positions to the Job System.
-        public AIWaypoint[] lookaheadWaypoints = new AIWaypoint[TrafficManager.WAYPOINT_LOOKAHEAD];
+        [HideInInspector] public AIWaypoint[] lookaheadWaypoints = new AIWaypoint[TrafficManager.WAYPOINT_LOOKAHEAD];
 
         // Track our current target index inside the lookahead buffer (0 to 4)
-        public int activeWaypointIndex = 0;
+        [HideInInspector] public int activeWaypointIndex = 0;
 
         // The index assigned to this vehicle in the NativeArrays by the TrafficManager
-        [HideInInspector]
-        public int arrayIndex = -1;
+        [HideInInspector] public int arrayIndex = -1;
 
-        [HideInInspector]
-        public Rigidbody rb;
-        
-        [HideInInspector]
-        public BoxCollider vehicleCollider;
-        
-        [HideInInspector]
-        public float steeringAngle;
+        [HideInInspector] public Rigidbody rb;
 
-        public bool isGrounded;
-        public float laneChangeCooldownTimer;
-        public bool isChangingLanes;
+        [HideInInspector] public BoxCollider vehicleCollider;
+
+        [HideInInspector] public float steeringAngle;
+
+        [HideInInspector] public bool isGrounded;
+
+        // Internal logic
+
+
+        [Header("Personality & Overtaking")]
+        [Tooltip("Can this vehicle ever change lanes? (Set false for heavy vehicles)")]
+        public bool willChangeLane = true;
+
+        [Tooltip("Min and Max time to follow a slow vehicle before trying to overtake. (X = Min, Y = Max)")]
+        public Vector2 frustrationTime = new Vector2(5f, 15f);
+
+        [Tooltip("Min and Max cooldown after changing a lane before it can change again. (X = Min, Y = Max)")]
+        public Vector2 laneChangeCooldown = new Vector2(5f, 10f);
+
+        [Tooltip("Probability (0.0 to 1.0) of overtaking when an AI is detected far away.")]
+        [Range(0f, 1f)] public float aiOvertakeProbability = 0.5f;
+
+        [Tooltip("Probability (0.0 to 1.0) of overtaking when the Player is detected far away.")]
+        [Range(0f, 1f)] public float playerOvertakeProbability = 0.8f;
+
+        //Helpers
+        [HideInInspector] public float laneChangeCooldownTimer;
+        [HideInInspector] public bool isChangingLanes;
 
         [Header("Spawning Clearance")]
         [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]
@@ -76,7 +94,7 @@ namespace Darkmatter.TrafficSystem
         public Vector3 GetSpawnBoxHalfExtents()
         {
             if (vehicleCollider == null) vehicleCollider = GetComponent<BoxCollider>();
-            
+
             if (vehicleCollider != null)
             {
                 return (vehicleCollider.size / 2f) + new Vector3(spawnPadding, 0f, spawnPadding);
@@ -87,7 +105,7 @@ namespace Darkmatter.TrafficSystem
         public Vector3 GetSpawnBoxCenterOffset()
         {
             if (vehicleCollider == null) vehicleCollider = GetComponent<BoxCollider>();
-            
+
             if (vehicleCollider != null)
             {
                 return vehicleCollider.center;
@@ -146,11 +164,11 @@ namespace Darkmatter.TrafficSystem
 
             // Get velocity at the wheel's world position
             Vector3 wheelWorldVel = rb.GetPointVelocity(origin);
-            
+
             // Calculate spring compression relative velocity
             float relVel = Vector3.Dot(springDir, wheelWorldVel);
             float offset = restLength - (hit.distance - radius);
-            
+
             // Hooke's Law
             float suspensionForce = (offset * springStrength) - (relVel * springDamper);
 
@@ -169,18 +187,36 @@ namespace Darkmatter.TrafficSystem
             Gizmos.color = new Color(0f, 1f, 1f, 0.8f); // Cyan outline
             Matrix4x4 oldMatrix = Gizmos.matrix;
             Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
-            
+
             // DrawWireCube takes FULL size, so multiply half extents by 2
             Gizmos.DrawWireCube(centerOffset, halfExtents * 2f);
-            
+
             Gizmos.color = new Color(0f, 1f, 1f, 0.2f); // Cyan semi-transparent fill
             Gizmos.DrawCube(centerOffset, halfExtents * 2f);
 
             // Draw filled cubes for the sensors
             if (frontSensor != null)
             {
+                Quaternion frontSensorRot = transform.rotation;
+                if (sensorFacesWaypoint && lookaheadWaypoints != null && activeWaypointIndex >= 0 && activeWaypointIndex < lookaheadWaypoints.Length)
+                {
+                    AIWaypoint targetWP = lookaheadWaypoints[activeWaypointIndex];
+                    if (targetWP != null)
+                    {
+                        Vector3 dir = targetWP.transform.position - transform.position;
+                        dir.y = 0;
+                        if (dir.sqrMagnitude > 0.001f)
+                        {
+                            frontSensorRot = Quaternion.LookRotation(dir.normalized, transform.rotation * Vector3.up);
+                        }
+                    }
+                }
+
+                Matrix4x4 currentMatrix = Gizmos.matrix;
+                Gizmos.matrix = Matrix4x4.TRS(transform.position, frontSensorRot, Vector3.one);
                 Gizmos.color = new Color(1.0f, 0.6f, 0.0f, 0.25f); // Orange semi-transparent fill
                 Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
+                Gizmos.matrix = currentMatrix;
             }
             if (leftSensor != null)
             {
@@ -215,7 +251,8 @@ namespace Darkmatter.TrafficSystem
                 Gizmos.DrawWireSphere(origin - transform.up * currentRestLength, currentRadius);
 
                 // Hit point preview (optional)
-                if (Physics.Raycast(origin, -transform.up, out RaycastHit hit, totalRayLength, groundMask))
+                LayerMask mask = FindAnyObjectByType<TrafficManager>() != null ? FindAnyObjectByType<TrafficManager>().groundMask : LayerMask.GetMask("Default");
+                if (Physics.Raycast(origin, -transform.up, out RaycastHit hit, totalRayLength, mask))
                 {
                     Gizmos.color = Color.yellow;
                     Gizmos.DrawSphere(hit.point, 0.05f);
@@ -230,22 +267,43 @@ namespace Darkmatter.TrafficSystem
             if (frontSensor != null)
             {
                 Matrix4x4 oldGizmoMatrix = Gizmos.matrix;
-                Gizmos.matrix = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
 
-                // Normal Sensor Box
+                Quaternion sensorRotation = transform.rotation;
+
+                if (sensorFacesWaypoint && lookaheadWaypoints != null && activeWaypointIndex >= 0 && activeWaypointIndex < lookaheadWaypoints.Length)
+                {
+                    AIWaypoint targetWP = lookaheadWaypoints[activeWaypointIndex];
+                    if (targetWP != null)
+                    {
+                        Vector3 dir = targetWP.transform.position - transform.position;
+                        dir.y = 0;
+                        if (dir.sqrMagnitude > 0.001f)
+                        {
+                            sensorRotation = Quaternion.LookRotation(dir.normalized, transform.rotation * Vector3.up);
+                        }
+                    }
+                }
+
+                // The Job anchors the origin to the vehicle's actual rotation, NOT the sensor look rotation
+                Vector3 worldOrigin = transform.position + transform.rotation * frontSensor.localPosition;
+
+                // Now rotate around that precise worldOrigin based on the sensor's look rotation
+                Gizmos.matrix = Matrix4x4.TRS(worldOrigin, sensorRotation, Vector3.one);
+
+                // Normal Sensor Box (origin is now zero because we pushed worldOrigin into the matrix)
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.3f); // Semi-Transparent Orange
-                Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
+                Gizmos.DrawCube(Vector3.zero, frontSensor.localScale);
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.8f);
-                Gizmos.DrawWireCube(frontSensor.localPosition, frontSensor.localScale);
+                Gizmos.DrawWireCube(Vector3.zero, frontSensor.localScale);
 
                 // Extended Sensor Box (5m ahead of normal sensor)
                 Vector3 extendedSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, 5f);
-                Vector3 extendedCenter = frontSensor.localPosition + new Vector3(0, 0, frontSensor.localScale.z * 0.5f + extendedSize.z * 0.5f);
+                Vector3 extendedCenterPath = new Vector3(0, 0, frontSensor.localScale.z * 0.5f + extendedSize.z * 0.5f);
 
                 Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.3f); // Semi-Transparent Light Blue
-                Gizmos.DrawCube(extendedCenter, extendedSize);
+                Gizmos.DrawCube(extendedCenterPath, extendedSize);
                 Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.8f);
-                Gizmos.DrawWireCube(extendedCenter, extendedSize);
+                Gizmos.DrawWireCube(extendedCenterPath, extendedSize);
 
                 Gizmos.matrix = oldGizmoMatrix;
             }
