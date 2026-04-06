@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 
 namespace Darkmatter.TrafficSystem
 {
@@ -7,7 +8,7 @@ namespace Darkmatter.TrafficSystem
     {
         private VehicleCollection _collection;
         private Transform _container;
-        
+
         private Dictionary<VehicleType, Queue<AIVehicle>> _pool = new Dictionary<VehicleType, Queue<AIVehicle>>();
 
         public VehiclePool(VehicleCollection collection, Transform container)
@@ -39,7 +40,9 @@ namespace Darkmatter.TrafficSystem
                 instance = _pool[requiredType].Dequeue();
                 instance.transform.position = spawnPos;
                 instance.transform.rotation = spawnRot;
-                instance.transform.SetParent(_container);   
+                instance.transform.SetParent(_container);
+                instance.gameObject.SetActive(true);
+
             }
             else
             {
@@ -49,17 +52,9 @@ namespace Darkmatter.TrafficSystem
                     if (prefab != null)
                     {
                         instance = Object.Instantiate(prefab, spawnPos, spawnRot, _container);
+                        instance.gameObject.SetActive(true);
                     }
                 }
-            }
-
-            if (instance != null)
-            {
-                instance.gameObject.SetActive(true);
-            }
-            else
-            {
-                Debug.LogWarning($"VehiclePool: No prefab configured for type '{requiredType}' in VehicleCollection.");
             }
 
             return instance;
@@ -75,6 +70,32 @@ namespace Darkmatter.TrafficSystem
             }
 
             _pool[vehicle.vehicleType].Enqueue(vehicle);
+        }
+
+        internal void Prepopulate(int initialPoolSize)
+        {
+            if (_collection == null)
+            {
+                Debug.LogWarning("VehiclePool: Cannot prepopulate because VehicleCollection reference is missing.");
+                return;
+            }
+
+            for (int i = 0; i < initialPoolSize; i++)
+            {
+                AIVehicle prefab = _collection.GetRandomPrefab();
+                if (prefab != null)
+                {
+                    VehicleType type = prefab.vehicleType;
+                    if (!_pool.ContainsKey(type))
+                    {
+                        _pool[type] = new Queue<AIVehicle>();
+                    }
+                    AIVehicle instance = Object.Instantiate(prefab, Vector3.zero, Quaternion.identity, _container);
+                    instance.gameObject.SetActive(false);
+                    _pool[type].Enqueue(instance);
+                }
+
+            }
         }
     }
 }

@@ -24,6 +24,7 @@ namespace Darkmatter.TrafficSystem
         [Header("Testing setup")]
         public VehicleCollection vehicleCollection;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
+        [Min(0)] public int initialPoolSize = 50; // Pre-instantiate this many vehicles in the pool at Start for better performance when spawning during gameplay
 
         // Native memory arrays for the Jobs
         private NativeArray<VehicleState> _vehicleStates;
@@ -48,10 +49,12 @@ namespace Darkmatter.TrafficSystem
         void Start()
         {
             _trafficWaypointUpdater = new TrafficWaypointUpdater();
-            
+
             GameObject poolContainer = new GameObject("VehiclePoolContainer");
             poolContainer.transform.SetParent(this.transform);
             _vehiclePool = new VehiclePool(vehicleCollection, poolContainer.transform);
+
+            _vehiclePool.Prepopulate(initialPoolSize);
 
             InitializeBuffers();
             SpawnInitialVehicles();
@@ -73,15 +76,25 @@ namespace Darkmatter.TrafficSystem
         {
             if (spawnWaypoints == null || spawnWaypoints.Length == 0) return;
 
+            int spawnedCount = 0;
             // Simple spawner for now: spawn one car per waypoint until we hit vehicleCount
             for (int i = 0; i < vehicleCount; i++)
             {
                 AIWaypoint spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
+
+                // Perform the Physics check before spawning
+                // If the area is blocked, we just continue (which moves to the next attempt)
+                if (Physics.CheckSphere(spawnPoint.transform.position, 5f, obstacleMask))
+                {
+                    Debug.Log($"Skipping spawn at {spawnPoint.name} - area is blocked.");
+                    continue;
+                }
+
                 AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
 
                 if (vehicle == null) continue;
 
-                vehicle.arrayIndex = i;
+                vehicle.arrayIndex = spawnedCount;
                 vehicle.lookaheadWaypoints[0] = spawnPoint;
 
                 _activeVehicles.Add(vehicle);
@@ -98,7 +111,7 @@ namespace Darkmatter.TrafficSystem
                     brakingPower = vehicle.brakingPower,
                     turnSpeed = vehicle.turnSpeed,
                     stoppingDistance = vehicle.stoppingDistance,
-                    waypointBufferStartIndex = i * WAYPOINT_LOOKAHEAD,
+                    waypointBufferStartIndex = spawnedCount * WAYPOINT_LOOKAHEAD,
                     currentTargetIndexOffset = 0,
                     reachedCurrentWaypoint = false,
                     isApproachingStopPoint = false,
@@ -115,6 +128,9 @@ namespace Darkmatter.TrafficSystem
 
                 // Warm up the 5 waypoint buffer 
                 WarmupWaypoints(vehicle, state);
+
+                // Only increase the index if a spawn successfully went through
+                spawnedCount++;
             }
         }
 
@@ -211,7 +227,7 @@ namespace Darkmatter.TrafficSystem
                 }
                 else
                 {
-                    if(rb.isKinematic) rb.isKinematic = false; // Unfreeze when we start moving again
+                    if (rb.isKinematic) rb.isKinematic = false; // Unfreeze when we start moving again
                     // The car is moving normally. 
                     // Keep the Rigidbody's current vertical velocity (for gravity/suspension)
                     Vector3 finalVelocity = new Vector3(state.desiredVelocity.x, rb.linearVelocity.y, state.desiredVelocity.z);

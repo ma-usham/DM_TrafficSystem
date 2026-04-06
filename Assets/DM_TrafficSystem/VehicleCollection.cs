@@ -23,5 +23,11 @@ namespace Darkmatter.TrafficSystem
 
             return specificPrefabs[Random.Range(0, specificPrefabs.Count)];
         }
+
+        public AIVehicle GetRandomPrefab()
+        {
+            if (prefabs.Count == 0) return null;
+            return prefabs[Random.Range(0, prefabs.Count)];
+        }
     }
 }

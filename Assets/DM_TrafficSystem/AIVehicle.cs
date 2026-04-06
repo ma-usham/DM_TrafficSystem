@@ -154,7 +154,7 @@ namespace Darkmatter.TrafficSystem
             
             // Visualize vehicle's arrival distance trigger sphere
             Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.5f);
-            Gizmos.DrawWireSphere(transform.position, 2.0f);
+            Gizmos.DrawWireSphere(transform.position, 4.0f);
 
             // Visualize Front Sensor
             if (frontSensor != null)
