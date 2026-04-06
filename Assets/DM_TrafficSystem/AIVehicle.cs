@@ -11,6 +11,8 @@ namespace Darkmatter.TrafficSystem
         public bool isFrontWheel;
         public float radius = 0.35f;
         public float restLength = 0.5f;
+
+        [HideInInspector] public Vector3 localPosition; // Cached during Awake
     }
 
     /// <summary>
@@ -97,12 +99,18 @@ namespace Darkmatter.TrafficSystem
         {
             rb = GetComponent<Rigidbody>();
             vehicleCollider = GetComponent<BoxCollider>();
-        }
 
-        private void FixedUpdate()
-        {
-            // Now managed by TrafficManager jobs!
-            // ApplySuspension();
+            if (wheels != null)
+            {
+                for (int i = 0; i < wheels.Length; i++)
+                {
+                    if (wheels[i] != null && wheels[i].raycastTransform != null)
+                    {
+                        // Cache the local position relative to the main vehicle transform
+                        wheels[i].localPosition = transform.InverseTransformPoint(wheels[i].raycastTransform.position);
+                    }
+                }
+            }
         }
 
         private void Update()
@@ -132,31 +140,22 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        public void ApplySuspensionFromJob(int wheelIndex, RaycastHit hit)
+        public void ApplySuspensionFast(RaycastHit hit, Vector3 origin, Vector3 springDir, float restLength, float radius)
         {
-            if (wheels == null || wheelIndex >= wheels.Length) return;
+            // The hit distance check is moved to TrafficManager so we only call this if grounded
 
-            var wheel = wheels[wheelIndex];
-            if (wheel == null || wheel.raycastTransform == null) return;
+            // Get velocity at the wheel's world position
+            Vector3 wheelWorldVel = rb.GetPointVelocity(origin);
+            
+            // Calculate spring compression relative velocity
+            float relVel = Vector3.Dot(springDir, wheelWorldVel);
+            float offset = restLength - (hit.distance - radius);
+            
+            // Hooke's Law
+            float suspensionForce = (offset * springStrength) - (relVel * springDamper);
 
-            Vector3 origin = wheel.raycastTransform.position;
-            float currentRestLength = wheel.restLength;
-            float currentRadius = wheel.radius;
-
-            if (hit.distance > 0f)
-            {
-                // Calculate spring force
-                Vector3 springDir = transform.up;
-
-                Vector3 wheelWorldVel = rb.GetPointVelocity(origin);
-                float relVel = Vector3.Dot(springDir, wheelWorldVel);
-
-                float offset = currentRestLength - (hit.distance - currentRadius);
-
-                float suspensionForce = (offset * springStrength) - (relVel * springDamper);
-
-                rb.AddForceAtPosition(springDir * suspensionForce, origin);
-            }
+            // Apply the force
+            rb.AddForceAtPosition(springDir * suspensionForce, origin);
         }
 
 #if UNITY_EDITOR
