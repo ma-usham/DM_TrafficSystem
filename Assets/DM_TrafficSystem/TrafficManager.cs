@@ -395,8 +395,6 @@ namespace Darkmatter.TrafficSystem
 
                 if (_wheelRaycastCommands.IsCreated) _wheelRaycastCommands.Dispose();
                 if (_wheelRaycastHits.IsCreated) _wheelRaycastHits.Dispose();
-
-                _transformAccessArray.Dispose(); // Fix this to upper case if changed 
             }
         }
     }
