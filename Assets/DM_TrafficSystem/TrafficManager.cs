@@ -263,7 +263,7 @@ namespace Darkmatter.TrafficSystem
                 leftSensorHits = _leftRaycastHits,
                 rightSensorHits = _rightRaycastHits,
                 deltaTime = Time.fixedDeltaTime,
-                arrivalDistance = 2.0f
+                arrivalDistance = 1f
             };
 
             // Final handle allows the Main Thread to wait for all simulation
@@ -293,15 +293,29 @@ namespace Darkmatter.TrafficSystem
                 else
                 {
                     if (rb.isKinematic) rb.isKinematic = false; // Unfreeze when we start moving again
+                    
                     // The car is moving normally. 
-                    // Keep the Rigidbody's current vertical velocity (for gravity/suspension)
-                    Vector3 finalVelocity = new Vector3(state.desiredVelocity.x, rb.linearVelocity.y, state.desiredVelocity.z);
-                    rb.linearVelocity = finalVelocity;
+                    // Calculate velocity difference on X and Z axis to allow physics to keep gravity and collision forces intact
+                    Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;
+                    velocityDifference.y = 0; // Don't interfere with gravity/suspension
+                    
+                    // Add force as a velocity change for stable, mass-independent movement that works with the physics solver
+                    rb.AddForce(velocityDifference, ForceMode.VelocityChange);
                 }
 
-                // Keep the Rigidbody's current up-vector slightly blended or directly apply rotation
-                // Apply rotation via Rigidbody to keep the physics intact
-                rb.MoveRotation(state.desiredRotation);
+                // Calculate the rotation difference to use AddTorque instead of MoveRotation (stops physics fighting)
+                Quaternion rotDifference = state.desiredRotation * Quaternion.Inverse(rb.rotation);
+                rotDifference.ToAngleAxis(out float angle, out Vector3 axis);
+                
+                if (angle > 180f) angle -= 360f;
+
+                if (Mathf.Abs(angle) > 0.01f)
+                {
+                    Vector3 desiredAngularVelocity = (axis * (angle * Mathf.Deg2Rad)) / Time.fixedDeltaTime;
+                    Vector3 angularVelocityDifference = desiredAngularVelocity - rb.angularVelocity;
+                    
+                    rb.AddTorque(angularVelocityDifference, ForceMode.VelocityChange);
+                }
             }
         }
 

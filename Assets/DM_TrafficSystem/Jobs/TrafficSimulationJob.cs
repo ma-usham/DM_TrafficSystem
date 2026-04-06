@@ -138,10 +138,10 @@ namespace Darkmatter.TrafficSystem
             // If the dot product is less than 0, the waypoint is behind the vehicle.
             // We also add a reasonable distance check so it doesn't accidentally skip waypoints 
             // that are far away just because it's facing away from them temporarily.
-            bool passedWaypoint = Vector3.Dot(currentForward, dir) < 0f && distance < (arrivalDistance * 3f);
+            //bool passedWaypoint = Vector3.Dot(currentForward, dir) < 0f && distance < (arrivalDistance * 3f);
 
             // Behavior 2: Intersecting the Waypoint
-            if (distance <= arrivalDistance || passedWaypoint)
+            if (distance <= arrivalDistance)
             {
                 if (state.isApproachingStopPoint)
                 {
@@ -159,7 +159,7 @@ namespace Darkmatter.TrafficSystem
         private void ProcessMovement(ref VehicleState state, TransformAccess transform, float distance, Vector3 dir, Vector3 targetPos)
         {
             // If we are fully stopped or waiting for the graph, skip the heavy math
-            if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.1f)
+            if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.001f)
             {
                 state.desiredVelocity = Vector3.zero;
                 state.desiredRotation = transform.rotation;
@@ -168,7 +168,8 @@ namespace Darkmatter.TrafficSystem
 
             dir.Normalize();
 
-            //calculate current up vector since TransfromAccess doesnt have .up property
+
+           // calculate current up vector since TransfromAccess doesnt have .up property
             Vector3 currentUp = transform.rotation * Vector3.up;
             Vector3 projectedDir = Vector3.ProjectOnPlane(dir, currentUp);
 
@@ -182,7 +183,7 @@ namespace Darkmatter.TrafficSystem
 
                 // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
                 Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
-                if(state.currentSpeed>3f) state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
+                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
 
             }
             else
@@ -194,6 +195,7 @@ namespace Darkmatter.TrafficSystem
             // This prevents sideways drifting / crab-walking when turn speed is low!
             Vector3 currentForward = state.desiredRotation * Vector3.forward;
             state.desiredVelocity = currentForward * state.currentSpeed;
+
         }
     }
 }

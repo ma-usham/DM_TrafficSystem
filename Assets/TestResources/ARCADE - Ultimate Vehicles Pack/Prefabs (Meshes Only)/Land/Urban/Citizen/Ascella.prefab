@@ -589,7 +589,7 @@ MonoBehaviour:
   maxSpeed: 8
   acceleration: 2
   brakingPower: 5
-  turnSpeed: 2
+  turnSpeed: 5
   stoppingDistance: 2.5
   wheels:
   - raycastTransform: {fileID: 6727201906626693153}
