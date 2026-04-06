@@ -41,6 +41,10 @@ namespace Darkmatter.TrafficSystem
         private NativeArray<BoxcastCommand> _rightBoxcastCommands;
         private NativeArray<RaycastHit> _rightRaycastHits;
 
+        // Suspension Raycasts
+        private NativeArray<RaycastCommand> _wheelRaycastCommands;
+        private NativeArray<RaycastHit> _wheelRaycastHits;
+
         // Job execution handling
         private JobHandle _finalJobHandle;
 
@@ -80,6 +84,9 @@ namespace Darkmatter.TrafficSystem
             
             _rightBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
             _rightRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+
+            _wheelRaycastCommands = new NativeArray<RaycastCommand>(vehicleCount * 4, Allocator.Persistent);
+            _wheelRaycastHits = new NativeArray<RaycastHit>(vehicleCount * 4, Allocator.Persistent);
 
             _isInitialized = true;
         }
@@ -254,6 +261,37 @@ namespace Darkmatter.TrafficSystem
             // Combine both side jobs and the front job
             JobHandle combinedPhysicsHandle = JobHandle.CombineDependencies(physicsJobHandle, leftPhysicsJobHandle, rightPhysicsJobHandle);
 
+            // Job 2.5: Build Wheel Raycasts on Main Thread and schedule
+            // We do this on the main thread because extracting array of Transforms for wheels is tricky.
+            int wheelIndex = 0;
+            for (int i = 0; i < _activeVehicles.Count; i++)
+            {
+                AIVehicle v = _activeVehicles[i];
+                if (v.wheels == null) continue;
+                for (int w = 0; w < v.wheels.Length; w++)
+                {
+                    if (v.wheels[w] == null || v.wheels[w].raycastTransform == null) continue;
+                    
+                    Vector3 origin = v.wheels[w].raycastTransform.position;
+                    Vector3 dir = -v.transform.up;
+                    float rayLength = v.wheels[w].restLength + v.wheels[w].radius;
+                    QueryParameters queryParameters = new QueryParameters(v.groundMask, false, QueryTriggerInteraction.UseGlobal, false);
+
+                    _wheelRaycastCommands[wheelIndex] = new RaycastCommand(origin, dir, queryParameters, rayLength);
+                    wheelIndex++;
+                }
+            }
+
+            JobHandle wheelPhysicsHandle = RaycastCommand.ScheduleBatch(
+                _wheelRaycastCommands,
+                _wheelRaycastHits,
+                64,
+                default
+            );
+
+            // Combine the handles
+            combinedPhysicsHandle = JobHandle.CombineDependencies(combinedPhysicsHandle, wheelPhysicsHandle);
+
             // Job 3: Movement Simulation
             TrafficSimulationJob simulationJob = new TrafficSimulationJob
             {
@@ -273,12 +311,23 @@ namespace Darkmatter.TrafficSystem
             _finalJobHandle.Complete();
 
             // --- 3. Apply the Calculated Physics Results ---
-
+            int currentWheelIndex = 0;
             // Apply Rigidbody movement using the computed values
             for (int i = 0; i < _activeVehicles.Count; i++)
             {
                 AIVehicle vehicle = _activeVehicles[i];
                 VehicleState state = _vehicleStates[i];
+
+                bool isGrounded = false;
+                for (int w = 0; w < vehicle.wheels.Length; w++)
+                {
+                    RaycastHit hit = _wheelRaycastHits[currentWheelIndex];
+                    currentWheelIndex++;
+
+                    vehicle.ApplySuspensionFromJob(w, hit);
+                    if (hit.distance > 0f) isGrounded = true;
+                }
+                vehicle.isGrounded = isGrounded;
 
                 Rigidbody rb = vehicle.rb;
 
@@ -343,6 +392,11 @@ namespace Darkmatter.TrafficSystem
                 
                 if (_rightBoxcastCommands.IsCreated) _rightBoxcastCommands.Dispose();
                 if (_rightRaycastHits.IsCreated) _rightRaycastHits.Dispose();
+
+                if (_wheelRaycastCommands.IsCreated) _wheelRaycastCommands.Dispose();
+                if (_wheelRaycastHits.IsCreated) _wheelRaycastHits.Dispose();
+
+                _transformAccessArray.Dispose(); // Fix this to upper case if changed 
             }
         }
     }

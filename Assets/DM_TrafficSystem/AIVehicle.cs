@@ -99,7 +99,8 @@ namespace Darkmatter.TrafficSystem
 
         private void FixedUpdate()
         {
-            ApplySuspension();
+            // Now managed by TrafficManager jobs!
+            // ApplySuspension();
         }
 
         private void Update()
@@ -129,41 +130,31 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        private void ApplySuspension()
+        public void ApplySuspensionFromJob(int wheelIndex, RaycastHit hit)
         {
-            isGrounded = false;
-            if (wheels == null || wheels.Length == 0) return;
+            if (wheels == null || wheelIndex >= wheels.Length) return;
 
-            int groundedCount = 0;
+            var wheel = wheels[wheelIndex];
+            if (wheel == null || wheel.raycastTransform == null) return;
 
-            for (int i = 0; i < wheels.Length; i++)
+            Vector3 origin = wheel.raycastTransform.position;
+            float currentRestLength = wheel.restLength;
+            float currentRadius = wheel.radius;
+
+            if (hit.distance > 0f)
             {
-                if (wheels[i] == null || wheels[i].raycastTransform == null) continue;
+                // Calculate spring force
+                Vector3 springDir = transform.up;
 
-                Vector3 origin = wheels[i].raycastTransform.position;
-                float currentRestLength = wheels[i].restLength;
-                float currentRadius = wheels[i].radius;
-                float rayLength = currentRestLength + currentRadius;
+                Vector3 wheelWorldVel = rb.GetPointVelocity(origin);
+                float relVel = Vector3.Dot(springDir, wheelWorldVel);
 
-                if (Physics.Raycast(origin, -transform.up, out RaycastHit hit, rayLength, groundMask))
-                {
-                    groundedCount++;
+                float offset = currentRestLength - (hit.distance - currentRadius);
 
-                    // Calculate spring force
-                    Vector3 springDir = transform.up;
+                float suspensionForce = (offset * springStrength) - (relVel * springDamper);
 
-                    Vector3 wheelWorldVel = rb.GetPointVelocity(origin);
-                    float relVel = Vector3.Dot(springDir, wheelWorldVel);
-
-                    float offset = currentRestLength - (hit.distance - currentRadius);
-
-                    float suspensionForce = (offset * springStrength) - (relVel * springDamper);
-
-                    rb.AddForceAtPosition(springDir * suspensionForce, origin);
-                }
+                rb.AddForceAtPosition(springDir * suspensionForce, origin);
             }
-
-            isGrounded = groundedCount > 0;
         }
 
 #if UNITY_EDITOR
