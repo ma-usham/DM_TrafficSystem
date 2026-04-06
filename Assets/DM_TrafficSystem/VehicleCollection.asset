@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.VehicleCollection
   prefabs:
   - {fileID: 4264236720710447736, guid: c77a45a141a61c84aa2ded8232ed4cd1, type: 3}
+  - {fileID: 4264236720710447736, guid: 4d21e86d55493a44e86ca221d26a7bcc, type: 3}

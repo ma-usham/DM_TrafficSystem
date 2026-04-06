@@ -10,6 +10,8 @@ namespace Darkmatter.TrafficSystem
     /// </summary>
     public class TrafficWaypointUpdater
     {
+        // 1. Cache the list here so we never allocate memory during runtime
+        private List<AIWaypoint> _validWaypoints = new List<AIWaypoint>();
         public void UpdateWaypoint(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<Vector3> waypointBuffer)
         {
             // Process the graph logic for vehicles that finished driving to their target point
@@ -30,16 +32,16 @@ namespace Darkmatter.TrafficSystem
                     vehicle.lookaheadWaypoints[TrafficManager.WAYPOINT_LOOKAHEAD - 1] = null;
                     AIWaypoint lastValidPoint = vehicle.lookaheadWaypoints[TrafficManager.WAYPOINT_LOOKAHEAD - 2];
 
-                    if (lastValidPoint != null && lastValidPoint.settings.nextWaypoint != null && lastValidPoint.settings.nextWaypoint.Length > 0)
+                    AIWaypoint nextPoint = GetNextValidWaypoint(vehicle, lastValidPoint);
+                    if (nextPoint != null)
                     {
-                        int randomPathIndex = Random.Range(0, lastValidPoint.settings.nextWaypoint.Length);
-                        vehicle.lookaheadWaypoints[TrafficManager.WAYPOINT_LOOKAHEAD - 1] = lastValidPoint.settings.nextWaypoint[randomPathIndex];
+                        vehicle.lookaheadWaypoints[TrafficManager.WAYPOINT_LOOKAHEAD - 1] = nextPoint;
                     }
 
                     // 3. Reset job state flags
                     state.reachedCurrentWaypoint = false;
                     state.currentTargetIndexOffset = 0;
-                    
+
                     // Update stop state for the new target
                     if (vehicle.lookaheadWaypoints[0] != null)
                     {
@@ -72,6 +74,43 @@ namespace Darkmatter.TrafficSystem
                     vehicleStates[vehicle.arrayIndex] = state;
                 }
             }
+        }
+
+        public AIWaypoint GetNextValidWaypoint(AIVehicle vehicle, AIWaypoint currentPoint)
+        {
+            if (currentPoint == null || currentPoint.settings.nextWaypoint == null || currentPoint.settings.nextWaypoint.Length == 0)
+                return null;
+
+            AIWaypoint[] nextWaypoints = currentPoint.settings.nextWaypoint;
+
+            // 2. Clear the cached list instead of making a new one
+            _validWaypoints.Clear();
+
+            // First, try to find waypoints matching the vehicle's type
+            for (int i = 0; i < nextWaypoints.Length; i++)
+            {
+                AIWaypoint wp = nextWaypoints[i];
+                if (wp != null && wp.settings.vehicleType != null && wp.settings.vehicleType.Length > 0)
+                {
+                    for (int j = 0; j < wp.settings.vehicleType.Length; j++)
+                    {
+                        if (wp.settings.vehicleType[j] == vehicle.vehicleType)
+                        {
+                            _validWaypoints.Add(wp);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Fallback: If no waypoints matched the specific type, we just pick from any valid next waypoint.
+            if (_validWaypoints.Count == 0)
+            {
+                return nextWaypoints[Random.Range(0, nextWaypoints.Length)];
+            }
+
+            // Otherwise, pick randomly from the matched type waypoints
+            return _validWaypoints[Random.Range(0, _validWaypoints.Count)];
         }
     }
 }

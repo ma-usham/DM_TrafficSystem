@@ -84,7 +84,11 @@ namespace Darkmatter.TrafficSystem
                 //pull the vehicle formt he pool First
                 AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
 
-                if (vehicle == null) continue;
+                if (vehicle == null)
+                {
+                    Debug.LogWarning("Failed to spawn vehicle from pool. Check if VehicleCollection has prefabs and matches the required types for the waypoints.");
+                    continue;
+                }
 
                 Vector3 halfExtents = vehicle.GetSpawnBoxHalfExtents();
                 Vector3 offset = vehicle.GetSpawnBoxCenterOffset();
@@ -152,10 +156,10 @@ namespace Darkmatter.TrafficSystem
             for (int i = 0; i < WAYPOINT_LOOKAHEAD - 1; i++)
             {
                 AIWaypoint currentObj = vehicle.lookaheadWaypoints[i];
-                if (currentObj != null && currentObj.settings.nextWaypoint != null && currentObj.settings.nextWaypoint.Length > 0)
+                AIWaypoint nextObj = _trafficWaypointUpdater.GetNextValidWaypoint(vehicle, currentObj);
+                if (nextObj != null)
                 {
-                    // Pick the first connection for now
-                    vehicle.lookaheadWaypoints[i + 1] = currentObj.settings.nextWaypoint[0];
+                    vehicle.lookaheadWaypoints[i + 1] = nextObj;
                 }
             }
 
