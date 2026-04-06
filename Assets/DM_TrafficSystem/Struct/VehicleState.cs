@@ -37,9 +37,20 @@ namespace Darkmatter.TrafficSystem
         public Vector3 sensorSize;
         public Vector3 sensorOffset;
         public int obstacleMask;
+
+        public bool isSideSensorActive;
+        public Vector3 leftSensorSize;
+        public Vector3 leftSensorOffset;
+        public Vector3 rightSensorSize;
+        public Vector3 rightSensorOffset;
         
         // Sensor status output
         public bool obstacleDetected;
         public bool playerDetectedFar;
+        
+        // Side sensor status
+        public bool leftLaneBlocked;
+        public bool rightLaneBlocked;
+        public bool emergencySideStop;
     }
 }

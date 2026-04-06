@@ -15,6 +15,8 @@ namespace Darkmatter.TrafficSystem
         public NativeArray<VehicleState> vehicleStates;
         [ReadOnly] public NativeArray<Vector3> waypointBuffer;
         [ReadOnly] public NativeArray<RaycastHit> sensorHits;
+        [ReadOnly] public NativeArray<RaycastHit> leftSensorHits;
+        [ReadOnly] public NativeArray<RaycastHit> rightSensorHits;
 
         public float deltaTime;
         public float arrivalDistance;
@@ -77,7 +79,42 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
-            if (state.obstacleDetected)
+            // Side sensors logic
+            state.leftLaneBlocked = false;
+            state.rightLaneBlocked = false;
+            state.emergencySideStop = false;
+
+            if (state.isSideSensorActive)
+            {
+                RaycastHit lHit = leftSensorHits[index];
+                if (lHit.distance > 0f || lHit.normal != Vector3.zero)
+                {
+                    state.leftLaneBlocked = true;
+                    // If hit distance is very close to the car (e.g., within 0.5m of the car's side)
+                    if (lHit.distance < 0.5f)
+                    {
+                        state.emergencySideStop = true;
+                    }
+                }
+
+                RaycastHit rHit = rightSensorHits[index];
+                if (rHit.distance > 0f || rHit.normal != Vector3.zero)
+                {
+                    state.rightLaneBlocked = true;
+                    if (rHit.distance < 0.1f)
+                    {
+                        state.emergencySideStop = true;
+                    }
+                }
+            }
+
+            if (state.emergencySideStop)
+            {
+                // Immediately brake if something is about to hit the side
+                state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower * 2f);
+                if (state.currentSpeed < 0.1f) state.currentSpeed = 0f;
+            }
+            else if (state.obstacleDetected)
             {
                 // Brake due to an obstacle ahead
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower);

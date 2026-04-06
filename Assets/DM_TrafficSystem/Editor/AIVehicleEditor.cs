@@ -14,16 +14,20 @@ namespace Darkmatter.TrafficSystem
             AIVehicle vehicle = (AIVehicle)target;
 
             DrawWheelHandles(vehicle);
-            DrawSensorHandle(vehicle);
+            DrawSensorHandle(vehicle, vehicle.frontSensor, new Color(1.0f, 0.6f, 0.0f, 1.0f), "Change Front Sensor Bounds");
+            
+            // Draw left and right sensors with identical colors (Magenta) and pass mirror reference
+            DrawSensorHandle(vehicle, vehicle.leftSensor, Color.magenta, "Change Left Sensor Bounds", vehicle.rightSensor, true);
+            DrawSensorHandle(vehicle, vehicle.rightSensor, Color.magenta, "Change Right Sensor Bounds", vehicle.leftSensor, true);
         }
 
-        private void DrawSensorHandle(AIVehicle vehicle)
+        private void DrawSensorHandle(AIVehicle vehicle, Transform sensorT, Color drawColor, string undoMessage, Transform mirrorSensorT = null, bool mirrorInvertX = false)
         {
-            if (vehicle.frontSensor == null) return;
+            if (sensorT == null) return;
 
             // Set the handle's current data from the sensor's transform properties
-            _sensorBoundsHandle.center = vehicle.frontSensor.localPosition;
-            _sensorBoundsHandle.size = vehicle.frontSensor.localScale;
+            _sensorBoundsHandle.center = sensorT.localPosition;
+            _sensorBoundsHandle.size = sensorT.localScale;
 
             EditorGUI.BeginChangeCheck();
 
@@ -33,24 +37,43 @@ namespace Darkmatter.TrafficSystem
             using (new Handles.DrawingScope(handleMatrix))
             {
                 // Draw the handle
-                _sensorBoundsHandle.SetColor(new Color(1.0f, 0.6f, 0.0f, 1.0f));
+                _sensorBoundsHandle.SetColor(drawColor);
                 _sensorBoundsHandle.DrawHandle();
             }
 
             if (EditorGUI.EndChangeCheck())
             {
-                // Record the sensor's transform for Undo
-                Undo.RecordObject(vehicle.frontSensor, "Change Front Sensor Bounds");
+                if (mirrorSensorT != null)
+                {
+                    Undo.RecordObjects(new Object[] { sensorT, mirrorSensorT }, undoMessage);
+                }
+                else
+                {
+                    // Record the sensor's transform for Undo
+                    Undo.RecordObject(sensorT, undoMessage);
+                }
 
                 // Apply changes from the handle back to the sensor transform
-                vehicle.frontSensor.localPosition = _sensorBoundsHandle.center;
+                sensorT.localPosition = _sensorBoundsHandle.center;
                 
                 // Keep scale positive
                 Vector3 newSize = _sensorBoundsHandle.size;
                 newSize.x = Mathf.Max(0.01f, newSize.x);
                 newSize.y = Mathf.Max(0.01f, newSize.y);
                 newSize.z = Mathf.Max(0.01f, newSize.z);
-                vehicle.frontSensor.localScale = newSize;
+                sensorT.localScale = newSize;
+
+                // Apply mirroring to opposite side sensor
+                if (mirrorSensorT != null)
+                {
+                    mirrorSensorT.localScale = newSize;
+                    if (mirrorInvertX)
+                    {
+                        Vector3 mirroredCenter = _sensorBoundsHandle.center;
+                        mirroredCenter.x = -mirroredCenter.x;
+                        mirrorSensorT.localPosition = mirroredCenter;
+                    }
+                }
 
                 SceneView.RepaintAll();
             }
@@ -170,6 +193,20 @@ namespace Darkmatter.TrafficSystem
                 {
                     vehicle.frontSensor = frontSensorT;
                     Debug.Log("Auto Setup: Successfully assigned FrontSensor.");
+                }
+
+                Transform leftSensorT = sensorsRoot.Find("LeftSensor");
+                if (leftSensorT != null)
+                {
+                    vehicle.leftSensor = leftSensorT;
+                    Debug.Log("Auto Setup: Successfully assigned LeftSensor.");
+                }
+
+                Transform rightSensorT = sensorsRoot.Find("RightSensor");
+                if (rightSensorT != null)
+                {
+                    vehicle.rightSensor = rightSensorT;
+                    Debug.Log("Auto Setup: Successfully assigned RightSensor.");
                 }
             }
             else

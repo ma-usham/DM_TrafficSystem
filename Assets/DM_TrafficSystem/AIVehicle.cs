@@ -39,6 +39,10 @@ namespace Darkmatter.TrafficSystem
         [Header("Front Sensor")]
         public Transform frontSensor;
 
+        [Header("Side Sensors")]
+        public Transform leftSensor;
+        public Transform rightSensor;
+
         // We'll store the actual MonoBehaviour waypoints here so the Main Thread
         // can traverse the graph and feed 'Vector3' positions to the Job System.
         public AIWaypoint[] lookaheadWaypoints = new AIWaypoint[TrafficManager.WAYPOINT_LOOKAHEAD];
@@ -170,6 +174,24 @@ namespace Darkmatter.TrafficSystem
             
             Gizmos.color = new Color(0f, 1f, 1f, 0.2f); // Cyan semi-transparent fill
             Gizmos.DrawCube(centerOffset, halfExtents * 2f);
+
+            // Draw filled cubes for the sensors
+            if (frontSensor != null)
+            {
+                Gizmos.color = new Color(1.0f, 0.6f, 0.0f, 0.25f); // Orange semi-transparent fill
+                Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
+            }
+            if (leftSensor != null)
+            {
+                Gizmos.color = new Color(1.0f, 0.0f, 1.0f, 0.25f); // Magenta semi-transparent fill
+                Gizmos.DrawCube(leftSensor.localPosition, leftSensor.localScale);
+            }
+            if (rightSensor != null)
+            {
+                Gizmos.color = new Color(1.0f, 0.0f, 1.0f, 0.25f); // Magenta semi-transparent fill
+                Gizmos.DrawCube(rightSensor.localPosition, rightSensor.localScale);
+            }
+
             Gizmos.matrix = oldMatrix;
 
             if (wheels == null) return;

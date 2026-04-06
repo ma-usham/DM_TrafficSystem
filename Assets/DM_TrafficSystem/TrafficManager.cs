@@ -35,6 +35,12 @@ namespace Darkmatter.TrafficSystem
         private NativeArray<BoxcastCommand> _boxcastCommands;
         private NativeArray<RaycastHit> _raycastHits;
 
+        private NativeArray<BoxcastCommand> _leftBoxcastCommands;
+        private NativeArray<RaycastHit> _leftRaycastHits;
+        
+        private NativeArray<BoxcastCommand> _rightBoxcastCommands;
+        private NativeArray<RaycastHit> _rightRaycastHits;
+
         // Job execution handling
         private JobHandle _finalJobHandle;
 
@@ -68,6 +74,12 @@ namespace Darkmatter.TrafficSystem
 
             _boxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
             _raycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+
+            _leftBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
+            _leftRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+            
+            _rightBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
+            _rightRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
 
             _isInitialized = true;
         }
@@ -117,6 +129,8 @@ namespace Darkmatter.TrafficSystem
                 _transformAccessArray.Add(vehicle.transform);
 
                 bool sensorActive = vehicle.frontSensor != null && vehicle.frontSensor.gameObject.activeInHierarchy;
+                bool sideSensorActive = vehicle.leftSensor != null && vehicle.rightSensor != null && 
+                                        vehicle.leftSensor.gameObject.activeInHierarchy && vehicle.rightSensor.gameObject.activeInHierarchy;
 
                 // Initialize state
                 VehicleState state = new VehicleState
@@ -133,11 +147,23 @@ namespace Darkmatter.TrafficSystem
                     isApproachingStopPoint = false,
                     desiredVelocity = Vector3.zero,
                     desiredRotation = vehicle.transform.rotation,
+                    
                     isSensorActive = sensorActive,
                     sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
                     sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
+                    
+                    isSideSensorActive = sideSensorActive,
+                    leftSensorSize = sideSensorActive ? vehicle.leftSensor.localScale : Vector3.zero,
+                    leftSensorOffset = sideSensorActive ? vehicle.leftSensor.localPosition : Vector3.zero,
+                    rightSensorSize = sideSensorActive ? vehicle.rightSensor.localScale : Vector3.zero,
+                    rightSensorOffset = sideSensorActive ? vehicle.rightSensor.localPosition : Vector3.zero,
+                    
                     obstacleMask = obstacleMask.value,
-                    obstacleDetected = false
+                    obstacleDetected = false,
+                    playerDetectedFar = false,
+                    leftLaneBlocked = false,
+                    rightLaneBlocked = false,
+                    emergencySideStop = false
                 };
 
                 _vehicleStates[i] = state;
@@ -195,7 +221,9 @@ namespace Darkmatter.TrafficSystem
             VehicleSensorJob sensorJob = new VehicleSensorJob
             {
                 vehicleStates = _vehicleStates,
-                boxcastCommands = _boxcastCommands
+                boxcastCommands = _boxcastCommands,
+                leftBoxcastCommands = _leftBoxcastCommands,
+                rightBoxcastCommands = _rightBoxcastCommands
             };
             JobHandle sensorJobHandle = sensorJob.Schedule(_transformAccessArray);
 
@@ -207,18 +235,39 @@ namespace Darkmatter.TrafficSystem
                 sensorJobHandle
             );
 
+            // Schedule Left side
+            JobHandle leftPhysicsJobHandle = BoxcastCommand.ScheduleBatch(
+                _leftBoxcastCommands,
+                _leftRaycastHits,
+                64,
+                sensorJobHandle
+            );
+
+            // Schedule Right side
+            JobHandle rightPhysicsJobHandle = BoxcastCommand.ScheduleBatch(
+                _rightBoxcastCommands,
+                _rightRaycastHits,
+                64,
+                sensorJobHandle
+            );
+            
+            // Combine both side jobs and the front job
+            JobHandle combinedPhysicsHandle = JobHandle.CombineDependencies(physicsJobHandle, leftPhysicsJobHandle, rightPhysicsJobHandle);
+
             // Job 3: Movement Simulation
             TrafficSimulationJob simulationJob = new TrafficSimulationJob
             {
                 vehicleStates = _vehicleStates,
                 waypointBuffer = _waypointBuffer,
                 sensorHits = _raycastHits,
+                leftSensorHits = _leftRaycastHits,
+                rightSensorHits = _rightRaycastHits,
                 deltaTime = Time.fixedDeltaTime,
                 arrivalDistance = 2.0f
             };
 
             // Final handle allows the Main Thread to wait for all simulation
-            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, physicsJobHandle);
+            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, combinedPhysicsHandle);
 
             // Wait for everything to complete before applying
             _finalJobHandle.Complete();
@@ -264,8 +313,15 @@ namespace Darkmatter.TrafficSystem
                 if (_vehicleStates.IsCreated) _vehicleStates.Dispose();
                 if (_waypointBuffer.IsCreated) _waypointBuffer.Dispose();
                 if (_transformAccessArray.isCreated) _transformAccessArray.Dispose(); // Note the lowercase 'i' on isCreated here
+                
                 if (_boxcastCommands.IsCreated) _boxcastCommands.Dispose();
                 if (_raycastHits.IsCreated) _raycastHits.Dispose();
+                
+                if (_leftBoxcastCommands.IsCreated) _leftBoxcastCommands.Dispose();
+                if (_leftRaycastHits.IsCreated) _leftRaycastHits.Dispose();
+                
+                if (_rightBoxcastCommands.IsCreated) _rightBoxcastCommands.Dispose();
+                if (_rightRaycastHits.IsCreated) _rightRaycastHits.Dispose();
             }
         }
     }
