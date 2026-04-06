@@ -149,8 +149,8 @@ Transform:
   m_GameObject: {fileID: 1280693976540300035}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.4018865, y: 0.8603604, z: 0.5008874}
-  m_LocalScale: {x: 5.105014, y: 1.2502866, z: 10.985021}
+  m_LocalPosition: {x: 3.5138443, y: 0.8603604, z: -0.037135124}
+  m_LocalScale: {x: 5.3289294, y: 1.2502866, z: 12.061066}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 9142546275670087829}
@@ -392,8 +392,8 @@ Transform:
   m_GameObject: {fileID: 3330229152712915258}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.4018865, y: 0.8603604, z: 0.5008874}
-  m_LocalScale: {x: 5.105014, y: 1.2502866, z: 10.985021}
+  m_LocalPosition: {x: -3.5138443, y: 0.8603604, z: -0.037135124}
+  m_LocalScale: {x: 5.3289294, y: 1.2502866, z: 12.061066}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 9142546275670087829}
@@ -632,7 +632,9 @@ MonoBehaviour:
   vehicleCollider: {fileID: 3057065673938476419}
   steeringAngle: 0
   isGrounded: 0
-  spawnPadding: 2
+  laneChangeCooldownTimer: 10
+  isChangingLanes: 0
+  spawnPadding: 3
 --- !u!1 &5775598084471942225
 GameObject:
   m_ObjectHideFlags: 0

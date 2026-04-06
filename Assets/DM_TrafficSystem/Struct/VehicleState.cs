@@ -52,5 +52,8 @@ namespace Darkmatter.TrafficSystem
         public bool leftLaneBlocked;
         public bool rightLaneBlocked;
         public bool emergencySideStop;
+        
+        public bool readyToChangeLane;
+        public bool isChangingLanes;
     }
 }

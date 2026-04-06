@@ -20,6 +20,102 @@ namespace Darkmatter.TrafficSystem
                 AIVehicle vehicle = activeVehicles[i];
                 VehicleState state = vehicleStates[vehicle.arrayIndex];
 
+                if (vehicle.laneChangeCooldownTimer > 0)
+                {
+                    vehicle.laneChangeCooldownTimer -= Time.deltaTime;
+                }
+
+                // Provide a new path if job requests lane change
+                if (state.readyToChangeLane && vehicle.laneChangeCooldownTimer <= 0)
+                {
+                    // Unset ready flag immediately
+                    state.readyToChangeLane = false;
+                    
+                    // Which lane direction should we attempt?
+                    // Look at current obstacle layout matching side sensors
+                    bool tryLeft = !state.leftLaneBlocked;
+                    bool tryRight = !state.rightLaneBlocked;
+
+                    if (tryLeft || tryRight)
+                    {
+                        AIWaypoint currentTarget = vehicle.lookaheadWaypoints[vehicle.activeWaypointIndex];
+                        if (currentTarget != null && currentTarget.settings.laneChangePoints != null && currentTarget.settings.laneChangePoints.Length > 0)
+                        {
+                            AIWaypoint targetLaneWaypoint = null;
+
+                            // Identify the correct left/right waypoint using Dot product / SignedAngle of lateral offset
+                            foreach (AIWaypoint lp in currentTarget.settings.laneChangePoints)
+                            {
+                                if (lp == null) continue;
+
+                                // Check if this lane change waypoint supports the current vehicle type
+                                bool isTypeValid = false;
+                                if (lp.settings.vehicleType != null && lp.settings.vehicleType.Length > 0)
+                                {
+                                    for (int j = 0; j < lp.settings.vehicleType.Length; j++)
+                                    {
+                                        if (lp.settings.vehicleType[j] == vehicle.vehicleType)
+                                        {
+                                            isTypeValid = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // If no specific vehicle types are defined, assume it's valid for all
+                                    isTypeValid = true; 
+                                }
+
+                                if (!isTypeValid) continue;
+
+                                Vector3 dirToLane = (lp.transform.position - vehicle.transform.position).normalized;
+                                float lateralSignedAngle = Vector3.SignedAngle(vehicle.transform.forward, dirToLane, Vector3.up);
+
+                                if (tryLeft && lateralSignedAngle < -5f) // To our Left
+                                {
+                                    targetLaneWaypoint = lp;
+                                    break;
+                                }
+                                else if (tryRight && lateralSignedAngle > 5f) // To our Right
+                                {
+                                    targetLaneWaypoint = lp;
+                                    break;
+                                }
+                            }
+
+                            if (targetLaneWaypoint != null)
+                            {
+                                // Regenerate the lookahead queue starting from the new lane change point
+                                vehicle.lookaheadWaypoints[0] = targetLaneWaypoint;
+                                for (int j = 1; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
+                                {
+                                    vehicle.lookaheadWaypoints[j] = GetNextValidWaypoint(vehicle, vehicle.lookaheadWaypoints[j - 1]);
+                                }
+
+                                // Trigger logic swap
+                                state.isChangingLanes = true;
+                                vehicle.isChangingLanes = true;
+                                vehicle.laneChangeCooldownTimer = 10f; // Add a bit of delay before the next jump
+                                
+                                // Write back to Native Memory so jobs can read the newly queued target immediately
+                                vehicleStates[vehicle.arrayIndex] = state;
+                                for (int j = 0; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
+                                {
+                                    if (vehicle.lookaheadWaypoints[j] != null)
+                                    {
+                                        waypointBuffer[state.waypointBufferStartIndex + j] = vehicle.lookaheadWaypoints[j].transform.position;
+                                    }
+                                }
+                                continue; // Skip normal waypoint update this frame
+                            }
+                        }
+                    }
+                    
+                    // If we get here, lane change failed (no valid lane change points), but we must clear readyToChangeLane 
+                    vehicleStates[vehicle.arrayIndex] = state;
+                }
+
                 if (state.reachedCurrentWaypoint)
                 {
                     // 1. Shift the entire queue back by 1
@@ -38,9 +134,17 @@ namespace Darkmatter.TrafficSystem
                         vehicle.lookaheadWaypoints[TrafficManager.WAYPOINT_LOOKAHEAD - 1] = nextPoint;
                     }
 
-                    // 3. Reset job state flags
+                    // Reset job state flags
                     state.reachedCurrentWaypoint = false;
                     state.currentTargetIndexOffset = 0;
+                    
+                    if (state.isChangingLanes)
+                    {
+                        // Once we reach a lane change destination, we're no longer "changing" lanes
+                        state.isChangingLanes = false;
+                        vehicle.isChangingLanes = false;
+                        vehicle.laneChangeCooldownTimer = 10f; // 10 second cooldown before changing again
+                    }
 
                     // Update stop state for the new target
                     if (vehicle.lookaheadWaypoints[0] != null)

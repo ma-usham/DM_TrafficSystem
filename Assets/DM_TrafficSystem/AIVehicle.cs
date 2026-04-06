@@ -64,6 +64,8 @@ namespace Darkmatter.TrafficSystem
         public float steeringAngle;
 
         public bool isGrounded;
+        public float laneChangeCooldownTimer;
+        public bool isChangingLanes;
 
         [Header("Spawning Clearance")]
         [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]

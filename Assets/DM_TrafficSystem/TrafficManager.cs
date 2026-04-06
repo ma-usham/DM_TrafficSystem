@@ -116,6 +116,7 @@ namespace Darkmatter.TrafficSystem
                 Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);
                 if(vehicle.vehicleCollider!=null)vehicle.vehicleCollider.enabled = false; // Disable the collider temporarily to avoid detecting itself in the CheckBox
 
+
                 // 3. Do a CheckBox using the auto-calculated half-extents
                 if (Physics.CheckBox(boxCenter, halfExtents, spawnPoint.transform.rotation, obstacleMask))
                 {

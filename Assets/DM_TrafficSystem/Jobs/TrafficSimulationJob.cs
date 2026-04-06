@@ -116,9 +116,24 @@ namespace Darkmatter.TrafficSystem
             }
             else if (state.obstacleDetected)
             {
+                if (!state.isChangingLanes)
+                {
+                    state.readyToChangeLane = true;
+                }
+                
                 // Brake due to an obstacle ahead
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower);
                 if (state.currentSpeed < 0.1f) state.currentSpeed = 0f;
+            }
+            else if (state.playerDetectedFar)
+            {
+                if (!state.isChangingLanes)
+                {
+                    state.readyToChangeLane = true;
+                }
+                
+                // Accelerate up to speed limit since we're just changing lanes
+                state.currentSpeed = Mathf.Lerp(state.currentSpeed, state.maxSpeed, deltaTime * state.acceleration);
             }
             // Behavior 1: Traffic Light / Stop Point Braking
             else if (state.isApproachingStopPoint && distance < state.stoppingDistance * 2f)
