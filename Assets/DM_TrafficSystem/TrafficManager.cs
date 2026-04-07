@@ -7,6 +7,13 @@ using System.Collections.Generic;
 
 namespace Darkmatter.TrafficSystem
 {
+    [System.Serializable]
+    public struct WaypointGridCell
+    {
+        public Vector2Int cellCoordinate;
+        public List<AIWaypoint> waypoints;
+    }
+
     /// <summary>
     /// Stores scene-wide traffic configuration values and manages the Job System memory loops.
     /// </summary>
@@ -15,21 +22,43 @@ namespace Darkmatter.TrafficSystem
         public const int WAYPOINT_LOOKAHEAD = 5;
 
         [FormerlySerializedAs("VehicleCount")]
+        [Header("Hard Memory Limits (Do Not Change At Runtime)")]
+        [Tooltip("Absolute maximum RAM allocation and Pool size.")]
         [Min(0)]
-        public int vehicleCount = 1;
+        public int maxVehicleCountInGame = 50;
+
+        [Header("Density Control (Safe to Change At Runtime)")]
+        [Tooltip("Target number of active vehicles. Will be clamped to maxVehicleCountInGame.")]
+        public int densityControl = 20;
 
         [Header("Global Physics Layers")]
         public LayerMask groundMask;
         public LayerMask trafficMask;
         public LayerMask playerMask;
 
-
         [Header("Testing setup")]
         public VehicleCollection vehicleCollection;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
-        [Min(0)] public int initialPoolSize = 50; // Pre-instantiate this many vehicles in the pool at Start for better performance when spawning during gameplay
+
+        [Header("Player Pooling Setup")]
+        public bool usePlayerPooling = false;
+        public float innerSpawnRadius = 50f;
+        public float outerSpawnRadius = 150f;
+        public float despawnRadius = 200f;
+        [Tooltip("If unassigned, Camera.main will be used instead.")]
+        public Camera mainCamera;
 
         public Transform playerTransform; // Assign your Player in the Inspector
+
+        [Header("Grid Spawning Setup must be larger than outer spawn radius")]
+        public float gridSize = 200f; // 100x100 meter squares
+
+        // Unity will save this list in the editor
+        [HideInInspector] 
+        public List<WaypointGridCell> serializedGrid = new List<WaypointGridCell>();
+
+        // At runtime, we convert the list into this dictionary for fast O(1) lookups
+        private Dictionary<Vector2Int, List<AIWaypoint>> _runtimeGrid;
 
         // Native memory arrays for the Jobs
         private NativeArray<VehicleState> _vehicleStates;
@@ -77,36 +106,79 @@ namespace Darkmatter.TrafficSystem
             poolContainer.transform.SetParent(this.transform);
             _vehiclePool = new VehiclePool(vehicleCollection, poolContainer.transform);
 
-            _vehiclePool.Prepopulate(initialPoolSize);
+            _vehiclePool.Prepopulate(maxVehicleCountInGame);
 
+            if (usePlayerPooling && mainCamera == null)
+            {
+                mainCamera = Camera.main;
+            }
+
+            InitializeRuntimeGrid();
             InitializeBuffers();
             SpawnInitialVehicles();
+
+            if (usePlayerPooling)
+            {
+                StartCoroutine(PlayerPoolingRoutine());
+            }
+        }
+
+        private void InitializeRuntimeGrid()
+        {
+            _runtimeGrid = new Dictionary<Vector2Int, List<AIWaypoint>>();
+            
+            foreach (var cell in serializedGrid)
+            {
+                _runtimeGrid[cell.cellCoordinate] = cell.waypoints;
+            }
+        }
+
+        private List<AIWaypoint> GetNearbyWaypoints(Vector3 playerPosition)
+        {
+            List<AIWaypoint> nearbyWaypoints = new List<AIWaypoint>();
+            
+            int centerX = Mathf.FloorToInt(playerPosition.x / gridSize);
+            int centerZ = Mathf.FloorToInt(playerPosition.z / gridSize);
+            Vector2Int centerCell = new Vector2Int(centerX, centerZ);
+
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    Vector2Int checkCell = new Vector2Int(centerCell.x + x, centerCell.y + y);
+                    if (_runtimeGrid.TryGetValue(checkCell, out List<AIWaypoint> cellWaypoints))
+                    {
+                        nearbyWaypoints.AddRange(cellWaypoints);
+                    }
+                }
+            }
+            return nearbyWaypoints;
         }
 
         private void InitializeBuffers()
         {
-            _vehicleStates = new NativeArray<VehicleState>(vehicleCount, Allocator.Persistent);
-            _waypointBuffer = new NativeArray<Vector3>(vehicleCount * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
-            _transformAccessArray = new TransformAccessArray(vehicleCount);
+            _vehicleStates = new NativeArray<VehicleState>(maxVehicleCountInGame, Allocator.Persistent);
+            _waypointBuffer = new NativeArray<Vector3>(maxVehicleCountInGame * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
+            _transformAccessArray = new TransformAccessArray(maxVehicleCountInGame);
 
-            _boxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
-            _raycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+            _boxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
+            _raycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
 
-            _playerBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
-            _playerRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+            _playerBoxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
+            _playerRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
 
-            _leftBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
-            _leftRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+            _leftBoxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
+            _leftRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
 
-            _rightBoxcastCommands = new NativeArray<BoxcastCommand>(vehicleCount, Allocator.Persistent);
-            _rightRaycastHits = new NativeArray<RaycastHit>(vehicleCount, Allocator.Persistent);
+            _rightBoxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
+            _rightRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
 
-            _wheelRaycastCommands = new NativeArray<RaycastCommand>(vehicleCount * 4, Allocator.Persistent);
-            _wheelRaycastHits = new NativeArray<RaycastHit>(vehicleCount * 4, Allocator.Persistent);
+            _wheelRaycastCommands = new NativeArray<RaycastCommand>(maxVehicleCountInGame * 4, Allocator.Persistent);
+            _wheelRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame * 4, Allocator.Persistent);
 
-            _wheelCounts = new NativeArray<int>(vehicleCount, Allocator.Persistent);
-            _wheelLocalOffsets = new NativeArray<Vector3>(vehicleCount * 4, Allocator.Persistent);
-            _wheelRayLengths = new NativeArray<float>(vehicleCount * 4, Allocator.Persistent);
+            _wheelCounts = new NativeArray<int>(maxVehicleCountInGame, Allocator.Persistent);
+            _wheelLocalOffsets = new NativeArray<Vector3>(maxVehicleCountInGame * 4, Allocator.Persistent);
+            _wheelRayLengths = new NativeArray<float>(maxVehicleCountInGame * 4, Allocator.Persistent);
 
             _isInitialized = true;
         }
@@ -116,129 +188,266 @@ namespace Darkmatter.TrafficSystem
             if (spawnWaypoints == null || spawnWaypoints.Length == 0) return;
 
             int spawnedCount = 0;
-            // Simple spawner for now: spawn one car per waypoint until we hit vehicleCount
-            for (int i = 0; i < vehicleCount; i++)
+            int startAmount = Mathf.Min(densityControl, maxVehicleCountInGame);
+
+            for (int i = 0; i < startAmount; i++)
             {
-                AIWaypoint spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
-                //pull the vehicle formt he pool First
-                AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
+                AIWaypoint spawnPoint = null;
 
-                if (vehicle == null)
+                if (usePlayerPooling && mainCamera != null && playerTransform != null)
                 {
-                    Debug.LogWarning("Failed to spawn vehicle from pool. Check if VehicleCollection has prefabs and matches the required types for the waypoints.");
+                    Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(mainCamera);
+                    List<AIWaypoint> localWaypoints = GetNearbyWaypoints(playerTransform.position);
+                    if (localWaypoints.Count > 0)
+                    {
+                        for (int attempt = 0; attempt < 50; attempt++)
+                        {
+                            AIWaypoint candidate = localWaypoints[Random.Range(0, localWaypoints.Count)];
+                            float dist = Vector3.Distance(candidate.transform.position, playerTransform.position);
+                            if (dist >= innerSpawnRadius && dist <= outerSpawnRadius)
+                            {
+                                if (IsSpawnPointHidden(candidate.transform.position))
+                                {
+                                    spawnPoint = candidate;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
+                }
+
+                if (spawnPoint != null)
+                {
+                    if (SpawnVehicle(spawnPoint))
+                    {
+                        spawnedCount++;
+                    }
+                }
+            }
+        }
+
+        private bool IsSpawnPointHidden(Vector3 pos)
+        {
+            Camera cam = mainCamera != null ? mainCamera : Camera.main;
+            if (cam == null) return false;
+
+            Bounds bounds = new Bounds(pos, new Vector3(3f, 3f, 5f));
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(cam);
+
+            if (!GeometryUtility.TestPlanesAABB(frustumPlanes, bounds))
+            {
+                return true; // Outside frustum
+            }
+
+            // Inside frustum. Check if occluded by environment
+            Vector3 camPos = cam.transform.position;
+            Vector3 dir = pos - camPos;
+            int mask = groundMask.value; // environment should be on groundMask
+            if (Physics.Raycast(camPos, dir.normalized, out RaycastHit hit, dir.magnitude, mask))
+            {
+                return true; // Occluded
+            }
+
+            return false; // Visible
+        }
+
+        private bool SpawnVehicle(AIWaypoint spawnPoint)
+        {
+            if (_activeVehicles.Count >= maxVehicleCountInGame) return false;
+
+            int newIndex = _activeVehicles.Count;
+
+            AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
+            if (vehicle == null) return false;
+
+            Vector3 halfExtents = vehicle.GetSpawnBoxHalfExtents();
+            Vector3 offset = vehicle.GetSpawnBoxCenterOffset();
+            Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);
+
+            if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = false;
+            int combinedMask = trafficMask.value | playerMask.value;
+            if (Physics.CheckBox(boxCenter, halfExtents, spawnPoint.transform.rotation, combinedMask))
+            {
+                _vehiclePool.Despawn(vehicle);
+                if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = true;
+                return false;
+            }
+            if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = true;
+
+            vehicle.arrayIndex = newIndex;
+            vehicle.lookaheadWaypoints[0] = spawnPoint;
+
+            _activeVehicles.Add(vehicle);
+            _transformAccessArray.Add(vehicle.transform);
+
+            bool sensorActive = vehicle.frontSensor != null && vehicle.frontSensor.gameObject.activeInHierarchy;
+            bool sideSensorActive = vehicle.leftSensor != null && vehicle.rightSensor != null &&
+                                    vehicle.leftSensor.gameObject.activeInHierarchy && vehicle.rightSensor.gameObject.activeInHierarchy;
+
+            float randomFrustration = Random.Range(vehicle.driverBehaviour.frustrationTime.x, vehicle.driverBehaviour.frustrationTime.y);
+            float randomCooldown = Random.Range(vehicle.driverBehaviour.laneChangeCooldown.x, vehicle.driverBehaviour.laneChangeCooldown.y);
+            float randomMultiplier = Random.Range(vehicle.driverBehaviour.speedMultiplierRange.x, vehicle.driverBehaviour.speedMultiplierRange.y);
+            float wpLimit = spawnPoint.settings.speed > 0 ? (spawnPoint.settings.speed * randomMultiplier) : vehicle.driverBehaviour.engineMaxSpeed;
+
+            VehicleState state = new VehicleState
+            {
+                currentSpeed = 1f,
+                localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed, wpLimit),
+                engineMaxSpeed = vehicle.driverBehaviour.engineMaxSpeed,
+                speedMultiplier = randomMultiplier,
+                acceleration = vehicle.driverBehaviour.acceleration,
+                brakingPower = vehicle.driverBehaviour.brakingPower,
+                turnSpeed = vehicle.driverBehaviour.turnSpeed,
+                stoppingDistance = vehicle.driverBehaviour.stoppingDistance,
+                waypointBufferStartIndex = newIndex * WAYPOINT_LOOKAHEAD,
+                currentTargetIndexOffset = 0,
+                reachedCurrentWaypoint = false,
+                isApproachingStopPoint = false,
+                desiredVelocity = Vector3.zero,
+                desiredRotation = vehicle.transform.rotation,
+                isSensorActive = sensorActive,
+                sensorFacesWaypoint = vehicle.sensorFacesWaypoint,
+                sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
+                sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
+                isSideSensorActive = sideSensorActive,
+                leftSensorSize = sideSensorActive ? vehicle.leftSensor.localScale : Vector3.zero,
+                leftSensorOffset = sideSensorActive ? vehicle.leftSensor.localPosition : Vector3.zero,
+                rightSensorSize = sideSensorActive ? vehicle.rightSensor.localScale : Vector3.zero,
+                rightSensorOffset = sideSensorActive ? vehicle.rightSensor.localPosition : Vector3.zero,
+                obstacleMask = trafficMask.value,
+                playerMask = playerMask.value,
+                trafficDetected = false,
+                detectedTrafficFar = false,
+                leftLaneBlocked = false,
+                rightLaneBlocked = false,
+                emergencySideStop = false,
+                isLaneChangingVehicle = vehicle.driverBehaviour.willChangeLane,
+                frustrationTime = randomFrustration,
+                laneChangeCooldown = randomCooldown,
+                overtakeProbability = vehicle.driverBehaviour.aiOvertakeProbability,
+                playerOvertakeProbability = vehicle.driverBehaviour.playerOvertakeProbability,
+                impatienceTimer = randomFrustration,
+                wantsToOvertake = false,
+                wantsToHonk = false
+            };
+
+            // Update state
+            _vehicleStates[newIndex] = state;
+            WarmupWaypoints(vehicle, state);
+
+            int wCount = vehicle.wheels != null ? Mathf.Min(vehicle.wheels.Length, 4) : 0;
+            _wheelCounts[newIndex] = wCount;
+
+            int startWIndex = newIndex * 4;
+            for (int w = 0; w < wCount; w++)
+            {
+                _wheelLocalOffsets[startWIndex + w] = vehicle.wheels[w].localPosition;
+                _wheelRayLengths[startWIndex + w] = vehicle.wheels[w].restLength + vehicle.wheels[w].radius;
+            }
+
+            return true;
+        }
+
+        private void DespawnVehicleAt(int index)
+        {
+            if (index < 0 || index >= _activeVehicles.Count) return;
+
+            AIVehicle vehicleToRemove = _activeVehicles[index];
+            _vehiclePool.Despawn(vehicleToRemove);
+
+            int lastIndex = _activeVehicles.Count - 1;
+
+            if (index != lastIndex)
+            {
+                // Move the last vehicle to this spot
+                _activeVehicles[index] = _activeVehicles[lastIndex];
+                _activeVehicles[index].arrayIndex = index;
+
+                // State update
+                VehicleState movedState = _vehicleStates[lastIndex];
+                int oldStart = movedState.waypointBufferStartIndex;
+                int newStart = index * WAYPOINT_LOOKAHEAD;
+                movedState.waypointBufferStartIndex = newStart;
+
+                // Copy buffer
+                for (int i = 0; i < WAYPOINT_LOOKAHEAD; i++)
+                {
+                    _waypointBuffer[newStart + i] = _waypointBuffer[oldStart + i];
+                }
+
+                _vehicleStates[index] = movedState;
+
+                // Wheel update
+                _wheelCounts[index] = _wheelCounts[lastIndex];
+                for (int w = 0; w < 4; w++)
+                {
+                    _wheelLocalOffsets[index * 4 + w] = _wheelLocalOffsets[lastIndex * 4 + w];
+                    _wheelRayLengths[index * 4 + w] = _wheelRayLengths[lastIndex * 4 + w];
+                }
+            }
+
+            _activeVehicles.RemoveAt(lastIndex);
+
+            // Re-create the transform array dropping the removed element effectively by SwapBack!
+            _transformAccessArray.RemoveAtSwapBack(index);
+        }
+
+        private System.Collections.IEnumerator PlayerPoolingRoutine()
+        {
+            WaitForSeconds wait = new WaitForSeconds(0.5f);
+            while (true)
+            {
+                yield return wait;
+
+                if (playerTransform == null || spawnWaypoints == null || spawnWaypoints.Length == 0)
                     continue;
+
+                Vector3 playerPos = playerTransform.position;
+
+                // 1. Despawn vehicles outside despawn radius
+                for (int i = _activeVehicles.Count - 1; i >= 0; i--)
+                {
+                    float dist = Vector3.Distance(_activeVehicles[i].transform.position, playerPos);
+                    if (dist > despawnRadius)
+                    {
+                        DespawnVehicleAt(i);
+                    }
                 }
 
-                Vector3 halfExtents = vehicle.GetSpawnBoxHalfExtents();
-                Vector3 offset = vehicle.GetSpawnBoxCenterOffset();
-
-                // 2. Calculate the exact center of the CheckBox based on the waypoint's position & rotation and collider offset
-                Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);
-                if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = false; // Disable the collider temporarily to avoid detecting itself in the CheckBox
-
-
-                // 3. Do a CheckBox using the auto-calculated half-extents (check both traffic and player)
-                int combinedMask = trafficMask.value | playerMask.value;
-                if (Physics.CheckBox(boxCenter, halfExtents, spawnPoint.transform.rotation, combinedMask))
+                // 2. Spawn vehicles if we are below capacity
+                List<AIWaypoint> localWaypoints = GetNearbyWaypoints(playerPos);
+                if (localWaypoints.Count > 0)
                 {
-                    Debug.Log($"Skipping spawn at {spawnPoint.name} - area is blocked for vehicle {vehicle.name}.");
+                    int spawnAttempts = 0;
+                    int safeDensityTarget = Mathf.Min(densityControl, maxVehicleCountInGame);
 
-                    // The area is blocked! Return the vehicle to the pool and skip this attempt
-                    _vehiclePool.Despawn(vehicle);
-                    continue;
+                    while (_activeVehicles.Count < safeDensityTarget && spawnAttempts < 5)
+                    {
+                        spawnAttempts++;
+                        AIWaypoint cand = localWaypoints[Random.Range(0, localWaypoints.Count)];
+                        float dist = Vector3.Distance(cand.transform.position, playerPos);
+
+                        if (dist >= innerSpawnRadius && dist <= outerSpawnRadius)
+                        {
+                            if (IsSpawnPointHidden(cand.transform.position))
+                            {
+                                if (SpawnVehicle(cand))
+                                {
+                                    break; // Spawn max 1 vehicle per coroutine tick to avoid freezing
+                                }
+                            }
+                        }
+                    }
                 }
-                if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = true; // Re-enable the collider after the check
-
-
-                // --- Area is clear! Proceed with normal setup ---
-                vehicle.arrayIndex = spawnedCount;
-                vehicle.lookaheadWaypoints[0] = spawnPoint;
-
-                _activeVehicles.Add(vehicle);
-                _transformAccessArray.Add(vehicle.transform);
-
-                bool sensorActive = vehicle.frontSensor != null && vehicle.frontSensor.gameObject.activeInHierarchy;
-                bool sideSensorActive = vehicle.leftSensor != null && vehicle.rightSensor != null &&
-                                        vehicle.leftSensor.gameObject.activeInHierarchy && vehicle.rightSensor.gameObject.activeInHierarchy;
-
-
-                float randomFrustration = Random.Range(vehicle.driverBehaviour.frustrationTime.x, vehicle.driverBehaviour.frustrationTime.y);
-                float randomCooldown = Random.Range(vehicle.driverBehaviour.laneChangeCooldown.x, vehicle.driverBehaviour.laneChangeCooldown.y);
-                float randomMultiplier = Random.Range(vehicle.driverBehaviour.speedMultiplierRange.x, vehicle.driverBehaviour.speedMultiplierRange.y);
-                float wpLimit = spawnPoint.settings.speed > 0 ? (spawnPoint.settings.speed * randomMultiplier) : vehicle.driverBehaviour.engineMaxSpeed;
-
-                // Initialize state
-                VehicleState state = new VehicleState
-                {
-                    currentSpeed = 1f, // test speed
-                    localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed, wpLimit),
-                    engineMaxSpeed = vehicle.driverBehaviour.engineMaxSpeed,
-                    speedMultiplier = randomMultiplier,
-                    acceleration = vehicle.driverBehaviour.acceleration,
-                    brakingPower = vehicle.driverBehaviour.brakingPower,
-                    turnSpeed = vehicle.driverBehaviour.turnSpeed,
-                    stoppingDistance = vehicle.driverBehaviour.stoppingDistance,
-                    waypointBufferStartIndex = spawnedCount * WAYPOINT_LOOKAHEAD,
-                    currentTargetIndexOffset = 0,
-                    reachedCurrentWaypoint = false,
-                    isApproachingStopPoint = false,
-                    desiredVelocity = Vector3.zero,
-                    desiredRotation = vehicle.transform.rotation,
-
-                    isSensorActive = sensorActive,
-                    sensorFacesWaypoint = vehicle.sensorFacesWaypoint,
-                    sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
-                    sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
-
-                    isSideSensorActive = sideSensorActive,
-                    leftSensorSize = sideSensorActive ? vehicle.leftSensor.localScale : Vector3.zero,
-                    leftSensorOffset = sideSensorActive ? vehicle.leftSensor.localPosition : Vector3.zero,
-                    rightSensorSize = sideSensorActive ? vehicle.rightSensor.localScale : Vector3.zero,
-                    rightSensorOffset = sideSensorActive ? vehicle.rightSensor.localPosition : Vector3.zero,
-
-                    obstacleMask = trafficMask.value,
-                    playerMask = playerMask.value,
-                    trafficDetected = false,
-                    detectedTrafficFar = false,
-                    leftLaneBlocked = false,
-                    rightLaneBlocked = false,
-                    emergencySideStop = false,
-
-                    // Overtaking & Personality
-                    isLaneChangingVehicle = vehicle.driverBehaviour.willChangeLane,
-                    frustrationTime = randomFrustration,
-                    laneChangeCooldown = randomCooldown,
-                    overtakeProbability = vehicle.driverBehaviour.aiOvertakeProbability,
-                    playerOvertakeProbability = vehicle.driverBehaviour.playerOvertakeProbability,
-                    impatienceTimer = randomFrustration, // Start with full patience
-                    wantsToOvertake = false,
-                    wantsToHonk = false
-                };
-
-                _vehicleStates[i] = state;
-
-                // Warm up the 5 waypoint buffer 
-                WarmupWaypoints(vehicle, state);
-
-                // Setup wheel data for the vehicle
-                int wCount = vehicle.wheels != null ? Mathf.Min(vehicle.wheels.Length, 4) : 0;
-                _wheelCounts[vehicle.arrayIndex] = wCount;
-
-                int startWIndex = vehicle.arrayIndex * 4;
-                for (int w = 0; w < wCount; w++)
-                {
-                    _wheelLocalOffsets[startWIndex + w] = vehicle.wheels[w].localPosition;
-                    _wheelRayLengths[startWIndex + w] = vehicle.wheels[w].restLength + vehicle.wheels[w].radius;
-                }
-
-                // Only increase the index if a spawn successfully went through
-                spawnedCount++;
             }
         }
 
         private void WarmupWaypoints(AIVehicle vehicle, VehicleState state)
         {
-            // Traverse from the spawn point and fill out 5 next points ahead of time
             for (int i = 0; i < WAYPOINT_LOOKAHEAD - 1; i++)
             {
                 AIWaypoint currentObj = vehicle.lookaheadWaypoints[i];
@@ -249,7 +458,6 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
-            // Sync main thread array mapping to the struct Memory
             for (int i = 0; i < WAYPOINT_LOOKAHEAD; i++)
             {
                 if (vehicle.lookaheadWaypoints[i] != null)
@@ -258,15 +466,12 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
-            // Initialize stop state for the current target (index 0 initially)
             if (vehicle.lookaheadWaypoints[0] != null)
             {
                 state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
             }
-            // Update the struct in the array!
             _vehicleStates[vehicle.arrayIndex] = state;
         }
-
         void FixedUpdate()
         {
             if (!_isInitialized) return;
@@ -459,6 +664,37 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        void OnDrawGizmos()
+        {
+#if UNITY_EDITOR
+            if (usePlayerPooling && playerTransform != null)
+            {
+                Vector3 pos = playerTransform.position;
+                Vector3 up = Vector3.up;
+
+                // Draw largest first so it doesn't hide smaller ones
+
+                // Despawn Radius (Blue)
+                UnityEditor.Handles.color = new Color(0f, 0f, 1f, 0.1f);
+                UnityEditor.Handles.DrawSolidDisc(pos, up, despawnRadius);
+                UnityEditor.Handles.color = Color.blue;
+                UnityEditor.Handles.DrawWireDisc(pos, up, despawnRadius);
+
+                // Outer Spawn Radius (Yellow)
+                UnityEditor.Handles.color = new Color(1f, 1f, 0f, 0.15f);
+                UnityEditor.Handles.DrawSolidDisc(pos, up, outerSpawnRadius);
+                UnityEditor.Handles.color = Color.yellow;
+                UnityEditor.Handles.DrawWireDisc(pos, up, outerSpawnRadius);
+
+                // Inner Spawn Radius (Red)
+                UnityEditor.Handles.color = new Color(1f, 0f, 0f, 0.2f);
+                UnityEditor.Handles.DrawSolidDisc(pos, up, innerSpawnRadius);
+                UnityEditor.Handles.color = Color.red;
+                UnityEditor.Handles.DrawWireDisc(pos, up, innerSpawnRadius);
+            }
+#endif
+        }
+
         void OnDestroy()
         {
             // IMPORTANT: Unmanaged Collections MUST be disposed on destroy or you create a nasty memory leak.
@@ -490,3 +726,4 @@ namespace Darkmatter.TrafficSystem
         }
     }
 }
+

@@ -83,7 +83,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 EditorGUILayout.Space(4);
 
-                if (GUILayout.Button("Bake Spawn Points", GUILayout.Height(22)))
+                if (GUILayout.Button("Bake Spawn Points & Grid", GUILayout.Height(22)))
                 {
                     BakeSpawnPoints(manager);
                 }
@@ -146,9 +146,39 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             manager.spawnWaypoints = validSpawnPoints.ToArray();
-            EditorUtility.SetDirty(manager);
 
-            Debug.Log($"Baked {validSpawnPoints.Count} safe spawn points from {lanes.Length} AILanes into Traffic Manager.");
+            // 2. Sort them into a temporary dictionary based on position
+            System.Collections.Generic.Dictionary<Vector2Int, System.Collections.Generic.List<AIWaypoint>> tempGrid = new System.Collections.Generic.Dictionary<Vector2Int, System.Collections.Generic.List<AIWaypoint>>();
+            
+            foreach (var wp in validSpawnPoints)
+            {
+                Vector2Int cellPosition = new Vector2Int(
+                    Mathf.FloorToInt(wp.transform.position.x / manager.gridSize),
+                    Mathf.FloorToInt(wp.transform.position.z / manager.gridSize)
+                );
+
+                if (!tempGrid.ContainsKey(cellPosition))
+                {
+                    tempGrid[cellPosition] = new System.Collections.Generic.List<AIWaypoint>();
+                }
+                tempGrid[cellPosition].Add(wp);
+            }
+
+            // 3. Clear the old saved list, and copy the new data into it
+            manager.serializedGrid.Clear();
+            foreach (var kvp in tempGrid)
+            {
+                manager.serializedGrid.Add(new WaypointGridCell
+                {
+                    cellCoordinate = kvp.Key,
+                    waypoints = kvp.Value
+                });
+            }
+
+            EditorUtility.SetDirty(manager);
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
+
+            Debug.Log($"Baked {validSpawnPoints.Count} safe spawn points from {lanes.Length} AILanes into {manager.serializedGrid.Count} Grid Cells.");
         }
     }
 }
