@@ -36,7 +36,7 @@ namespace Darkmatter.TrafficSystem
         public LayerMask trafficMask;
         public LayerMask playerMask;
 
-        [Header("Testing setup")]
+        [Header("Vehicle Collection Setup")]
         public VehicleCollection vehicleCollection;
         public AIWaypoint[] spawnWaypoints; // Assign in inspector to test spawning
 

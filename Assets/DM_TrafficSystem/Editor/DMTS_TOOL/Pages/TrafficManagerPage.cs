@@ -11,6 +11,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private TrafficManager trafficManager;
         private UnityEditor.Editor editor;
         private Vector2 scrollPos;
+        private int activeTab = 1; // 0 = Layer, 1 = Traffic, 2 = Pooling
 
         /// <summary>
         /// Finds the scene traffic manager and caches the result for repeated UI draws.
@@ -78,12 +79,67 @@ namespace Darkmatter.TrafficSystem.Editor
                     editor = UnityEditor.Editor.CreateEditor(manager);
                 }
 
-                scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
-                editor.OnInspectorGUI();
-
                 EditorGUILayout.Space(4);
 
-                if (GUILayout.Button("Bake Spawn Points & Grid", GUILayout.Height(22)))
+                // DRAW TABS
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Toggle(activeTab == 0, "Layer Setup", "Button", GUILayout.Height(30))) activeTab = 0;
+                if (GUILayout.Toggle(activeTab == 1, "Traffic Setting", "Button", GUILayout.Height(30))) activeTab = 1;
+                if (GUILayout.Toggle(activeTab == 2, "Pooling System", "Button", GUILayout.Height(30))) activeTab = 2;
+                GUILayout.EndHorizontal();
+
+                EditorGUILayout.Space(6);
+
+                scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
+                
+                SerializedObject serializedManager = editor.serializedObject;
+                serializedManager.Update();
+
+                // DRAW SELECTED TAB CONTENT
+                if (activeTab == 0) // Layer Setup
+                {
+                    EditorGUILayout.LabelField("Physics Layers", EditorStyles.boldLabel);
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("groundMask"));
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("trafficMask"));
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("playerMask"));
+                }
+                else if (activeTab == 1) // Traffic Setting
+                {
+                    EditorGUILayout.LabelField("Configuration", EditorStyles.boldLabel);
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("maxVehicleCountInGame"));
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("densityControl"));
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("vehicleCollection"));
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("spawnWaypoints"));
+                }
+                else if (activeTab == 2) // Pooling System
+                {
+                    EditorGUILayout.LabelField("Optimization Rules", EditorStyles.boldLabel);
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.PropertyField(serializedManager.FindProperty("usePlayerPooling"));
+                    
+                    if (serializedManager.FindProperty("usePlayerPooling").boolValue)
+                    {
+                        EditorGUILayout.Space(6);
+                        EditorGUILayout.LabelField("Spatial Values", EditorStyles.boldLabel);
+                        EditorGUILayout.PropertyField(serializedManager.FindProperty("innerSpawnRadius"));
+                        EditorGUILayout.PropertyField(serializedManager.FindProperty("outerSpawnRadius"));
+                        EditorGUILayout.PropertyField(serializedManager.FindProperty("despawnRadius"));
+                        EditorGUILayout.PropertyField(serializedManager.FindProperty("gridSize"));
+                        
+                        EditorGUILayout.Space(6);
+                        EditorGUILayout.LabelField("Targets", EditorStyles.boldLabel);
+                        EditorGUILayout.PropertyField(serializedManager.FindProperty("mainCamera"));
+                        EditorGUILayout.PropertyField(serializedManager.FindProperty("playerTransform"));
+                    }
+                }
+
+                serializedManager.ApplyModifiedProperties();
+
+                EditorGUILayout.Space(16);
+
+                if (GUILayout.Button("Bake Spawn Points & Grid", GUILayout.Height(30)))
                 {
                     BakeSpawnPoints(manager);
                 }
