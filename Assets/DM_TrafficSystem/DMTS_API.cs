@@ -20,9 +20,9 @@ namespace Darkmatter.TrafficSystem
             {
                 if (_manager == null)
                 {
-                    #pragma warning disable CS0618
+#pragma warning disable CS0618
                     _manager = Object.FindObjectOfType<TrafficManager>();
-                    #pragma warning restore CS0618
+#pragma warning restore CS0618
                     if (_manager == null)
                     {
                         Debug.LogWarning("DMTS_API: TrafficManager not found in the current scene!");
@@ -75,7 +75,7 @@ namespace Darkmatter.TrafficSystem
         /// Gets the exact world position of the nearest traffic waypoint to a given point.
         /// Returns the original position if no waypoint is found.
         /// </summary>
-        public static Vector3 GetNearestWaypointPosition(Vector3 searchPosition)
+        public static Vector3 GetNearestWaypoint(Vector3 searchPosition)
         {
             if (Manager != null)
             {
@@ -107,6 +107,72 @@ namespace Darkmatter.TrafficSystem
 
             Debug.LogWarning("DMTS_API: Could not find a nearby waypoint in the given direction. Returning original position.");
             return searchPosition; // Fallback
+        }
+
+        /// <summary>
+        /// Retrieves the master list of all waypoints currently active in the traffic system.
+        /// </summary>
+        public static List<AIWaypoint> GetAllWaypoints()
+        {
+            if (Manager != null)
+            {
+                return Manager.GetAllWaypointsInMap();
+            }
+
+            Debug.LogWarning("DMTS_API: TrafficManager not found. Returning empty list.");
+            return new List<AIWaypoint>();
+        }
+
+        /// <summary>
+        /// Calculates the shortest path between two world positions.
+        /// Returns an ordered list of Vector3 coordinate points representing the route.
+        /// </summary>
+        public static List<Vector3> GetShortestPath(Vector3 startPosition, Vector3 endPosition)
+        {
+            if (Manager == null) return null;
+
+            // 1. Map positions to actual waypoints
+            AIWaypoint startNode = Manager.GetClosestWaypoint(startPosition);
+            AIWaypoint endNode = Manager.GetClosestWaypoint(endPosition);
+
+            if (startNode == null || endNode == null)
+            {
+                Debug.LogWarning("DMTS_API: Could not map positions to waypoints.");
+                return null;
+            }
+
+            // 2. Execute A* Math
+            List<AIWaypoint> pathWaypoints = TrafficPathfinder.FindPath(startNode, endNode);
+            
+            // 3. Convert results back to Vector3
+            if (pathWaypoints != null)
+            {
+                List<Vector3> routePositions = new List<Vector3>();
+                foreach (var wp in pathWaypoints)
+                {
+                    routePositions.Add(wp.transform.position);
+                }
+                return routePositions;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Calculates the shortest path between two specific waypoints.
+        /// Returns an ordered list of AIWaypoint objects representing the route.
+        /// </summary>
+        public static List<AIWaypoint> GetShortestPath(AIWaypoint startWaypoint, AIWaypoint endWaypoint)
+        {
+            if (Manager == null) return null;
+
+            if (startWaypoint == null || endWaypoint == null)
+            {
+                Debug.LogWarning("DMTS_API: Invalid waypoints provided for pathfinding.");
+                return null;
+            }
+
+            return TrafficPathfinder.FindPath(startWaypoint, endWaypoint);
         }
     }
 }
