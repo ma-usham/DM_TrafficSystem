@@ -20,12 +20,9 @@ namespace Darkmatter.TrafficSystem
             {
                 if (_manager == null)
                 {
-#if UNITY_2023_1_OR_NEWER
-                    _manager = Object.FindFirstObjectByType<TrafficManager>();
-#else
+                    #pragma warning disable CS0618
                     _manager = Object.FindObjectOfType<TrafficManager>();
-#endif
-                    
+                    #pragma warning restore CS0618
                     if (_manager == null)
                     {
                         Debug.LogWarning("DMTS_API: TrafficManager not found in the current scene!");
@@ -88,8 +85,27 @@ namespace Darkmatter.TrafficSystem
                     return closestNode.transform.position;
                 }
             }
-            
+
             Debug.LogWarning("DMTS_API: Could not find a nearby waypoint. Returning original position.");
+            return searchPosition; // Fallback
+        }
+
+        /// <summary>
+        /// Gets the exact world position of the nearest traffic waypoint in a specific direction.
+        /// Returns the original position if no waypoint is found.
+        /// </summary>
+        public static Vector3 GetNearestWaypointInDirection(Vector3 searchPosition, Vector3 direction)
+        {
+            if (Manager != null)
+            {
+                AIWaypoint closestNode = Manager.GetNearestWaypointInDirection(searchPosition, direction);
+                if (closestNode != null)
+                {
+                    return closestNode.transform.position;
+                }
+            }
+
+            Debug.LogWarning("DMTS_API: Could not find a nearby waypoint in the given direction. Returning original position.");
             return searchPosition; // Fallback
         }
     }
