@@ -236,7 +236,7 @@ namespace Darkmatter.TrafficSystem
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private void AccelerateNormal(ref VehicleState state)
         {
-            state.currentSpeed = Mathf.Lerp(state.currentSpeed, state.maxSpeed, deltaTime * state.acceleration);
+            state.currentSpeed = Mathf.Lerp(state.currentSpeed, state.localMaxSpeed, deltaTime * state.acceleration);
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]

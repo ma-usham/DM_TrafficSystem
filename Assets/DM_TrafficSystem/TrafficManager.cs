@@ -168,7 +168,8 @@ namespace Darkmatter.TrafficSystem
                 VehicleState state = new VehicleState
                 {
                     currentSpeed = 1f, // test speed
-                    maxSpeed = vehicle.maxSpeed,
+                    localMaxSpeed = spawnPoint.settings.speed > 0 ? Mathf.Min(vehicle.engineMaxSpeed, spawnPoint.settings.speed) : vehicle.engineMaxSpeed,
+                    engineMaxSpeed = vehicle.engineMaxSpeed,
                     acceleration = vehicle.acceleration,
                     brakingPower = vehicle.brakingPower,
                     turnSpeed = vehicle.turnSpeed,

@@ -25,7 +25,7 @@ namespace Darkmatter.TrafficSystem
 
         public VehicleType vehicleType = VehicleType.Car;
         [Header("Driving Behavior")]
-        public float maxSpeed = 15f;
+        public float engineMaxSpeed = 15f;
         public float acceleration = 5f;
         public float brakingPower = 10f;
         public float turnSpeed = 5f;
