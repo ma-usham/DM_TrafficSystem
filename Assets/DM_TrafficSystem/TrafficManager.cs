@@ -54,7 +54,7 @@ namespace Darkmatter.TrafficSystem
         public float gridSize = 200f; // 100x100 meter squares
 
         // Unity will save this list in the editor
-        [HideInInspector] 
+        [HideInInspector]
         public List<WaypointGridCell> serializedGrid = new List<WaypointGridCell>();
 
         // At runtime, we convert the list into this dictionary for fast O(1) lookups
@@ -126,7 +126,7 @@ namespace Darkmatter.TrafficSystem
         private void InitializeRuntimeGrid()
         {
             _runtimeGrid = new Dictionary<Vector2Int, List<AIWaypoint>>();
-            
+
             foreach (var cell in serializedGrid)
             {
                 _runtimeGrid[cell.cellCoordinate] = cell.waypoints;
@@ -136,7 +136,7 @@ namespace Darkmatter.TrafficSystem
         private List<AIWaypoint> GetNearbyWaypoints(Vector3 playerPosition)
         {
             List<AIWaypoint> nearbyWaypoints = new List<AIWaypoint>();
-            
+
             int centerX = Mathf.FloorToInt(playerPosition.x / gridSize);
             int centerZ = Mathf.FloorToInt(playerPosition.z / gridSize);
             Vector2Int centerCell = new Vector2Int(centerX, centerZ);
@@ -153,6 +153,35 @@ namespace Darkmatter.TrafficSystem
                 }
             }
             return nearbyWaypoints;
+        }
+
+        /// <summary>
+        /// Finds the closest AIWaypoint to a given position using the optimized spatial grid.
+        /// </summary>
+        public AIWaypoint GetClosestWaypoint(Vector3 position)
+        {
+            if (!_isInitialized) return null;
+
+            // Use the existing optimized grid lookup
+            List<AIWaypoint> localWaypoints = GetNearbyWaypoints(position);
+            
+            if (localWaypoints == null || localWaypoints.Count == 0) 
+                return null;
+
+            AIWaypoint closest = null;
+            float closestSqrDist = float.MaxValue;
+
+            for (int i = 0; i < localWaypoints.Count; i++)
+            {
+                float sqrDist = (localWaypoints[i].transform.position - position).sqrMagnitude;
+                if (sqrDist < closestSqrDist)
+                {
+                    closestSqrDist = sqrDist;
+                    closest = localWaypoints[i];
+                }
+            }
+
+            return closest;
         }
 
         private void InitializeBuffers()
@@ -296,8 +325,9 @@ namespace Darkmatter.TrafficSystem
             VehicleState state = new VehicleState
             {
                 currentSpeed = 1f,
-                localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed, wpLimit),
-                engineMaxSpeed = vehicle.driverBehaviour.engineMaxSpeed,
+                physicalSpeed = 0f,
+                localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier, wpLimit),
+                engineMaxSpeed = vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier,
                 speedMultiplier = randomMultiplier,
                 acceleration = vehicle.driverBehaviour.acceleration,
                 brakingPower = vehicle.driverBehaviour.brakingPower,
@@ -480,6 +510,17 @@ namespace Darkmatter.TrafficSystem
             _trafficWaypointUpdater.UpdateWaypoint(_activeVehicles, _vehicleStates, _waypointBuffer);
             _trafficWaypointUpdater.UpdateStopWaypoints(_activeVehicles, _vehicleStates);
 
+            // Sync the real physics speed to the Job memory
+            for (int i = 0; i < _activeVehicles.Count; i++)
+            {
+                VehicleState state = _vehicleStates[i];
+                if (_activeVehicles[i].rb != null)
+                {
+                    state.physicalSpeed = Vector3.Dot(_activeVehicles[i].rb.linearVelocity, _activeVehicles[i].transform.forward);
+                }
+                _vehicleStates[i] = state;
+            }
+
             // --- 2. Schedule Jobs ---
 
             // Job 1: Build Boxcast Commands
@@ -606,6 +647,10 @@ namespace Darkmatter.TrafficSystem
                         Vector3 origin = cmd.from;
                         Vector3 springDir = -cmd.direction; // Inverse of down is up
 
+                        if (state.currentSpeed < 0.1f)
+                        {
+                            springDir = Vector3.up;
+                        }
                         // Pass the fast Math
                         vehicle.ApplySuspensionFast(
                             hit,
@@ -633,12 +678,24 @@ namespace Darkmatter.TrafficSystem
                 //Anti-Roll/ Braking
                 if (state.currentSpeed < 0.1f)
                 {
-                    rb.isKinematic = true; // Freeze the car when stopped to prevent sliding
+                    // Freeze rotation so uneven suspension doesn't spin it
+                    rb.constraints = RigidbodyConstraints.FreezeRotation;
+
+                    // Dampen horizontal velocity to simulate heavy tire friction.
+                    // This lets the player push it (spiking the velocity), but quickly brings it back to a dead stop.
+                    Vector3 vel = rb.linearVelocity;
+                    vel.x = Mathf.Lerp(vel.x, 0f, Time.fixedDeltaTime * 15f);
+                    vel.z = Mathf.Lerp(vel.z, 0f, Time.fixedDeltaTime * 15f);
+                    rb.linearVelocity = vel;
+
+                    continue;
                 }
                 else
                 {
-                    if (rb.isKinematic) rb.isKinematic = false; // Unfreeze when we start moving again
-
+                    rb.constraints = RigidbodyConstraints.None;
+                    // rb.linearDamping = 0f;
+                    // rb.angularDamping = 0.05f; // Standard small drag amount
+                    //rb.linearDamping = 0f; // Reset damping when not stopped
                     // The car is moving normally. 
                     // Calculate velocity difference on X and Z axis to allow physics to keep gravity and collision forces intact
                     Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;

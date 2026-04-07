@@ -9,6 +9,7 @@ namespace Darkmatter.TrafficSystem
     public struct VehicleState
     {
         public float currentSpeed;
+        public float physicalSpeed; // True Rigidbody forward velocity
         public float localMaxSpeed;
         public float engineMaxSpeed;
         public float speedMultiplier;

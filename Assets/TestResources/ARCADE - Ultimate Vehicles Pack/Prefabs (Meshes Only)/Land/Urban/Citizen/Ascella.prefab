@@ -587,17 +587,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
   vehicleType: 1
   driverBehaviour:
-    engineMaxSpeed: 15
-    speedMultiplierRange: {x: 0.7, y: 1.3}
-    acceleration: 5
-    brakingPower: 10
+    engineMaxSpeed: 10
+    speedMultiplierRange: {x: 0.7, y: 1}
+    acceleration: 1
+    brakingPower: 8
     turnSpeed: 5
     stoppingDistance: 2.5
     willChangeLane: 1
-    frustrationTime: {x: 5, y: 15}
-    laneChangeCooldown: {x: 5, y: 10}
-    aiOvertakeProbability: 0.5
-    playerOvertakeProbability: 0.8
+    frustrationTime: {x: 10, y: 15}
+    laneChangeCooldown: {x: 10, y: 20}
+    aiOvertakeProbability: 0.3
+    playerOvertakeProbability: 0.5
   wheels:
   - raycastTransform: {fileID: 6727201906626693153}
     visualMesh: {fileID: 5545333731151513801}

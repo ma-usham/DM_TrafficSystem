@@ -270,18 +270,13 @@ namespace Darkmatter.TrafficSystem
                 Vector3 localTarget = Quaternion.Inverse(transform.rotation) * projectedDir;
                 state.steeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
 
+                // Create a multiplier based on real forward movement to prevent tank-turning
+                // 1f denominator = unlocks full turning speed at 1m/s and above
+                float turnSpeedMultiplier = Mathf.Clamp01(state.physicalSpeed / 1f);
 
-                if (state.currentSpeed > 3f)
-                {
-                    // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
-                    Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
-                    state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
-                }
-                else
-                {
-                    state.desiredRotation = transform.rotation;
-                }
-
+                // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
+                Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
+                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed * turnSpeedMultiplier);
 
             }
             else
