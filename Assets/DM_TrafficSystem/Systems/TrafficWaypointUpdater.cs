@@ -175,7 +175,8 @@ namespace Darkmatter.TrafficSystem
             {
                 state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
                 float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
-                state.localMaxSpeed = wpSpeed > 0 ? Mathf.Min(state.engineMaxSpeed, wpSpeed) : state.engineMaxSpeed;
+                float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * state.speedMultiplier) : state.engineMaxSpeed;
+                state.localMaxSpeed = Mathf.Min(state.engineMaxSpeed, adjustedWpSpeed);
             }
 
             // 4. Write back to Native Memory so jobs can read the newly queued target
@@ -200,7 +201,8 @@ namespace Darkmatter.TrafficSystem
                     state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
                     
                     float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
-                    state.localMaxSpeed = wpSpeed > 0 ? Mathf.Min(state.engineMaxSpeed, wpSpeed) : state.engineMaxSpeed;
+                    float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * state.speedMultiplier) : state.engineMaxSpeed;
+                    state.localMaxSpeed = Mathf.Min(state.engineMaxSpeed, adjustedWpSpeed);
                     
                     vehicleStates[vehicle.arrayIndex] = state;
                 }

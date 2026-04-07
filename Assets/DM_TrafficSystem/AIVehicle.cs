@@ -24,12 +24,21 @@ namespace Darkmatter.TrafficSystem
     {
 
         public VehicleType vehicleType = VehicleType.Car;
-        [Header("Driving Behavior")]
-        public float engineMaxSpeed = 15f;
-        public float acceleration = 5f;
-        public float brakingPower = 10f;
-        public float turnSpeed = 5f;
-        public float stoppingDistance = 2.5f;
+
+        public DriverBehavior driverBehaviour = new DriverBehavior
+        {
+            engineMaxSpeed = 15f,
+            speedMultiplierRange = new Vector2(0.85f, 1.15f),
+            acceleration = 5f,
+            brakingPower = 10f,
+            turnSpeed = 5f,
+            stoppingDistance = 2.5f,
+            willChangeLane = true,
+            frustrationTime = new Vector2(5f, 15f),
+            laneChangeCooldown = new Vector2(5f, 10f),
+            aiOvertakeProbability = 0.5f,
+            playerOvertakeProbability = 0.8f
+        };
 
         [Header("Raycast Suspension")]
         public SuspensionWheel[] wheels;
@@ -37,12 +46,10 @@ namespace Darkmatter.TrafficSystem
         public float springDamper = 3000f;
 
 
-        [Header("Front Sensor")]
+        [Header("Sensors")]
         [Tooltip("If true, the front sensor rotates to face the next waypoint")]
         public bool sensorFacesWaypoint = true;
         public Transform frontSensor;
-
-        [Header("Side Sensors")]
         public Transform leftSensor;
         public Transform rightSensor;
 
@@ -65,23 +72,8 @@ namespace Darkmatter.TrafficSystem
         [HideInInspector] public bool isGrounded;
 
         // Internal logic
-
-
-        [Header("Personality & Overtaking")]
-        [Tooltip("Can this vehicle ever change lanes? (Set false for heavy vehicles)")]
-        public bool willChangeLane = true;
-
-        [Tooltip("Min and Max time to follow a slow vehicle before trying to overtake. (X = Min, Y = Max)")]
-        public Vector2 frustrationTime = new Vector2(5f, 15f);
-
-        [Tooltip("Min and Max cooldown after changing a lane before it can change again. (X = Min, Y = Max)")]
-        public Vector2 laneChangeCooldown = new Vector2(5f, 10f);
-
-        [Tooltip("Probability (0.0 to 1.0) of overtaking when an AI is detected far away.")]
-        [Range(0f, 1f)] public float aiOvertakeProbability = 0.5f;
-
-        [Tooltip("Probability (0.0 to 1.0) of overtaking when the Player is detected far away.")]
-        [Range(0f, 1f)] public float playerOvertakeProbability = 0.8f;
+        [Header("Job System Debug Sync")]
+        public LiveDebugData debugData;
 
         //Helpers
         [HideInInspector] public float laneChangeCooldownTimer;
@@ -330,6 +322,43 @@ namespace Darkmatter.TrafficSystem
                     }
                 }
             }
+
+            // Ensure UnityEditor is available before calling Handles
+            GUIStyle labelStyle = new GUIStyle();
+            labelStyle.normal.textColor = Color.white;
+            labelStyle.fontSize = 12;
+            labelStyle.fontStyle = FontStyle.Bold;
+            labelStyle.alignment = TextAnchor.MiddleCenter;
+
+            // Draw a dark background box for readability
+            GUIStyle bgStyle = new GUIStyle(GUI.skin.box);
+            bgStyle.normal.background = UnityEditor.EditorGUIUtility.whiteTexture;
+
+            string debugText = 
+                $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
+                $"Local Max: {debugData.localMaxSpeed:F1}\n" +
+                $"Current Spd: {debugData.currentSpeed:F1}\n" +
+                $"Changing Lanes: {debugData.isChangingLanes}\n" +
+                $"Wants To Overtake: {debugData.wantsToOvertake}\n" +
+                $"Wants To Honk: {debugData.wantsToHonk}\n" +
+                $"Left Blocked: {debugData.leftLaneBlocked}\n" +
+                $"Right Blocked: {debugData.rightLaneBlocked}";
+
+            Vector3 labelPosition = transform.position + Vector3.up * 4.5f;
+
+            // Create a small dark box behind text
+            UnityEditor.Handles.BeginGUI();
+            Vector2 screenPos = UnityEditor.HandleUtility.WorldToGUIPoint(labelPosition);
+            
+            // Note: This relies on the Scene view camera viewing it, it sets a dark box
+            GUI.color = new Color(0, 0, 0, 0.7f); 
+            Vector2 size = labelStyle.CalcSize(new GUIContent(debugText));
+            GUI.Box(new Rect(screenPos.x - (size.x/2f) - 10, screenPos.y - (size.y/2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
+            GUI.color = Color.white;
+            UnityEditor.Handles.EndGUI();
+
+            // Draw the actual text
+            UnityEditor.Handles.Label(labelPosition, debugText, labelStyle);
         }
 #endif
     }

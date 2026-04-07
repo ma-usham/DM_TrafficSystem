@@ -162,18 +162,22 @@ namespace Darkmatter.TrafficSystem
                                         vehicle.leftSensor.gameObject.activeInHierarchy && vehicle.rightSensor.gameObject.activeInHierarchy;
 
 
-                float randomFrustration = Random.Range(vehicle.frustrationTime.x, vehicle.frustrationTime.y);
-                float randomCooldown = Random.Range(vehicle.laneChangeCooldown.x, vehicle.laneChangeCooldown.y);
+                float randomFrustration = Random.Range(vehicle.driverBehaviour.frustrationTime.x, vehicle.driverBehaviour.frustrationTime.y);
+                float randomCooldown = Random.Range(vehicle.driverBehaviour.laneChangeCooldown.x, vehicle.driverBehaviour.laneChangeCooldown.y);
+                float randomMultiplier = Random.Range(vehicle.driverBehaviour.speedMultiplierRange.x, vehicle.driverBehaviour.speedMultiplierRange.y);
+                float wpLimit = spawnPoint.settings.speed > 0 ? (spawnPoint.settings.speed * randomMultiplier) : vehicle.driverBehaviour.engineMaxSpeed;
+
                 // Initialize state
                 VehicleState state = new VehicleState
                 {
                     currentSpeed = 1f, // test speed
-                    localMaxSpeed = spawnPoint.settings.speed > 0 ? Mathf.Min(vehicle.engineMaxSpeed, spawnPoint.settings.speed) : vehicle.engineMaxSpeed,
-                    engineMaxSpeed = vehicle.engineMaxSpeed,
-                    acceleration = vehicle.acceleration,
-                    brakingPower = vehicle.brakingPower,
-                    turnSpeed = vehicle.turnSpeed,
-                    stoppingDistance = vehicle.stoppingDistance,
+                    localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed, wpLimit),
+                    engineMaxSpeed = vehicle.driverBehaviour.engineMaxSpeed,
+                    speedMultiplier = randomMultiplier,
+                    acceleration = vehicle.driverBehaviour.acceleration,
+                    brakingPower = vehicle.driverBehaviour.brakingPower,
+                    turnSpeed = vehicle.driverBehaviour.turnSpeed,
+                    stoppingDistance = vehicle.driverBehaviour.stoppingDistance,
                     waypointBufferStartIndex = spawnedCount * WAYPOINT_LOOKAHEAD,
                     currentTargetIndexOffset = 0,
                     reachedCurrentWaypoint = false,
@@ -201,11 +205,11 @@ namespace Darkmatter.TrafficSystem
                     emergencySideStop = false,
 
                     // Overtaking & Personality
-                    isLaneChangingVehicle = vehicle.willChangeLane,
+                    isLaneChangingVehicle = vehicle.driverBehaviour.willChangeLane,
                     frustrationTime = randomFrustration,
                     laneChangeCooldown = randomCooldown,
-                    overtakeProbability = vehicle.aiOvertakeProbability,
-                    playerOvertakeProbability = vehicle.playerOvertakeProbability,
+                    overtakeProbability = vehicle.driverBehaviour.aiOvertakeProbability,
+                    playerOvertakeProbability = vehicle.driverBehaviour.playerOvertakeProbability,
                     impatienceTimer = randomFrustration, // Start with full patience
                     wantsToOvertake = false,
                     wantsToHonk = false
@@ -368,6 +372,16 @@ namespace Darkmatter.TrafficSystem
             {
                 AIVehicle vehicle = _activeVehicles[i];
                 VehicleState state = _vehicleStates[i];
+
+                // --- SYNC DEBUG DATA TO MAIN THREAD ---
+                vehicle.debugData.currentSpeed = state.currentSpeed;
+                vehicle.debugData.localMaxSpeed = state.localMaxSpeed;
+                vehicle.debugData.engineMaxSpeed = state.engineMaxSpeed;
+                vehicle.debugData.isChangingLanes = state.isChangingLanes;
+                vehicle.debugData.wantsToOvertake = state.wantsToOvertake;
+                vehicle.debugData.wantsToHonk = state.wantsToHonk;
+                vehicle.debugData.leftLaneBlocked = state.leftLaneBlocked;
+                vehicle.debugData.rightLaneBlocked = state.rightLaneBlocked;
 
                 int wCount = _wheelCounts[vehicle.arrayIndex];
                 int startWIndex = vehicle.arrayIndex * 4;

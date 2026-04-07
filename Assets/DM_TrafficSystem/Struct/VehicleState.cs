@@ -11,12 +11,14 @@ namespace Darkmatter.TrafficSystem
         public float currentSpeed;
         public float localMaxSpeed;
         public float engineMaxSpeed;
+        public float speedMultiplier;
         public float acceleration;
         public float brakingPower;
         public float turnSpeed;
         public float stoppingDistance;
         
         // Output from the job to be applied to Rigidbody
+        
         public Vector3 desiredVelocity;
         public Quaternion desiredRotation;
         public float steeringAngle;

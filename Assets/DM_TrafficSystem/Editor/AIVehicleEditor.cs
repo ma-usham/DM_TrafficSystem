@@ -9,19 +9,34 @@ namespace Darkmatter.TrafficSystem
     {
         private BoxBoundsHandle _sensorBoundsHandle = new BoxBoundsHandle();
 
-        private SerializedProperty willChangeLaneProp;
-        private SerializedProperty frustrationTimeProp;
-        private SerializedProperty laneChangeCooldownProp;
-        private SerializedProperty aiOvertakeProbabilityProp;
-        private SerializedProperty playerOvertakeProbabilityProp;
+        private int _currentTab = 0;
+        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors" };
+
+        private SerializedProperty vehicleTypeProp;
+        private SerializedProperty behaviorProp;
+        private SerializedProperty wheelsProp;
+        private SerializedProperty springStrengthProp;
+        private SerializedProperty springDamperProp;
+        private SerializedProperty sensorFacesWaypointProp;
+        private SerializedProperty frontSensorProp;
+        private SerializedProperty leftSensorProp;
+        private SerializedProperty rightSensorProp;
+        private SerializedProperty debugDataProp;
+        private SerializedProperty spawnPaddingProp;
 
         private void OnEnable()
         {
-            willChangeLaneProp = serializedObject.FindProperty("willChangeLane");
-            frustrationTimeProp = serializedObject.FindProperty("frustrationTime");
-            laneChangeCooldownProp = serializedObject.FindProperty("laneChangeCooldown");
-            aiOvertakeProbabilityProp = serializedObject.FindProperty("aiOvertakeProbability");
-            playerOvertakeProbabilityProp = serializedObject.FindProperty("playerOvertakeProbability");
+            vehicleTypeProp = serializedObject.FindProperty("vehicleType");
+            behaviorProp = serializedObject.FindProperty("driverBehaviour");
+            wheelsProp = serializedObject.FindProperty("wheels");
+            springStrengthProp = serializedObject.FindProperty("springStrength");
+            springDamperProp = serializedObject.FindProperty("springDamper");
+            sensorFacesWaypointProp = serializedObject.FindProperty("sensorFacesWaypoint");
+            frontSensorProp = serializedObject.FindProperty("frontSensor");
+            leftSensorProp = serializedObject.FindProperty("leftSensor");
+            rightSensorProp = serializedObject.FindProperty("rightSensor");
+            debugDataProp = serializedObject.FindProperty("debugData");
+            spawnPaddingProp = serializedObject.FindProperty("spawnPadding");
         }
 
         private void OnSceneGUI()
@@ -134,59 +149,29 @@ namespace Darkmatter.TrafficSystem
 
             AIVehicle vehicle = (AIVehicle)target;
 
-            // Loop through and draw properties manually so we can intercept Personality & Overtaking
-            SerializedProperty prop = serializedObject.GetIterator();
-            bool enterChildren = true;
-            
-            while (prop.NextVisible(enterChildren))
+            // Draw script reference manually
+            SerializedProperty scriptProp = serializedObject.FindProperty("m_Script");
+            if (scriptProp != null)
             {
-                enterChildren = false;
-
-                // Skip the script reference field if you want, but usually it's fine
-                if (prop.name == "m_Script")
+                using (new EditorGUI.DisabledScope(true))
                 {
-                    using (new EditorGUI.DisabledScope(true))
-                    {
-                        EditorGUILayout.PropertyField(prop);
-                    }
-                    continue;
+                    EditorGUILayout.PropertyField(scriptProp);
                 }
+            }
 
-                // If we hit our specific Overtaking/Lane properties, handle them conditionally
-                if (prop.name == "frustrationTime" || 
-                    prop.name == "laneChangeCooldown" || 
-                    prop.name == "aiOvertakeProbability" || 
-                    prop.name == "playerOvertakeProbability")
-                {
-                    // Only draw these if willChangeLane is true
-                    if (willChangeLaneProp != null && willChangeLaneProp.boolValue)
-                    {
-                        if (prop.name == "frustrationTime")
-                        {
-                            EditorGUILayout.LabelField(new GUIContent("Frustration Time", "Min and Max time to follow a slow vehicle before trying to overtake."));
-                            EditorGUI.indentLevel++;
-                            EditorGUILayout.PropertyField(frustrationTimeProp.FindPropertyRelative("x"), new GUIContent("Min"));
-                            EditorGUILayout.PropertyField(frustrationTimeProp.FindPropertyRelative("y"), new GUIContent("Max"));
-                            EditorGUI.indentLevel--;
-                        }
-                        else if (prop.name == "laneChangeCooldown")
-                        {
-                            EditorGUILayout.LabelField(new GUIContent("Lane Change Cooldown", "Min and Max cooldown after changing a lane before it can change again."));
-                            EditorGUI.indentLevel++;
-                            EditorGUILayout.PropertyField(laneChangeCooldownProp.FindPropertyRelative("x"), new GUIContent("Min"));
-                            EditorGUILayout.PropertyField(laneChangeCooldownProp.FindPropertyRelative("y"), new GUIContent("Max"));
-                            EditorGUI.indentLevel--;
-                        }
-                        else
-                        {
-                            EditorGUILayout.PropertyField(prop, true);
-                        }
-                    }
-                    continue;
-                }
+            GUILayout.Space(10);
 
-                // Draw everything else normally
-                EditorGUILayout.PropertyField(prop, true);
+            // Tab Toolbar
+            _currentTab = GUILayout.Toolbar(_currentTab, _tabs, GUILayout.Height(30));
+            GUILayout.Space(10);
+
+            if (_currentTab == 0)
+            {
+                DrawDriverBehaviour();
+            }
+            else if (_currentTab == 1)
+            {
+                DrawSuspensionAndSensors();
             }
 
             serializedObject.ApplyModifiedProperties();
@@ -200,6 +185,91 @@ namespace Darkmatter.TrafficSystem
                 EditorUtility.SetDirty(vehicle);
             }
             GUI.backgroundColor = Color.white;
+        }
+
+        private void DrawDriverBehaviour()
+        {
+            if (vehicleTypeProp != null) EditorGUILayout.PropertyField(vehicleTypeProp);
+            
+            GUILayout.Space(10);
+            
+            if (behaviorProp == null) return;
+
+            // --- Speed & Control ---
+            EditorGUILayout.LabelField("Speed & Control", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("engineMaxSpeed"));
+            
+            SerializedProperty speedMultProp = behaviorProp.FindPropertyRelative("speedMultiplierRange");
+            Vector2 speedMultVal = speedMultProp.vector2Value;
+            
+            EditorGUILayout.LabelField(new GUIContent("Speed Multiplier Range", "How much this driver adheres to the waypoint speed limit. (0.7 = 30% under, 1.3 = 30% over)."));
+            EditorGUI.indentLevel++;
+            float newMin = EditorGUILayout.Slider("Min", speedMultVal.x, 0.7f, 1.0f);
+            float newMax = EditorGUILayout.Slider("Max", speedMultVal.y, 1.0f, 1.3f);
+            speedMultProp.vector2Value = new Vector2(newMin, newMax);
+            EditorGUI.indentLevel--;
+
+            EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("acceleration"));
+            EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("brakingPower"));
+            EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("turnSpeed"));
+            EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("stoppingDistance"));
+
+            GUILayout.Space(10);
+
+            // --- Personality ---
+            EditorGUILayout.LabelField("Personality", EditorStyles.boldLabel);
+            
+            SerializedProperty willChangeLaneProp = behaviorProp.FindPropertyRelative("willChangeLane");
+            EditorGUILayout.PropertyField(willChangeLaneProp);
+
+            if (willChangeLaneProp != null && willChangeLaneProp.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                
+                SerializedProperty fTime = behaviorProp.FindPropertyRelative("frustrationTime");
+                EditorGUILayout.LabelField(new GUIContent("Frustration Time", "Min and Max time to follow a slow vehicle before trying to overtake."));
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(fTime.FindPropertyRelative("x"), new GUIContent("Min"));
+                EditorGUILayout.PropertyField(fTime.FindPropertyRelative("y"), new GUIContent("Max"));
+                EditorGUI.indentLevel--;
+
+                SerializedProperty lCooldown = behaviorProp.FindPropertyRelative("laneChangeCooldown");
+                EditorGUILayout.LabelField(new GUIContent("Lane Change Cooldown", "Min and Max cooldown after changing a lane before it can change again."));
+                EditorGUI.indentLevel++;
+                EditorGUILayout.PropertyField(lCooldown.FindPropertyRelative("x"), new GUIContent("Min"));
+                EditorGUILayout.PropertyField(lCooldown.FindPropertyRelative("y"), new GUIContent("Max"));
+                EditorGUI.indentLevel--;
+                
+                EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("aiOvertakeProbability"));
+                EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("playerOvertakeProbability"));
+
+                EditorGUI.indentLevel--;
+            }
+        }
+
+        private void DrawSuspensionAndSensors()
+        {
+            if (spawnPaddingProp != null)
+            {
+                EditorGUILayout.PropertyField(spawnPaddingProp);
+                GUILayout.Space(10);
+            }
+
+            EditorGUILayout.LabelField("Raycast Suspension", EditorStyles.boldLabel);
+            if (wheelsProp != null) EditorGUILayout.PropertyField(wheelsProp, true);
+            if (springStrengthProp != null) EditorGUILayout.PropertyField(springStrengthProp);
+            if (springDamperProp != null) EditorGUILayout.PropertyField(springDamperProp);
+            
+            GUILayout.Space(10);
+
+            EditorGUILayout.LabelField("Sensors", EditorStyles.boldLabel);
+            if (sensorFacesWaypointProp != null) EditorGUILayout.PropertyField(sensorFacesWaypointProp);
+            if (frontSensorProp != null) EditorGUILayout.PropertyField(frontSensorProp);
+            if (leftSensorProp != null) EditorGUILayout.PropertyField(leftSensorProp);
+            if (rightSensorProp != null) EditorGUILayout.PropertyField(rightSensorProp);
+
+            GUILayout.Space(10);
+            if (debugDataProp != null) EditorGUILayout.PropertyField(debugDataProp, true);
         }
 
         private void AutoSetup(AIVehicle vehicle)
