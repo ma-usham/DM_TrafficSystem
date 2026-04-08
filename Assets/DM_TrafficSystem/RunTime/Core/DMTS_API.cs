@@ -145,6 +145,18 @@ namespace Darkmatter.TrafficSystem
             return null;
         }
 
+        /// <summary>
+        /// Retrieves the lane width assigned to the given waypoint.
+        /// </summary>
+        public static float GetLaneWidth(AIWaypoint waypoint)
+        {
+            if (waypoint != null)
+            {
+                return waypoint.settings.LaneWidth;
+            }
+            return 0f;
+        }
+
 
 
         /// <summary>
