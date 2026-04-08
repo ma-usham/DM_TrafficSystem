@@ -11,6 +11,11 @@ namespace Darkmatter.TrafficSystem
         /// </summary>
         public float speed;
 
+        /// <summary>
+        /// Defines the lane width at this waypoint.
+        /// </summary>
+        public float LaneWidth;
+
 
         /// <summary>
         /// Defines whether this waypoint is a stop point.

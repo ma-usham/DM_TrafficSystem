@@ -139,7 +139,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 lanePositions.Reverse();
 
             AILane lane = road.laneObjects[laneIndex];
-            road.generatedLanes.Add(CreateWaypoints(lane, lanePositions));
+            road.generatedLanes.Add(CreateWaypoints(lane, lanePositions, road.laneWidth));
         }
 
         /// <summary>
@@ -250,7 +250,7 @@ namespace Darkmatter.TrafficSystem.Editor
         /// <summary>
         /// Creates waypoint objects for one lane and applies the lane-level settings to each waypoint.
         /// </summary>
-        private static List<Transform> CreateWaypoints(AILane lane, IReadOnlyList<Vector3> lanePositions)
+        private static List<Transform> CreateWaypoints(AILane lane, IReadOnlyList<Vector3> lanePositions, float laneWidth)
         {
             Undo.RecordObject(lane, "Generate Road Waypoints");
 
@@ -289,6 +289,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = lane.laneSpeedLimit;
                 settings.vehicleType = lane.laneVehicleType;
+                settings.LaneWidth = laneWidth;
                 waypoint.settings = settings;
 
                 lane.waypoints.Add(waypoint);

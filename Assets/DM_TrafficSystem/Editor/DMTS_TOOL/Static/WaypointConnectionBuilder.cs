@@ -304,6 +304,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             float speedLimit = GetConnectionSpeed(connection);
             VehicleType[] vehicleTypes = GetConnectionVehicleTypes(connection);
+            float laneWidth = connection.sourceWaypoint != null ? connection.sourceWaypoint.settings.LaneWidth : 4f;
 
             for (int i = 0; i < positions.Count; i++)
             {
@@ -344,6 +345,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = speedLimit;
                 settings.vehicleType = vehicleTypes;
+                settings.LaneWidth = laneWidth;
                 settings.previousWaypoint = EmptyWaypointLinks;
                 settings.nextWaypoint = EmptyWaypointLinks;
                 settings.laneChangePoints = EmptyWaypointLinks;
