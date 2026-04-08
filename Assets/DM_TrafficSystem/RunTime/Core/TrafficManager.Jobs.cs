@@ -232,7 +232,6 @@ namespace Darkmatter.TrafficSystem
                 // Stop AI forces if the vehicle is airborne. Let gravity take over fully.
                 if (!vehicle.isGrounded)
                 {
-                    if (rb.isKinematic) rb.isKinematic = false;
                     continue; // Skip the rest of the loop for this car
                 }
 

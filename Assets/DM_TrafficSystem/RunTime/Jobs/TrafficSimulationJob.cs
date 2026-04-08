@@ -97,25 +97,28 @@ namespace Darkmatter.TrafficSystem
             state.trafficDetected = false;
             state.detectedTrafficFar = false;
             state.detectedPlayerFar = false;
+            state.obstacleDistance = 999f; // Default high distance
 
             if (hitSomething)
             {
+                state.obstacleDistance = hit.distance; // Store actual distance!
+
                 if (hit.distance <= state.sensorSize.z && hit.distance > 0f) state.trafficDetected = true;
                 else if (hit.distance > state.sensorSize.z) state.detectedTrafficFar = true;
-                else if (hit.point != Vector3.zero) state.trafficDetected = true;
             }
 
             if (hitPlayerObj)
             {
+                if (p_hit.distance < state.obstacleDistance && p_hit.distance > 0f)
+                    state.obstacleDistance = p_hit.distance; // Player is closer
+
                 if (p_hit.distance <= state.sensorSize.z && p_hit.distance > 0f) state.trafficDetected = true;
                 else if (p_hit.distance > state.sensorSize.z) state.detectedPlayerFar = true;
-                else if (p_hit.point != Vector3.zero) state.trafficDetected = true;
             }
 
             // Side sensors logic
             state.leftLaneBlocked = false;
             state.rightLaneBlocked = false;
-            state.emergencySideStop = false;
 
             if (state.isSideSensorActive)
             {
@@ -123,14 +126,12 @@ namespace Darkmatter.TrafficSystem
                 if (lHit.distance > 0f || lHit.normal != Vector3.zero)
                 {
                     state.leftLaneBlocked = true;
-                    if (lHit.distance < 0.5f) state.emergencySideStop = true;
                 }
 
                 RaycastHit rHit = rightSensorHits[index];
                 if (rHit.distance > 0f || rHit.normal != Vector3.zero)
                 {
                     state.rightLaneBlocked = true;
-                    if (rHit.distance < 0.1f) state.emergencySideStop = true;
                 }
             }
         }
@@ -138,76 +139,91 @@ namespace Darkmatter.TrafficSystem
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private void DetermineSpeedAndPersonality(int index, ref VehicleState state, float distance, TransformAccess transform)
         {
-            // Early Return 1: Immediate danger, brake hard and exit
-            if (state.emergencySideStop)
+            bool isDeciding = state.isChangingLanes && state.isLaneChangingVehicle && state.wantsToOvertake && state.wantsToHonk;
+
+            // --- 1. FAR ZONE ENCOUNTER: Decision Making Only ---
+            if (!isDeciding && (state.detectedPlayerFar || state.detectedTrafficFar))
             {
-                BrakeHalt(ref state, 2f);
-                return;
+                uint seed = (uint)(index * 1000 + (timeSinceLevelLoad * 100) + 1);
+                Unity.Mathematics.Random rng = new Unity.Mathematics.Random(seed);
+
+                if (state.detectedPlayerFar)
+                {
+                    // Check if player is facing us or away
+                    float facingDot = Vector3.Dot(playerForward, transform.rotation * Vector3.forward);
+                    bool playerIsComing = facingDot < 0f;
+
+                    if (!playerIsComing)
+                    {
+                        // Player is going (away) -> according to personality, either immediately overtake or do nothing and wait
+                        if (rng.NextFloat() < state.playerOvertakeProbability)
+                        {
+                            state.wantsToOvertake = true;
+                        }
+
+                    }
+                    else
+                    {
+                        // Player is coming towards AI -> brake+honk OR change lane based on probability
+                        if (rng.NextFloat() < state.playerOvertakeProbability)
+                        {
+                            state.wantsToOvertake = true; // change lane
+                        }
+                        else
+                        {
+                            state.wantsToHonk = true; //Honk and Brake
+                            BrakeHalt(ref state, 2f); // Apply brake
+                            return;
+                        }
+                    }
+                }
+                else if (state.detectedTrafficFar)
+                {
+                    // Traffic detected: use aiOvertakeProbability
+                    if (rng.NextFloat() < state.aiOvertakeProbability)
+                    {
+                        state.wantsToOvertake = true;
+                    }
+                }
             }
 
-            // Early Return 2: Traffic right in front, brake and get frustrated
+            // --- 3. NORMAL ZONE: Smooth Braking & Frustration ---
             if (state.trafficDetected)
             {
-                BrakeHalt(ref state, 1f);
+                // Smooth Braking ONLY happens inside the Normal Sensor length
+                float maxSensorRange = state.sensorSize.z;
 
-                // Frustration logic for normal sensor
-                if (!state.isChangingLanes && state.isLaneChangingVehicle)
+                // Calculate how close it is (0f = touched it, 1f = far end of the sensor)
+                float proximityRatio = Mathf.Clamp01((state.obstacleDistance - state.stoppingDistance) / (maxSensorRange - state.stoppingDistance));
+
+                // Desired speed decreases the closer we get
+                float dynamicTargetSpeed = state.localMaxSpeed * proximityRatio;
+
+                // Move toward that speed gradually
+                state.currentSpeed = Mathf.Lerp(state.currentSpeed, dynamicTargetSpeed, deltaTime * state.brakingPower);
+
+                // Stop entirely if we're safely within the actual stopping distance boundary
+                if (state.obstacleDistance <= state.stoppingDistance + 0.1f)
+                {
+                    if (state.isChangingLanes)
+                    {
+                        // Force a slow crawl (e.g., 2m/s) to push past the clipping bumper
+                        state.currentSpeed = Mathf.Max(state.currentSpeed, 2f);
+                    }
+                    else
+                    {
+                        // Normal behavior: Slam on breaks
+                        state.currentSpeed = 0f;
+                    }
+                }
+
+                // Wait completely in frustration if following in the normal zone and not already trying to overtake
+                if (!isDeciding)
                 {
                     state.impatienceTimer -= deltaTime;
                     if (state.impatienceTimer <= 0f)
                     {
                         state.wantsToOvertake = true;
-                    }
-                }
-                return;
-            }
-
-            // Early Return 3: Slower traffic far ahead, accelerate but assess overtaking
-            if (state.detectedTrafficFar || state.detectedPlayerFar)
-            {
-                AccelerateNormal(ref state);
-
-                if (!state.isChangingLanes && state.isLaneChangingVehicle && !state.wantsToOvertake && !state.wantsToHonk)
-                {
-                    uint seed = (uint)(index * 1000 + (timeSinceLevelLoad * 100) + 1);
-                    Unity.Mathematics.Random rng = new Unity.Mathematics.Random(seed);
-
-                    if (state.detectedPlayerFar)
-                    {
-                        // Check if player is facing us or away
-                        float facingDot = Vector3.Dot(playerForward, transform.rotation * Vector3.forward);
-                        bool playerIsComing = facingDot < 0f;
-
-                        if (!playerIsComing)
-                        {
-                            // Player is going (away) -> immediately overtake
-                            if (rng.NextFloat() < state.playerOvertakeProbability)
-                            {
-                                state.wantsToOvertake = true;
-                            }
-
-                        }
-                        else
-                        {
-                            // Player is coming towards AI -> brake+honk OR change lane based on probability
-                            if (rng.NextFloat() < state.playerOvertakeProbability)
-                            {
-                                state.wantsToOvertake = true; // change lane
-                            }
-                            else
-                            {
-                                state.wantsToHonk = true;
-                                BrakeHalt(ref state, 2f); // Apply brake
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Traffic detected: use aiOvertakeProbability
-                        if (rng.NextFloat() < state.overtakeProbability)
-                        {
-                            state.wantsToOvertake = true;
-                        }
                     }
                 }
                 return;
@@ -270,9 +286,10 @@ namespace Darkmatter.TrafficSystem
                 Vector3 localTarget = Quaternion.Inverse(transform.rotation) * projectedDir;
                 state.steeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
 
-                // Create a multiplier based on real forward movement to prevent tank-turning
-                // 1f denominator = unlocks full turning speed at 1m/s and above
-                float turnSpeedMultiplier = Mathf.Clamp01(state.physicalSpeed / 1f);
+                // Give it a base 0.3f multiplier so it can still steer out of a dead stop!
+                float baseTurn = state.isChangingLanes ? 0.5f : 0.1f;
+                float turnSpeedMultiplier = Mathf.Clamp(state.physicalSpeed / 1f, baseTurn, 1f);
+                // ... proceed with Quaternion.Slerp
 
                 // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
                 Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);

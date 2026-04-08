@@ -297,6 +297,17 @@ namespace Darkmatter.TrafficSystem
                 Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.8f);
                 Gizmos.DrawWireCube(extendedCenterPath, extendedSize);
 
+                // Stopping Distance Box (Red)
+                // The BoxCast starts sweeping from the BACK of the normal sensor, so the gizmo must start there too
+                float zStart = -frontSensor.localScale.z * 0.5f;
+                Vector3 stoppingSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, driverBehaviour.stoppingDistance);
+                Vector3 stoppingCenter = new Vector3(0, 0, zStart + driverBehaviour.stoppingDistance * 0.5f);
+                
+                Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.3f); // Semi-Transparent Red
+                Gizmos.DrawCube(stoppingCenter, stoppingSize);
+                Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.9f);
+                Gizmos.DrawWireCube(stoppingCenter, stoppingSize);
+
                 Gizmos.matrix = oldGizmoMatrix;
             }
 

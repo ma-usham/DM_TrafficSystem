@@ -585,7 +585,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ea63022ef80bc0469029f379db36389, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
-  vehicleType: 1
+  vehicleType: 0
   driverBehaviour:
     engineMaxSpeed: 10
     speedMultiplierRange: {x: 0.7, y: 1}

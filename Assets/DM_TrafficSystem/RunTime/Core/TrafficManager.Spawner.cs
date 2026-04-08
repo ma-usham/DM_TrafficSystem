@@ -1,8 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Unity.Collections;
-using Unity.Jobs;
-using UnityEngine.Jobs;
 
 namespace Darkmatter.TrafficSystem
 {
@@ -101,6 +98,8 @@ namespace Darkmatter.TrafficSystem
             AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
             if (vehicle == null) return false;
 
+            vehicle.transform.position = spawnPoint.transform.position;
+            vehicle.transform.rotation = spawnPoint.transform.rotation;
             Vector3 halfExtents = vehicle.GetSpawnBoxHalfExtents();
             Vector3 offset = vehicle.GetSpawnBoxCenterOffset();
             Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);
@@ -162,11 +161,10 @@ namespace Darkmatter.TrafficSystem
                 detectedTrafficFar = false,
                 leftLaneBlocked = false,
                 rightLaneBlocked = false,
-                emergencySideStop = false,
                 isLaneChangingVehicle = vehicle.driverBehaviour.willChangeLane,
                 frustrationTime = randomFrustration,
                 laneChangeCooldown = randomCooldown,
-                overtakeProbability = vehicle.driverBehaviour.aiOvertakeProbability,
+                aiOvertakeProbability = vehicle.driverBehaviour.aiOvertakeProbability,
                 playerOvertakeProbability = vehicle.driverBehaviour.playerOvertakeProbability,
                 impatienceTimer = randomFrustration,
                 wantsToOvertake = false,

@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.024205863, y: 0.85537636, z: 5.7432547}
-  m_LocalScale: {x: 1.8230017, y: 1.2422304, z: 8.462984}
+  m_LocalPosition: {x: -0.024205863, y: 0.85537636, z: 6.4282618}
+  m_LocalScale: {x: 1.8230017, y: 1.2422304, z: 10.063742}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -771,17 +771,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ea63022ef80bc0469029f379db36389, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
-  vehicleType: 1
+  vehicleType: 0
   driverBehaviour:
-    engineMaxSpeed: 15
+    engineMaxSpeed: 10
     speedMultiplierRange: {x: 0.8, y: 1.3}
-    acceleration: 3
-    brakingPower: 8
+    acceleration: 2
+    brakingPower: 5
     turnSpeed: 5
-    stoppingDistance: 2.5
+    stoppingDistance: 5
     willChangeLane: 1
     frustrationTime: {x: 10, y: 15}
-    laneChangeCooldown: {x: 10, y: 15}
+    laneChangeCooldown: {x: 15, y: 20}
     aiOvertakeProbability: 0.3
     playerOvertakeProbability: 0.5
   wheels:

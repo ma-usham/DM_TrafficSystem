@@ -55,11 +55,11 @@ namespace Darkmatter.TrafficSystem
         public bool trafficDetected;
         public bool detectedTrafficFar;
         public bool detectedPlayerFar;
+        public float obstacleDistance;
         
         // Side sensor status
         public bool leftLaneBlocked;
         public bool rightLaneBlocked;
-        public bool emergencySideStop;
 
         // Internal Lane Changing States
         public bool readyToChangeLane;
@@ -69,7 +69,7 @@ namespace Darkmatter.TrafficSystem
         public bool isLaneChangingVehicle;
         public float frustrationTime;
         public float laneChangeCooldown;
-        public float overtakeProbability;
+        public float aiOvertakeProbability;
         public float playerOvertakeProbability;
 
         // Runtime states
