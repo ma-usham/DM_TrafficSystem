@@ -178,25 +178,25 @@ namespace Darkmatter.TrafficSystem
             return true;
         }
 
-        private void DespawnVehicleAt(int index)
+        private void DespawnVehicleAt(int vehicleIndex)
         {
-            if (index < 0 || index >= _activeVehicles.Count) return;
+            if (vehicleIndex < 0 || vehicleIndex >= _activeVehicles.Count) return;
 
-            AIVehicle vehicleToRemove = _activeVehicles[index];
+            AIVehicle vehicleToRemove = _activeVehicles[vehicleIndex];
             _vehiclePool.Despawn(vehicleToRemove);
 
             int lastIndex = _activeVehicles.Count - 1;
 
-            if (index != lastIndex)
+            if (vehicleIndex != lastIndex)
             {
                 // Move the last vehicle to this spot
-                _activeVehicles[index] = _activeVehicles[lastIndex];
-                _activeVehicles[index].arrayIndex = index;
+                _activeVehicles[vehicleIndex] = _activeVehicles[lastIndex];
+                _activeVehicles[vehicleIndex].arrayIndex = vehicleIndex;
 
                 // State update
                 VehicleState movedState = _vehicleStates[lastIndex];
                 int oldStart = movedState.waypointBufferStartIndex;
-                int newStart = index * WAYPOINT_LOOKAHEAD;
+                int newStart = vehicleIndex * WAYPOINT_LOOKAHEAD;
                 movedState.waypointBufferStartIndex = newStart;
 
                 // Copy buffer
@@ -205,21 +205,21 @@ namespace Darkmatter.TrafficSystem
                     _waypointBuffer[newStart + i] = _waypointBuffer[oldStart + i];
                 }
 
-                _vehicleStates[index] = movedState;
+                _vehicleStates[vehicleIndex] = movedState;
 
                 // Wheel update
-                _wheelCounts[index] = _wheelCounts[lastIndex];
+                _wheelCounts[vehicleIndex] = _wheelCounts[lastIndex];
                 for (int w = 0; w < 4; w++)
                 {
-                    _wheelLocalOffsets[index * 4 + w] = _wheelLocalOffsets[lastIndex * 4 + w];
-                    _wheelRayLengths[index * 4 + w] = _wheelRayLengths[lastIndex * 4 + w];
+                    _wheelLocalOffsets[vehicleIndex * 4 + w] = _wheelLocalOffsets[lastIndex * 4 + w];
+                    _wheelRayLengths[vehicleIndex * 4 + w] = _wheelRayLengths[lastIndex * 4 + w];
                 }
             }
 
             _activeVehicles.RemoveAt(lastIndex);
 
             // Re-create the transform array dropping the removed element effectively by SwapBack!
-            _transformAccessArray.RemoveAtSwapBack(index);
+            _transformAccessArray.RemoveAtSwapBack(vehicleIndex);
         }
 
         private System.Collections.IEnumerator PlayerPoolingRoutine()

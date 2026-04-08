@@ -17,12 +17,12 @@ namespace Darkmatter.TrafficSystem.Testing
             // ----------------------------------------------------
             // TEST 1: Nearest Waypoint Overall
             // ----------------------------------------------------
-            Vector3 closestPos = DMTS_API.GetNearestWaypoint(transform.position);
+            var closestPos = DMTS_API.GetNearestWaypoint(transform.position);
             
-            if (closestPos != transform.position)
+            if (closestPos.transform.position != transform.position)
             {
                 // Draw a GREEN line to the absolute closest waypoint position
-                Debug.DrawLine(transform.position, closestPos, Color.green);
+                Debug.DrawLine(transform.position, closestPos.transform.position, Color.green);
             }
 
             // ----------------------------------------------------
@@ -34,12 +34,12 @@ namespace Darkmatter.TrafficSystem.Testing
             // Draw a RED ray showing where we are looking
             Debug.DrawRay(transform.position, worldDirection * 10f, Color.red);
 
-            Vector3 directionalPos = DMTS_API.GetNearestWaypointInDirection(transform.position, worldDirection);
+            var directionalPos = DMTS_API.GetNearestWaypointInDirection(transform.position, worldDirection);
             
-            if (directionalPos != transform.position)
+            if (directionalPos.transform.position != transform.position)
             {
                 // Draw a BLUE line to the waypoint found in that direction
-                Debug.DrawLine(transform.position, directionalPos, Color.blue);
+                Debug.DrawLine(transform.position, directionalPos.transform.position, Color.blue);
             }
 
             // ----------------------------------------------------
@@ -66,12 +66,12 @@ namespace Darkmatter.TrafficSystem.Testing
             GUILayout.Space(20);
             GUILayout.Label("--- Traffic System Output ---");
             
-            Vector3 closestPos = DMTS_API.GetNearestWaypoint(transform.position);
-            GUILayout.Label($"Closest Pos: {closestPos}");
+            var closestPos = DMTS_API.GetNearestWaypoint(transform.position);
+            GUILayout.Label($"Closest Pos: {closestPos.transform.position}");
 
             Vector3 worldDirection = transform.TransformDirection(searchDirection);
-            Vector3 directionalPos = DMTS_API.GetNearestWaypointInDirection(transform.position, worldDirection);
-            GUILayout.Label($"Directional Pos: {directionalPos}");
+            var directionalPos = DMTS_API.GetNearestWaypointInDirection(transform.position, worldDirection);
+            GUILayout.Label($"Directional Pos: {directionalPos.transform.position}");
 
             if (targetDestination != null)
             {

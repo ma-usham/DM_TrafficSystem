@@ -117,6 +117,8 @@ namespace Darkmatter.TrafficSystem.Editor
         private const string ConnectionsRootName = "Connections";
         private const string LegacyConnectionsRootName = "WaypointConnections";
         private const string IntersectionsRootName = "Intersections";
+        private const string PriorityIntersectionsRootName = "Priority Intersections";
+        private const string TrafficLightIntersectionsRootName = "Traffic Light Intersections";
 
         /// <summary>
         /// Creates the traffic-system hierarchy when needed and reparents known scene objects into it.
@@ -128,11 +130,13 @@ namespace Darkmatter.TrafficSystem.Editor
             Transform roadsRoot = GetOrCreateChild(roadNetworkRoot, RoadsRootName, undoLabel);
             Transform connectionsRoot = GetOrCreateConnectionsRoot(roadNetworkRoot, undoLabel);
             Transform intersectionsRoot = GetOrCreateChild(roadNetworkRoot, IntersectionsRootName, undoLabel);
+            Transform priorityIntersectionsRoot = GetOrCreateChild(intersectionsRoot, PriorityIntersectionsRootName, undoLabel);
+            Transform trafficLightIntersectionsRoot = GetOrCreateChild(intersectionsRoot, TrafficLightIntersectionsRootName, undoLabel);
 
             ParentObjects(Object.FindObjectsByType<Road>(FindObjectsInactive.Include), roadsRoot, undoLabel);
             ParentObjects(Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Include), connectionsRoot, undoLabel);
-            ParentObjects(Object.FindObjectsByType<PriorityIntersection>(FindObjectsInactive.Include), intersectionsRoot, undoLabel);
-            ParentObjects(Object.FindObjectsByType<TrafficLightIntersection>(FindObjectsInactive.Include), intersectionsRoot, undoLabel);
+            ParentObjects(Object.FindObjectsByType<PriorityIntersection>(FindObjectsInactive.Include), priorityIntersectionsRoot, undoLabel);
+            ParentObjects(Object.FindObjectsByType<TrafficLightIntersection>(FindObjectsInactive.Include), trafficLightIntersectionsRoot, undoLabel);
             ParentObjects(Object.FindObjectsByType<TrafficManager>(FindObjectsInactive.Include), systemRoot, undoLabel);
 
             EnforceChildOrder(roadNetworkRoot, RoadsRootName, ConnectionsRootName, IntersectionsRootName);
@@ -161,14 +165,29 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
-        /// Parents one intersection object under the shared Intersections container.
+        /// Parents one intersection object under the Priority Intersections container.
         /// </summary>
-        public static void ParentIntersection(GameObject intersectionObject, string undoLabel)
+        public static void ParentPriorityIntersection(GameObject intersectionObject, string undoLabel)
         {
             if (intersectionObject == null)
                 return;
 
-            SetParentIfNeeded(intersectionObject.transform, GetOrCreateChild(GetOrCreateRoadNetworkRoot(undoLabel), IntersectionsRootName, undoLabel), undoLabel);
+            Transform intersectionsRoot = GetOrCreateChild(GetOrCreateRoadNetworkRoot(undoLabel), IntersectionsRootName, undoLabel);
+            Transform priorityRoot = GetOrCreateChild(intersectionsRoot, PriorityIntersectionsRootName, undoLabel);
+            SetParentIfNeeded(intersectionObject.transform, priorityRoot, undoLabel);
+        }
+
+        /// <summary>
+        /// Parents one intersection object under the Traffic Light Intersections container.
+        /// </summary>
+        public static void ParentTrafficLightIntersection(GameObject intersectionObject, string undoLabel)
+        {
+            if (intersectionObject == null)
+                return;
+
+            Transform intersectionsRoot = GetOrCreateChild(GetOrCreateRoadNetworkRoot(undoLabel), IntersectionsRootName, undoLabel);
+            Transform trafficLightRoot = GetOrCreateChild(intersectionsRoot, TrafficLightIntersectionsRootName, undoLabel);
+            SetParentIfNeeded(intersectionObject.transform, trafficLightRoot, undoLabel);
         }
 
         /// <summary>

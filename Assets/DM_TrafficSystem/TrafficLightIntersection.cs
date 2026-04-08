@@ -23,6 +23,9 @@ namespace Darkmatter.TrafficSystem
     {
         public List<AIWaypoint> stopPoints = new List<AIWaypoint>();
         public List<TrafficLightVisuals> visuals = new List<TrafficLightVisuals>();
+
+        //Tracks the current Light State for this assigned road group.
+        [HideInInspector] public TrafficLightState currentLightState = TrafficLightState.Red;
     }
 
     /// <summary>
@@ -104,6 +107,8 @@ namespace Darkmatter.TrafficSystem
         /// </summary>
         private void SetRoadVisualState(TrafficLightRoad road, TrafficLightState state)
         {
+            road.currentLightState = state;
+
             if (propBlock == null) propBlock = new MaterialPropertyBlock();
 
             foreach (var vis in road.visuals)
@@ -151,5 +156,22 @@ namespace Darkmatter.TrafficSystem
                 SetRoadStopStatus(road, true);
             }
         }
+
+
+        #region API
+        /// <summary>
+        /// Returns the current traffic light color state for a specific road index.
+        /// </summary>
+        public TrafficLightState GetRoadLightState(int roadIndex)
+        {
+            if (roadIndex < 0 || roadIndex >= trafficLightRoads.Count)
+            {
+                Debug.LogWarning($"Intersection '{intersectionName}': Invalid road index {roadIndex}");
+                return TrafficLightState.Red; // Default safe state
+            }
+
+            return trafficLightRoads[roadIndex].currentLightState;
+        }
+        #endregion
     }
 }

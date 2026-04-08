@@ -24,7 +24,7 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 GameObject newIntersection = new GameObject("New Priority Intersection");
                 Undo.RegisterCreatedObjectUndo(newIntersection, "Create Priority Intersection");
-                TrafficSystemHierarchyUtility.ParentIntersection(newIntersection, "Create Priority Intersection");
+                TrafficSystemHierarchyUtility.ParentPriorityIntersection(newIntersection, "Create Priority Intersection");
                 newIntersection.AddComponent<PriorityIntersection>();
                 Selection.activeGameObject = newIntersection;
                 ctx.pageStack.Push(new PriorityIntersectionPage());
@@ -36,7 +36,7 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 GameObject newIntersection = new GameObject("New Traffic Light Intersection");
                 Undo.RegisterCreatedObjectUndo(newIntersection, "Create Traffic Light Intersection");
-                TrafficSystemHierarchyUtility.ParentIntersection(newIntersection, "Create Traffic Light Intersection");
+                TrafficSystemHierarchyUtility.ParentTrafficLightIntersection(newIntersection, "Create Traffic Light Intersection");
                 newIntersection.AddComponent<TrafficLightIntersection>();
                 Selection.activeGameObject = newIntersection;
                 ctx.pageStack.Push(new TrafficLightIntersectionPage());

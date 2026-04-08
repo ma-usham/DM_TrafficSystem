@@ -82,7 +82,23 @@ namespace Darkmatter.TrafficSystem.Editor
                     if (GUILayout.Button("Select Road", GUILayout.Width(100))) activeRoadIndex = i;
                 }
 
-                if (GUILayout.Button("Remove", GUILayout.Width(60)))
+                GameObject existingDetector = GetViolationDetectorObj(targetIntersection, i);
+                if (existingDetector != null)
+                {
+                    if (GUILayout.Button("Disable Violation", GUILayout.Width(120)))
+                    {
+                        Undo.DestroyObjectImmediate(existingDetector);
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button("Enable Violation", GUILayout.Width(120)))
+                    {
+                        CreateViolationDetectors(targetIntersection, i);
+                    }
+                }
+
+                if (GUILayout.Button("Delete", GUILayout.Width(60)))
                 {
                     roadsProp.DeleteArrayElementAtIndex(i);
                     if (activeRoadIndex == i) activeRoadIndex = -1;
@@ -197,6 +213,120 @@ namespace Darkmatter.TrafficSystem.Editor
                 road.stopPoints.Add(wp);
 
             EditorUtility.SetDirty(targetIntersection);
+        }
+
+        /// <summary>
+        /// Returns the single violation detector object for a given road group if it exists.
+        /// </summary>
+        private GameObject GetViolationDetectorObj(TrafficLightIntersection intersection, int roadIndex)
+        {
+            if (intersection == null) return null;
+
+            Transform roadNetworkRoot = TrafficSystemHierarchyUtility.GetOrCreateRoadNetworkRoot("Check Detector");
+            Transform interRoot = roadNetworkRoot.Find("Intersections");
+            if (interRoot == null) return null;
+            
+            Transform violsRoot = interRoot.Find("Intersection Violations");
+            if (violsRoot == null) return null;
+            
+            Transform interParent = violsRoot.Find(intersection.intersectionName);
+            if (interParent == null) return null;
+
+            Transform det = interParent.Find($"Violation_R{roadIndex}");
+            return det != null ? det.gameObject : null;
+        }
+
+        /// <summary>
+        /// Automatically generates a single trigger box collider that bounds all stop waypoints for the given road group to detect traffic light violations.
+        /// </summary>
+        private void CreateViolationDetectors(TrafficLightIntersection intersection, int roadIndex)
+        {
+            if (intersection == null || roadIndex < 0 || roadIndex >= intersection.trafficLightRoads.Count) return;
+
+            var road = intersection.trafficLightRoads[roadIndex];
+
+            if (road.stopPoints.Count == 0)
+            {
+                Debug.LogWarning("Cannot create violation detectors because there are no stop points assigned to this road group.");
+                return;
+            }
+
+            Transform roadNetworkRoot = TrafficSystemHierarchyUtility.GetOrCreateRoadNetworkRoot("Create Violation");
+            Transform interRoot = roadNetworkRoot.Find("Intersections");
+            if (interRoot == null)
+            {
+                GameObject iObj = new GameObject("Intersections");
+                Undo.RegisterCreatedObjectUndo(iObj, "Create Intersections");
+                Undo.SetTransformParent(iObj.transform, roadNetworkRoot, "Parent Intersections");
+                interRoot = iObj.transform;
+            }
+
+            Transform violsRoot = interRoot.Find("Intersection Violations");
+            if (violsRoot == null)
+            {
+                GameObject rvObj = new GameObject("Intersection Violations");
+                Undo.RegisterCreatedObjectUndo(rvObj, "Create Intersection Violations Root");
+                Undo.SetTransformParent(rvObj.transform, interRoot, "Parent Intersection Violations Root");
+                violsRoot = rvObj.transform;
+            }
+
+            Transform interParent = violsRoot.Find(intersection.intersectionName);
+            if (interParent == null)
+            {
+                GameObject ipObj = new GameObject(intersection.intersectionName);
+                Undo.RegisterCreatedObjectUndo(ipObj, "Create Intersection Violations Group");
+                Undo.SetTransformParent(ipObj.transform, violsRoot, "Parent Intersection Violations");
+                interParent = ipObj.transform;
+            }
+
+            // Calculate center and orientation spanning all stop points
+            Vector3 centerPos = Vector3.zero;
+            Vector3 averageForward = Vector3.zero;
+            float maxDistance = 0f;
+
+            for (int i = 0; i < road.stopPoints.Count; i++)
+            {
+                centerPos += road.stopPoints[i].transform.position;
+                averageForward += road.stopPoints[i].transform.forward;
+                
+                // Track greatest span between waypoints on this road
+                for (int j = i + 1; j < road.stopPoints.Count; j++)
+                {
+                    float dist = Vector3.Distance(road.stopPoints[i].transform.position, road.stopPoints[j].transform.position);
+                    if (dist > maxDistance) maxDistance = dist;
+                }
+            }
+
+            centerPos /= road.stopPoints.Count;
+            if (averageForward == Vector3.zero) averageForward = Vector3.forward;
+            else averageForward.Normalize();
+
+            GameObject detectorObj = new GameObject($"Violation_R{roadIndex}");
+            Undo.RegisterCreatedObjectUndo(detectorObj, "Create Violation Detector");
+            Undo.SetTransformParent(detectorObj.transform, interParent, "Parent Violation Detector");
+
+            detectorObj.transform.position = centerPos;
+            detectorObj.transform.rotation = Quaternion.LookRotation(averageForward, Vector3.up);
+
+            // Add Box Collider
+            BoxCollider bc = detectorObj.AddComponent<BoxCollider>();
+            bc.isTrigger = true;
+            
+            // Form a wall shape. Distance between furtest lanes + 4m padding
+            float width = maxDistance + 4f; 
+            // Add a small forward offset so it sits just past the stop line
+            bc.center = new Vector3(0, 2f, 0.5f); 
+            bc.size = new Vector3(width, 4f, 1f);
+
+            // Ensure it is on a layer where players can hit it.
+            detectorObj.layer = LayerMask.NameToLayer("Ignore Raycast");
+
+            // Add script and assign variables
+            TrafficLightViolationDetector detector = detectorObj.AddComponent<TrafficLightViolationDetector>();
+            detector.targetIntersection = intersection;
+            detector.targetRoadIndex = roadIndex;
+
+            Debug.Log($"Created single bounded violation detector for '{intersection.intersectionName}', Road {roadIndex}.");
         }
     }
 }

@@ -71,42 +71,78 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+               /// <summary>
+        /// Gets the LayerMask used to identify the Player in the traffic system.
+        /// </summary>
+        public static LayerMask PlayerLayerMask
+        {
+            get
+            {
+                if (Manager != null) return Manager.playerMask;
+                return new LayerMask(); // Default empty
+            }
+        }
+
+        /// <summary>
+        /// Gets the LayerMask used to identify AI Traffic vehicles.
+        /// </summary>
+        public static LayerMask TrafficLayerMask
+        {
+            get
+            {
+                if (Manager != null) return Manager.trafficMask;
+                return new LayerMask(); 
+            }
+        }
+
+        /// <summary>
+        /// Gets the LayerMask used to identify the ground/road surface.
+        /// </summary>
+        public static LayerMask GroundLayerMask
+        {
+            get
+            {
+                if (Manager != null) return Manager.groundMask;
+                return new LayerMask(); 
+            }
+        }
+
         /// <summary>
         /// Gets the exact world position of the nearest traffic waypoint to a given point.
         /// Returns the original position if no waypoint is found.
         /// </summary>
-        public static Vector3 GetNearestWaypoint(Vector3 searchPosition)
+        public static AIWaypoint GetNearestWaypoint(Vector3 searchPosition)
         {
             if (Manager != null)
             {
                 AIWaypoint closestNode = Manager.GetClosestWaypoint(searchPosition);
                 if (closestNode != null)
                 {
-                    return closestNode.transform.position;
+                    return closestNode;
                 }
             }
 
-            Debug.LogWarning("DMTS_API: Could not find a nearby waypoint. Returning original position.");
-            return searchPosition; // Fallback
+            Debug.LogWarning("DMTS_API: Could not find a nearby waypoint. Returning null.");
+            return null; // Fallback
         }
 
         /// <summary>
         /// Gets the exact world position of the nearest traffic waypoint in a specific direction.
         /// Returns the original position if no waypoint is found.
         /// </summary>
-        public static Vector3 GetNearestWaypointInDirection(Vector3 searchPosition, Vector3 direction)
+        public static AIWaypoint GetNearestWaypointInDirection(Vector3 searchPosition, Vector3 direction)
         {
             if (Manager != null)
             {
                 AIWaypoint closestNode = Manager.GetNearestWaypointInDirection(searchPosition, direction);
                 if (closestNode != null)
                 {
-                    return closestNode.transform.position;
+                    return closestNode;
                 }
             }
 
-            Debug.LogWarning("DMTS_API: Could not find a nearby waypoint in the given direction. Returning original position.");
-            return searchPosition; // Fallback
+            Debug.LogWarning("DMTS_API: Could not find a nearby waypoint in the given direction. Returning null.");
+            return null; // Fallback
         }
 
         /// <summary>
@@ -143,7 +179,7 @@ namespace Darkmatter.TrafficSystem
 
             // 2. Execute A* Math
             List<AIWaypoint> pathWaypoints = TrafficPathfinder.FindPath(startNode, endNode);
-            
+
             // 3. Convert results back to Vector3
             if (pathWaypoints != null)
             {
@@ -173,6 +209,38 @@ namespace Darkmatter.TrafficSystem
             }
 
             return TrafficPathfinder.FindPath(startWaypoint, endWaypoint);
+        }
+
+
+        /// <summary>
+        /// Clears all existing traffic within a given radius around a specific center point.
+        /// </summary>
+        /// <param name="center">The world location center.</param>
+        /// <param name="radius">The radius in Unity units.</param>
+        public static void ClearTrafficInArea(Vector3 center, float radius)
+        {
+            if (Manager != null)
+            {
+                Manager.ClearVehiclesInArea(center, radius);
+            }
+            else
+            {
+                Debug.LogWarning("DMTS_API: TrafficManager not found. Cannot clear traffic.");
+            }
+        }
+
+        /// <summary>
+        /// Returns the current traffic light state for a specific road index at a given intersection.
+        /// </summary>
+        public static TrafficLightState GetRoadTrafficLightState(TrafficLightIntersection intersection, int roadIndex)
+        {
+            if (intersection == null)
+            {
+                Debug.LogWarning("DMTS_API: Invalid intersection reference.");
+                return TrafficLightState.Red; // Default safe state
+            }
+
+            return intersection.GetRoadLightState(roadIndex);
         }
     }
 }
