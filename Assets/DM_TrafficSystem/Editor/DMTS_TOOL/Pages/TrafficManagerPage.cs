@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -111,7 +112,6 @@ namespace Darkmatter.TrafficSystem.Editor
                     EditorGUILayout.PropertyField(serializedManager.FindProperty("maxVehicleCountInGame"));
                     EditorGUILayout.PropertyField(serializedManager.FindProperty("densityControl"));
                     EditorGUILayout.PropertyField(serializedManager.FindProperty("vehicleCollection"));
-                    EditorGUILayout.PropertyField(serializedManager.FindProperty("spawnWaypoints"));
                 }
                 else if (activeTab == 2) // Pooling System
                 {
@@ -139,9 +139,9 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 EditorGUILayout.Space(16);
 
-                if (GUILayout.Button("Bake Spawn Points & Grid", GUILayout.Height(30)))
+                if (GUILayout.Button("Bake Waypoints & Grid", GUILayout.Height(30)))
                 {
-                    BakeSpawnPoints(manager);
+                    BakeWaypointsAndGrid(manager);
                 }
                 EditorGUILayout.EndScrollView();
 
@@ -162,10 +162,10 @@ namespace Darkmatter.TrafficSystem.Editor
         {
         }
 
-        private void BakeSpawnPoints(TrafficManager manager)
+        private void BakeWaypointsAndGrid(TrafficManager manager)
         {
             float angleThreshold = 10f; // Set a threshold for straightness
-            AILane[] lanes = Object.FindObjectsByType<AILane>(FindObjectsSortMode.None);
+            AILane[] lanes = Object.FindObjectsByType<AILane>(FindObjectsInactive.Include);
             
             if (lanes == null || lanes.Length == 0)
             {
@@ -173,68 +173,72 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
-            System.Collections.Generic.List<AIWaypoint> validSpawnPoints = new System.Collections.Generic.List<AIWaypoint>();
+            Undo.RecordObject(manager, "Bake Waypoint Grid");
 
-            Undo.RecordObject(manager, "Bake Spawn Points");
+            // Dictionary using the actual Struct/Class instead of just a List of spawn points
+            Dictionary<Vector2Int, WaypointGridCell> tempGrid = new Dictionary<Vector2Int, WaypointGridCell>();
 
             foreach (var lane in lanes)
             {
-                if (lane == null || lane.waypoints == null || lane.waypoints.Count < 3) continue;
+                if (lane == null || lane.waypoints == null) continue;
 
-                for (int i = 1; i < lane.waypoints.Count - 1; i++)
+                for (int i = 0; i < lane.waypoints.Count; i++)
                 {
-                    AIWaypoint prev = lane.waypoints[i - 1];
                     AIWaypoint current = lane.waypoints[i];
-                    AIWaypoint next = lane.waypoints[i + 1];
+                    if (current == null) continue;
 
-                    if (prev == null || current == null || next == null) continue;
+                    // 1. Calculate Cell Coordinate
+                    Vector2Int cellPosition = new Vector2Int(
+                        Mathf.FloorToInt(current.transform.position.x / manager.gridSize),
+                        Mathf.FloorToInt(current.transform.position.z / manager.gridSize)
+                    );
 
-                    Vector3 dirIn = (current.transform.position - prev.transform.position).normalized;
-                    Vector3 dirOut = (next.transform.position - current.transform.position).normalized;
-
-                    float angle = Vector3.Angle(dirIn, dirOut);
-
-                    if (angle <= angleThreshold)
+                    // 2. Initialize cell if it doesn't exist
+                    if (!tempGrid.ContainsKey(cellPosition))
                     {
-                        validSpawnPoints.Add(current);
+                        tempGrid[cellPosition] = new WaypointGridCell
+                        {
+                            cellCoordinate = cellPosition,
+                            allWaypoints = new List<AIWaypoint>(),
+                            spawnWaypoints = new List<AIWaypoint>()
+                        };
+                    }
+
+                    // 3. Add to ALL waypoints list
+                    tempGrid[cellPosition].allWaypoints.Add(current);
+
+                    // 4. Run the Angle Check to see if it's a valid spawn point
+                    if (i > 0 && i < lane.waypoints.Count - 1)
+                    {
+                        AIWaypoint prev = lane.waypoints[i - 1];
+                        AIWaypoint next = lane.waypoints[i + 1];
+
+                        if (prev != null && next != null)
+                        {
+                            Vector3 dirIn = (current.transform.position - prev.transform.position).normalized;
+                            Vector3 dirOut = (next.transform.position - current.transform.position).normalized;
+                            
+                            if (Vector3.Angle(dirIn, dirOut) <= angleThreshold)
+                            {
+                                // Valid straight lane = safe to spawn
+                                tempGrid[cellPosition].spawnWaypoints.Add(current); 
+                            }
+                        }
                     }
                 }
             }
 
-            manager.spawnWaypoints = validSpawnPoints.ToArray();
-
-            // 2. Sort them into a temporary dictionary based on position
-            System.Collections.Generic.Dictionary<Vector2Int, System.Collections.Generic.List<AIWaypoint>> tempGrid = new System.Collections.Generic.Dictionary<Vector2Int, System.Collections.Generic.List<AIWaypoint>>();
-            
-            foreach (var wp in validSpawnPoints)
-            {
-                Vector2Int cellPosition = new Vector2Int(
-                    Mathf.FloorToInt(wp.transform.position.x / manager.gridSize),
-                    Mathf.FloorToInt(wp.transform.position.z / manager.gridSize)
-                );
-
-                if (!tempGrid.ContainsKey(cellPosition))
-                {
-                    tempGrid[cellPosition] = new System.Collections.Generic.List<AIWaypoint>();
-                }
-                tempGrid[cellPosition].Add(wp);
-            }
-
-            // 3. Clear the old saved list, and copy the new data into it
+            // 5. Clear the old saved list, and copy the new data into it
             manager.serializedGrid.Clear();
             foreach (var kvp in tempGrid)
             {
-                manager.serializedGrid.Add(new WaypointGridCell
-                {
-                    cellCoordinate = kvp.Key,
-                    waypoints = kvp.Value
-                });
+                manager.serializedGrid.Add(kvp.Value);
             }
 
             EditorUtility.SetDirty(manager);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
 
-            Debug.Log($"Baked {validSpawnPoints.Count} safe spawn points from {lanes.Length} AILanes into {manager.serializedGrid.Count} Grid Cells.");
+            Debug.Log($"Baked Waypoints into {manager.serializedGrid.Count} Grid Cells.");
         }
     }
 }

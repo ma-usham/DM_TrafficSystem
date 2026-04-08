@@ -6,7 +6,7 @@ namespace Darkmatter.TrafficSystem
     public class TrafficSpatialGrid
     {
         private TrafficManager _manager;
-        private Dictionary<Vector2Int, List<AIWaypoint>> _runtimeGrid;
+        private Dictionary<Vector2Int, WaypointGridCell> _runtimeGrid;
 
         public TrafficSpatialGrid(TrafficManager manager)
         {
@@ -15,11 +15,11 @@ namespace Darkmatter.TrafficSystem
 
         public void InitializeRuntimeGrid()
         {
-            _runtimeGrid = new Dictionary<Vector2Int, List<AIWaypoint>>();
+            _runtimeGrid = new Dictionary<Vector2Int, WaypointGridCell>();
 
             foreach (var cell in _manager.serializedGrid)
             {
-                _runtimeGrid[cell.cellCoordinate] = cell.waypoints;
+                _runtimeGrid[cell.cellCoordinate] = cell;
             }
         }
 
@@ -36,13 +36,36 @@ namespace Darkmatter.TrafficSystem
                 for (int y = -1; y <= 1; y++)
                 {
                     Vector2Int checkCell = new Vector2Int(centerCell.x + x, centerCell.y + y);
-                    if (_runtimeGrid.TryGetValue(checkCell, out List<AIWaypoint> cellWaypoints))
+                    if (_runtimeGrid.TryGetValue(checkCell, out WaypointGridCell cellInfo))
                     {
-                        nearbyWaypoints.AddRange(cellWaypoints);
+                        nearbyWaypoints.AddRange(cellInfo.allWaypoints);
                     }
                 }
             }
             return nearbyWaypoints;
+        }
+
+        public List<AIWaypoint> GetNearbySpawnWaypoints(Vector3 position)
+        {
+            List<AIWaypoint> nearbySpawnWaypoints = new List<AIWaypoint>();
+
+            int centerX = Mathf.FloorToInt(position.x / _manager.gridSize);
+            int centerZ = Mathf.FloorToInt(position.z / _manager.gridSize);
+            Vector2Int centerCell = new Vector2Int(centerX, centerZ);
+
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    Vector2Int checkCell = new Vector2Int(centerCell.x + x, centerCell.y + y);
+                    if (_runtimeGrid.TryGetValue(checkCell, out WaypointGridCell cellInfo))
+                    {
+                        if (cellInfo.spawnWaypoints != null)
+                            nearbySpawnWaypoints.AddRange(cellInfo.spawnWaypoints);
+                    }
+                }
+            }
+            return nearbySpawnWaypoints;
         }
 
         public AIWaypoint GetClosestWaypoint(Vector3 position)

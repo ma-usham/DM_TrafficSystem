@@ -10,7 +10,7 @@ namespace Darkmatter.TrafficSystem
     {
         private void SpawnInitialVehicles()
         {
-            if (spawnWaypoints == null || spawnWaypoints.Length == 0) return;
+            if (spatialGrid == null || serializedGrid == null || serializedGrid.Count == 0) return;
 
             int spawnedCount = 0;
             int startAmount = Mathf.Min(densityControl, maxVehicleCountInGame);
@@ -22,9 +22,11 @@ namespace Darkmatter.TrafficSystem
                 if (usePlayerPooling && mainCamera != null && playerTransform != null)
                 {
                     Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(mainCamera);
-                    List<AIWaypoint> localWaypoints = spatialGrid.GetNearbyWaypoints(playerTransform.position);
+                    List<AIWaypoint> localWaypoints = spatialGrid.GetNearbySpawnWaypoints(playerTransform.position);
                     if (localWaypoints.Count > 0)
                     {
+                        //Attempted 50 times because for pooling camera and frustum should be checked and there might not be many spawn points that are hidden from the camera in the starting area, so it might fail to find a spawn point and spawn no vehicles if the attempt count is too low.
+                        //Its the initial spawn attempt so no worrises.
                         for (int attempt = 0; attempt < 50; attempt++)
                         {
                             AIWaypoint candidate = localWaypoints[Random.Range(0, localWaypoints.Count)];
@@ -42,7 +44,17 @@ namespace Darkmatter.TrafficSystem
                 }
                 else
                 {
-                    spawnPoint = spawnWaypoints[Random.Range(0, spawnWaypoints.Length)];
+                    //The attempt 10 is checked because there arent spawn point in edges of map, so the car might not get spawnned.
+                    //Even if under 10 attemp it fails then no vehicel will spawn (total vehicle -1).
+                    for (int attempt = 0; attempt < 10; attempt++)
+                    {
+                        var randomCell = serializedGrid[Random.Range(0, serializedGrid.Count)];
+                        if (randomCell.spawnWaypoints != null && randomCell.spawnWaypoints.Count > 0)
+                        {
+                            spawnPoint = randomCell.spawnWaypoints[Random.Range(0, randomCell.spawnWaypoints.Count)];
+                        }
+                    }
+
                 }
 
                 if (spawnPoint != null)
@@ -229,7 +241,7 @@ namespace Darkmatter.TrafficSystem
             {
                 yield return wait;
 
-                if (playerTransform == null || spawnWaypoints == null || spawnWaypoints.Length == 0)
+                if (playerTransform == null || spatialGrid == null)
                     continue;
 
                 Vector3 playerPos = playerTransform.position;
