@@ -71,7 +71,7 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-               /// <summary>
+        /// <summary>
         /// Gets the LayerMask used to identify the Player in the traffic system.
         /// </summary>
         public static LayerMask PlayerLayerMask
@@ -91,7 +91,7 @@ namespace Darkmatter.TrafficSystem
             get
             {
                 if (Manager != null) return Manager.trafficMask;
-                return new LayerMask(); 
+                return new LayerMask();
             }
         }
 
@@ -103,9 +103,49 @@ namespace Darkmatter.TrafficSystem
             get
             {
                 if (Manager != null) return Manager.groundMask;
-                return new LayerMask(); 
+                return new LayerMask();
             }
         }
+
+        /// <summary>
+        /// Gets the integer ID (index) for a specific waypoint.
+        /// Returns true if the waypoint was found, false otherwise.
+        /// </summary>
+        public static bool TryGetWaypointIndex(AIWaypoint waypoint, out int index)
+        {
+            if (Manager != null && waypoint != null)
+            {
+                List<AIWaypoint> allWaypoints = Manager.GetAllWaypointsInMap();
+                if (allWaypoints != null)
+                {
+                    index = allWaypoints.IndexOf(waypoint);
+                    return index >= 0;
+                }
+            }
+
+            index = -1;
+            return false;
+        }
+
+        /// <summary>
+        /// Retrieves the waypoint object associated with a specific ID (index).
+        /// Returns null if the index is invalid.
+        /// </summary>
+        public static AIWaypoint GetWaypointFromIndex(int index)
+        {
+            if (Manager != null && index >= 0)
+            {
+                List<AIWaypoint> allWaypoints = Manager.GetAllWaypointsInMap();
+                if (allWaypoints != null && index < allWaypoints.Count)
+                {
+                    return allWaypoints[index];
+                }
+            }
+
+            return null;
+        }
+
+
 
         /// <summary>
         /// Gets the exact world position of the nearest traffic waypoint to a given point.
