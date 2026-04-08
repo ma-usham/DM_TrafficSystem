@@ -243,15 +243,21 @@ namespace Darkmatter.TrafficSystem.Editor
         private void DrawTrafficManagerSpawnPoints()
         {
             TrafficManager manager = Object.FindAnyObjectByType<TrafficManager>();
-            if (manager == null || manager.spawnWaypoints == null)
+            if (manager == null || manager.serializedGrid == null)
                 return;
 
             Handles.color = new Color(0f, 0f, 1f, 0.4f);
-            foreach (var sp in manager.spawnWaypoints)
+            foreach (var cell in manager.serializedGrid)
             {
-                if (sp != null)
+                if (cell.spawnWaypoints != null)
                 {
-                    Handles.CubeHandleCap(0, sp.transform.position, Quaternion.identity, 1.5f, EventType.Repaint);
+                    foreach (var sp in cell.spawnWaypoints)
+                    {
+                        if (sp != null)
+                        {
+                            Handles.CubeHandleCap(0, sp.transform.position, Quaternion.identity, 1.5f, EventType.Repaint);
+                        }
+                    }
                 }
             }
         }
