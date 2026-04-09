@@ -194,7 +194,7 @@ namespace Darkmatter.TrafficSystem
                 // Smooth Braking ONLY happens inside the Normal Sensor length
                 float maxSensorRange = state.sensorSize.z;
                 // 1. Define the actual 'Target Stop Line' (20% closer than the sensor's stopping distance)
-                float actualStopLine = state.stoppingDistance * 0.8f;
+                float actualStopLine = state.stoppingDistance;
 
                 // 2. The braking zone length is the distance between the tip of the sensor and this stop line
                 float brakingZoneLength = maxSensorRange - actualStopLine;
@@ -224,7 +224,7 @@ namespace Darkmatter.TrafficSystem
                     {
                         // STRICT CHECK: The car must be outside the stopping distance to turn.
                         // If it has reached the stopping line, it cannot overtake and must wait.
-                        bool hasRoomToTurn = state.obstacleDistance > state.stoppingDistance;
+                        bool hasRoomToTurn = state.obstacleDistance > state.stoppingDistance+0.5f;
                         // ONLY trigger overtake if at least one side lane is actually clear
                         if ((!state.leftLaneBlocked || !state.rightLaneBlocked) && hasRoomToTurn)
                         {
@@ -306,14 +306,9 @@ namespace Darkmatter.TrafficSystem
                 //Calculate the visual Steering Angle
                 Vector3 localTarget = Quaternion.Inverse(transform.rotation) * projectedDir;
                 state.steeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
-
-                // Give it a base 0.3f multiplier so it can still steer out of a dead stop!
-                float baseTurn = state.isChangingLanes ? 0.5f : 0.1f;
-                float turnSpeedMultiplier = Mathf.Clamp(state.physicalSpeed / 1f, baseTurn, 1f);
-
                 // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
                 Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
-                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed * turnSpeedMultiplier);
+                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * state.turnSpeed);
 
             }
             else

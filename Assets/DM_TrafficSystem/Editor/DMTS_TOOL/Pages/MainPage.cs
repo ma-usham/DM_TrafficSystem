@@ -17,13 +17,22 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.Space(6);
 
             if (GUILayout.Button("AI Traffic Manager", GUILayout.Height(28)))
+            {
+                TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
                 ctx.pageStack.Push(new TrafficManagerPage());
+            }
 
             if (GUILayout.Button("Road Setup", GUILayout.Height(28)))
+            {
+                TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
                 ctx.pageStack.Push(new RoadSetupPage());
+            }
 
             if (GUILayout.Button("Intersection Setup", GUILayout.Height(28)))
+            {
+                TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
                 ctx.pageStack.Push(new IntersectionSetupPage());
+            }
         }
 
         /// <summary>

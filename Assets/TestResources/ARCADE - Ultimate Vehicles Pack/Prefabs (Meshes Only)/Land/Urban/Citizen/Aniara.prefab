@@ -782,7 +782,7 @@ MonoBehaviour:
     willChangeLane: 1
     frustrationTime: {x: 10, y: 15}
     laneChangeCooldown: {x: 15, y: 20}
-    aiOvertakeProbability: 0.5
+    aiOvertakeProbability: 0
     playerOvertakeProbability: 0
   wheels:
   - raycastTransform: {fileID: 4565691815504819783}

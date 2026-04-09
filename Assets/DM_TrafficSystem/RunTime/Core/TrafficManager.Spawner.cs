@@ -98,8 +98,6 @@ namespace Darkmatter.TrafficSystem
             AIVehicle vehicle = _vehiclePool.Spawn(spawnPoint);
             if (vehicle == null) return false;
 
-            vehicle.transform.position = spawnPoint.transform.position;
-            vehicle.transform.rotation = spawnPoint.transform.rotation;
             Vector3 halfExtents = vehicle.GetSpawnBoxHalfExtents();
             Vector3 offset = vehicle.GetSpawnBoxCenterOffset();
             Vector3 boxCenter = spawnPoint.transform.position + (spawnPoint.transform.rotation * offset);

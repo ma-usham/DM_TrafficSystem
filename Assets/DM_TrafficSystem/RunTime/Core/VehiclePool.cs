@@ -41,6 +41,12 @@ namespace Darkmatter.TrafficSystem
                 instance.transform.position = spawnPos;
                 instance.transform.rotation = spawnRot;
                 instance.transform.SetParent(_container);
+
+                if(instance.TryGetComponent(out Rigidbody rb))
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
                 instance.gameObject.SetActive(true);
 
             }
