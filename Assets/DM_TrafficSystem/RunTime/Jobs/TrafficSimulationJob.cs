@@ -139,13 +139,15 @@ namespace Darkmatter.TrafficSystem
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private void DetermineSpeedAndPersonality(int index, ref VehicleState state, float distance, TransformAccess transform)
         {
-            bool isDeciding = state.isChangingLanes && state.isLaneChangingVehicle && state.wantsToOvertake && state.wantsToHonk;
+            // A vehicle is ready to make a decision if it's not already in the middle of a lane change/overtake/honk sequence
+            bool isDecidingStatus = !state.isChangingLanes && state.isLaneChangingVehicle && !state.wantsToOvertake && !state.wantsToHonk;
 
             // --- 1. FAR ZONE ENCOUNTER: Decision Making Only ---
-            if (!isDeciding && (state.detectedPlayerFar || state.detectedTrafficFar))
+            if (isDecidingStatus && !state.isApproachingStopPoint && (state.detectedPlayerFar || state.detectedTrafficFar))
             {
                 uint seed = (uint)(index * 1000 + (timeSinceLevelLoad * 100) + 1);
                 Unity.Mathematics.Random rng = new Unity.Mathematics.Random(seed);
+                bool sideLanesClear = !state.leftLaneBlocked || !state.rightLaneBlocked;
 
                 if (state.detectedPlayerFar)
                 {
@@ -156,16 +158,15 @@ namespace Darkmatter.TrafficSystem
                     if (!playerIsComing)
                     {
                         // Player is going (away) -> according to personality, either immediately overtake or do nothing and wait
-                        if (rng.NextFloat() < state.playerOvertakeProbability)
+                        if (sideLanesClear && rng.NextFloat() < state.playerOvertakeProbability)
                         {
                             state.wantsToOvertake = true;
                         }
-
                     }
                     else
                     {
                         // Player is coming towards AI -> brake+honk OR change lane based on probability
-                        if (rng.NextFloat() < state.playerOvertakeProbability)
+                        if (sideLanesClear && rng.NextFloat() < state.playerOvertakeProbability)
                         {
                             state.wantsToOvertake = true; // change lane
                         }
@@ -173,14 +174,14 @@ namespace Darkmatter.TrafficSystem
                         {
                             state.wantsToHonk = true; //Honk and Brake
                             BrakeHalt(ref state, 2f); // Apply brake
-                            return;
+                                                      // return;   //Removed 'return;' here so Normal Zone collision avoidance is still evaluated!
                         }
                     }
                 }
                 else if (state.detectedTrafficFar)
                 {
                     // Traffic detected: use aiOvertakeProbability
-                    if (rng.NextFloat() < state.aiOvertakeProbability)
+                    if (sideLanesClear && rng.NextFloat() < state.aiOvertakeProbability)
                     {
                         state.wantsToOvertake = true;
                     }
@@ -192,10 +193,14 @@ namespace Darkmatter.TrafficSystem
             {
                 // Smooth Braking ONLY happens inside the Normal Sensor length
                 float maxSensorRange = state.sensorSize.z;
+                // 1. Define the actual 'Target Stop Line' (20% closer than the sensor's stopping distance)
+                float actualStopLine = state.stoppingDistance * 0.8f;
 
-                // Calculate how close it is (0f = touched it, 1f = far end of the sensor)
-                float proximityRatio = Mathf.Clamp01((state.obstacleDistance - state.stoppingDistance) / (maxSensorRange - state.stoppingDistance));
+                // 2. The braking zone length is the distance between the tip of the sensor and this stop line
+                float brakingZoneLength = maxSensorRange - actualStopLine;
 
+                // 3. Proximity ratio will reach 0.0 when obstacleDistance == actualStopLine
+                float proximityRatio = Mathf.Clamp01((state.obstacleDistance - actualStopLine) / brakingZoneLength);
                 // Desired speed decreases the closer we get
                 float dynamicTargetSpeed = state.localMaxSpeed * proximityRatio;
 
@@ -203,29 +208,42 @@ namespace Darkmatter.TrafficSystem
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, dynamicTargetSpeed, deltaTime * state.brakingPower);
 
                 // Stop entirely if we're safely within the actual stopping distance boundary
-                if (state.obstacleDistance <= state.stoppingDistance + 0.1f)
+                if (state.obstacleDistance < state.stoppingDistance - 0.1f)
                 {
-                    if (state.isChangingLanes)
-                    {
-                        // Force a slow crawl (e.g., 2m/s) to push past the clipping bumper
-                        state.currentSpeed = Mathf.Max(state.currentSpeed, 2f);
-                    }
-                    else
-                    {
-                        // Normal behavior: Slam on breaks
-                        state.currentSpeed = 0f;
-                    }
+                    // Normal behavior: Slam on hard brake with three times the normal braking power to ensure we stop in time and don't clip through the obstacle
+                    state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * state.brakingPower * 3f);
                 }
 
+                // Re-evaluate decision status in case the Far Zone logic changed state.wantsToOvertake
+                bool canFrustrate = !state.isChangingLanes && state.isLaneChangingVehicle && !state.wantsToOvertake && !state.wantsToHonk;
                 // Wait completely in frustration if following in the normal zone and not already trying to overtake
-                if (!isDeciding)
+                if (canFrustrate && !state.isApproachingStopPoint)
                 {
                     state.impatienceTimer -= deltaTime;
                     if (state.impatienceTimer <= 0f)
                     {
-                        state.wantsToOvertake = true;
+                        // STRICT CHECK: The car must be outside the stopping distance to turn.
+                        // If it has reached the stopping line, it cannot overtake and must wait.
+                        bool hasRoomToTurn = state.obstacleDistance > state.stoppingDistance;
+                        // ONLY trigger overtake if at least one side lane is actually clear
+                        if ((!state.leftLaneBlocked || !state.rightLaneBlocked) && hasRoomToTurn)
+                        {
+                            state.wantsToOvertake = true;
+                        }
+                        else
+                        {
+                            // Reset the timer if we can't do anything, to prevent getting stuck in "want to overtake" mode
+                            // while the lanes are blocked.
+                            state.impatienceTimer = 5f; // Wait 5 seconds before getting impatient again.(retry time)
+                        }
                     }
                 }
+                else if (state.isApproachingStopPoint)
+                {
+                    // If we are at a stop point, reset impatience (we are waiting patiently at a red light/stop sign)
+                    state.impatienceTimer = state.frustrationTime;
+                }
+
                 return;
             }
 
@@ -239,7 +257,12 @@ namespace Darkmatter.TrafficSystem
 
             // Default: Clear road, go fast
             AccelerateNormal(ref state);
-            ResetPersonality(ref state);
+            //only reset personality if there is absolutely nothingin front of us.
+            if (!state.detectedPlayerFar && !state.detectedTrafficFar)
+            {
+                ResetPersonality(ref state);
+            }
+
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -268,8 +291,6 @@ namespace Darkmatter.TrafficSystem
             // If we are fully stopped or waiting for the graph, skip the heavy math
             if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.001f)
             {
-                state.desiredVelocity = Vector3.zero;
-                state.desiredRotation = transform.rotation;
                 return;
             }
 
@@ -289,7 +310,6 @@ namespace Darkmatter.TrafficSystem
                 // Give it a base 0.3f multiplier so it can still steer out of a dead stop!
                 float baseTurn = state.isChangingLanes ? 0.5f : 0.1f;
                 float turnSpeedMultiplier = Mathf.Clamp(state.physicalSpeed / 1f, baseTurn, 1f);
-                // ... proceed with Quaternion.Slerp
 
                 // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
                 Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);

@@ -253,16 +253,12 @@ namespace Darkmatter.TrafficSystem
                 else
                 {
                     rb.constraints = RigidbodyConstraints.None;
-                    // rb.linearDamping = 0f;
-                    // rb.angularDamping = 0.05f; // Standard small drag amount
-                    //rb.linearDamping = 0f; // Reset damping when not stopped
-                    // The car is moving normally. 
-                    // Calculate velocity difference on X and Z axis to allow physics to keep gravity and collision forces intact
+                    // Calculate the difference between desired and current velocity
                     Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;
-                    velocityDifference.y = 0; // Don't interfere with gravity/suspension
-
-                    // Add force as a velocity change for stable, mass-independent movement that works with the physics solver
+                     velocityDifference.y = 0f; 
+                    // Apply the difference as a velocity change so suspension/gravity are preserved
                     rb.AddForce(velocityDifference, ForceMode.VelocityChange);
+
                 }
 
                 // Calculate the rotation difference to use AddTorque instead of MoveRotation (stops physics fighting)
@@ -278,6 +274,7 @@ namespace Darkmatter.TrafficSystem
 
                     rb.AddTorque(angularVelocityDifference, ForceMode.VelocityChange);
                 }
+
             }
         }
 

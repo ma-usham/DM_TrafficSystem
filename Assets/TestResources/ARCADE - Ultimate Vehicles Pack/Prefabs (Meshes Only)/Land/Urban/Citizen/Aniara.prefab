@@ -270,8 +270,8 @@ Transform:
   m_GameObject: {fileID: 2378815492253563076}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.4860687, y: 0.8398553, z: -0.38929272}
-  m_LocalScale: {x: 5.140443, y: 1.2414672, z: 14.623377}
+  m_LocalPosition: {x: 2.4896314, y: 0.8398553, z: 2.0231943}
+  m_LocalScale: {x: 3.1475682, y: 1.2414672, z: 32.014008}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.024205863, y: 0.85537636, z: 6.4282618}
-  m_LocalScale: {x: 1.8230017, y: 1.2422304, z: 10.063742}
+  m_LocalPosition: {x: -0.024205863, y: 0.85537636, z: 7.2239523}
+  m_LocalScale: {x: 1.8230017, y: 1.2422304, z: 11.655123}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -668,8 +668,8 @@ Transform:
   m_GameObject: {fileID: 6441267291102839488}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.4860687, y: 0.8398553, z: -0.38929272}
-  m_LocalScale: {x: 5.140443, y: 1.2414672, z: 14.623377}
+  m_LocalPosition: {x: -2.4896314, y: 0.8398553, z: 2.0231943}
+  m_LocalScale: {x: 3.1475682, y: 1.2414672, z: 32.014008}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -758,7 +758,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 1
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!114 &4248949257216819404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -782,8 +782,8 @@ MonoBehaviour:
     willChangeLane: 1
     frustrationTime: {x: 10, y: 15}
     laneChangeCooldown: {x: 15, y: 20}
-    aiOvertakeProbability: 0.3
-    playerOvertakeProbability: 0.5
+    aiOvertakeProbability: 0.5
+    playerOvertakeProbability: 0
   wheels:
   - raycastTransform: {fileID: 4565691815504819783}
     visualMesh: {fileID: 1277289663938139567}
