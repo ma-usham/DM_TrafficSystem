@@ -20,9 +20,7 @@ namespace Darkmatter.TrafficSystem
             {
                 if (_manager == null)
                 {
-#pragma warning disable CS0618
-                    _manager = Object.FindObjectOfType<TrafficManager>();
-#pragma warning restore CS0618
+                    _manager = Object.FindAnyObjectByType<TrafficManager>();
                     if (_manager == null)
                     {
                         Debug.LogWarning("DMTS_API: TrafficManager not found in the current scene!");
@@ -32,8 +30,14 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        public static void RegisterManager(TrafficManager manager)
+        {
+            _manager = manager;
+        }
+
         /// <summary>
         /// Changes the target amount of flowing traffic. Safe to call at runtime.
+        /// Note: For massive shifts in density, the TrafficManager buffers will need to be reinitialized.
         /// </summary>
         /// <param name="newDensity">The target number of cars. Clamps automatically to the hard memory limit.</param>
         public static void SetTrafficDensity(int newDensity)
@@ -115,11 +119,9 @@ namespace Darkmatter.TrafficSystem
         {
             if (Manager != null && waypoint != null)
             {
-                List<AIWaypoint> allWaypoints = Manager.GetAllWaypointsInMap();
-                if (allWaypoints != null)
+                if (Manager.TryGetWaypointIndexCached(waypoint, out index))
                 {
-                    index = allWaypoints.IndexOf(waypoint);
-                    return index >= 0;
+                    return true;
                 }
             }
 
@@ -135,11 +137,7 @@ namespace Darkmatter.TrafficSystem
         {
             if (Manager != null && index >= 0)
             {
-                List<AIWaypoint> allWaypoints = Manager.GetAllWaypointsInMap();
-                if (allWaypoints != null && index < allWaypoints.Count)
-                {
-                    return allWaypoints[index];
-                }
+                return Manager.GetWaypointByCachedIndex(index);
             }
 
             return null;

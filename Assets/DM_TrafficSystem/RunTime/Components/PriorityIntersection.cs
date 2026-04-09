@@ -8,17 +8,17 @@ namespace Darkmatter.TrafficSystem
     /// Stores one group of stop points that should stop together in a priority intersection.
     /// </summary>
     [System.Serializable]
-    public class PriorityStopRoad
+    public class PriorityStopRoad : IIntersectionRoad
     {
         public List<AIWaypoint> stopPoints = new List<AIWaypoint>();
+        public List<AIWaypoint> GetStopPoints() => stopPoints;
     }
 
     /// <summary>
     /// Cycles stop states across configured priority-road groups at runtime.
     /// </summary>
-    public class PriorityIntersection : MonoBehaviour
+    public class PriorityIntersection : IntersectionBase
     {
-        public string intersectionName = "New Intersection";
         [Tooltip("Time all roads wait between switching (yellow/red light duration)")]
         public float waitTime = 2f;
         [Tooltip("Time in seconds each road is green/active")]
@@ -33,11 +33,11 @@ namespace Darkmatter.TrafficSystem
         /// </summary>
         private void Start()
         {
-            SetAllRoadsToStop();
+            SetAllRoadsToStop(priorityStopRoads);
 
             if (priorityStopRoads.Count > 0)
             {
-                StartCoroutine(CycleIntersection());
+                cycleCoroutine = StartCoroutine(CycleIntersection());
             }
         }
 
@@ -57,31 +57,6 @@ namespace Darkmatter.TrafficSystem
                 yield return new WaitForSeconds(waitTime);
 
                 currentStopRoadIndex = (currentStopRoadIndex + 1) % priorityStopRoads.Count;
-            }
-        }
-
-        /// <summary>
-        /// Applies one stop-state value to every stop point in the provided road group.
-        /// </summary>
-        private void SetRoadStopStatus(PriorityStopRoad road, bool isStop)
-        {
-            foreach (var wp in road.stopPoints)
-            {
-                if (wp != null)
-                {
-                    wp.settings.isStopPoint = isStop;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Forces every configured road group into the stop state.
-        /// </summary>
-        private void SetAllRoadsToStop()
-        {
-            foreach (var road in priorityStopRoads)
-            {
-                SetRoadStopStatus(road, true);
             }
         }
     }

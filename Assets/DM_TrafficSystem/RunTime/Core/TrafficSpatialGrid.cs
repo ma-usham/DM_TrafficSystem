@@ -23,9 +23,21 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        private static Stack<List<AIWaypoint>> _waypointListPool = new Stack<List<AIWaypoint>>();
+
+        public void ReturnWaypointList(List<AIWaypoint> list)
+        {
+            if (list != null)
+            {
+                list.Clear();
+                _waypointListPool.Push(list);
+            }
+        }
+
         public List<AIWaypoint> GetNearbyWaypoints(Vector3 position)
         {
-            List<AIWaypoint> nearbyWaypoints = new List<AIWaypoint>();
+            List<AIWaypoint> nearbyWaypoints = _waypointListPool.Count > 0 ? _waypointListPool.Pop() : new List<AIWaypoint>();
+            nearbyWaypoints.Clear();
 
             int centerX = Mathf.FloorToInt(position.x / _manager.gridSize);
             int centerZ = Mathf.FloorToInt(position.z / _manager.gridSize);
@@ -47,7 +59,8 @@ namespace Darkmatter.TrafficSystem
 
         public List<AIWaypoint> GetNearbySpawnWaypoints(Vector3 position)
         {
-            List<AIWaypoint> nearbySpawnWaypoints = new List<AIWaypoint>();
+            List<AIWaypoint> nearbySpawnWaypoints = _waypointListPool.Count > 0 ? _waypointListPool.Pop() : new List<AIWaypoint>();
+            nearbySpawnWaypoints.Clear();
 
             int centerX = Mathf.FloorToInt(position.x / _manager.gridSize);
             int centerZ = Mathf.FloorToInt(position.z / _manager.gridSize);
@@ -73,7 +86,10 @@ namespace Darkmatter.TrafficSystem
             List<AIWaypoint> localWaypoints = GetNearbyWaypoints(position);
 
             if (localWaypoints == null || localWaypoints.Count == 0)
+            {
+                ReturnWaypointList(localWaypoints);
                 return null;
+            }
 
             AIWaypoint closest = null;
             float closestSqrDist = float.MaxValue;
@@ -88,6 +104,7 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
+            ReturnWaypointList(localWaypoints);
             return closest;
         }
 
@@ -96,7 +113,10 @@ namespace Darkmatter.TrafficSystem
             List<AIWaypoint> localWaypoints = GetNearbyWaypoints(position);
 
             if (localWaypoints == null || localWaypoints.Count == 0)
+            {
+                ReturnWaypointList(localWaypoints);
                 return null;
+            }
 
             AIWaypoint closest = null;
             float closestSqrDist = float.MaxValue;
@@ -117,6 +137,7 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
+            ReturnWaypointList(localWaypoints);
             return closest;
         }
     }

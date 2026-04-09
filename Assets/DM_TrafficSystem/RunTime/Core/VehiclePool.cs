@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Pool;
 
 namespace Darkmatter.TrafficSystem
 {
@@ -41,14 +40,8 @@ namespace Darkmatter.TrafficSystem
                 instance.transform.position = spawnPos;
                 instance.transform.rotation = spawnRot;
                 instance.transform.SetParent(_container);
-
-                if(instance.TryGetComponent(out Rigidbody rb))
-                {
-                    rb.linearVelocity = Vector3.zero;
-                    rb.angularVelocity = Vector3.zero;
-                }
+                instance.ResetRuntimeState();
                 instance.gameObject.SetActive(true);
-
             }
             else
             {
@@ -58,6 +51,7 @@ namespace Darkmatter.TrafficSystem
                     if (prefab != null)
                     {
                         instance = Object.Instantiate(prefab, spawnPos, spawnRot, _container);
+                        instance.ResetRuntimeState();
                         instance.gameObject.SetActive(true);
                     }
                 }
@@ -68,6 +62,9 @@ namespace Darkmatter.TrafficSystem
 
         public void Despawn(AIVehicle vehicle)
         {
+            if (vehicle == null) return;
+
+            vehicle.ResetRuntimeState();
             vehicle.gameObject.SetActive(false);
 
             if (!_pool.ContainsKey(vehicle.vehicleType))

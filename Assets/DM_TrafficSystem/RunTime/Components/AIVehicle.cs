@@ -85,8 +85,6 @@ namespace Darkmatter.TrafficSystem
 
         public Vector3 GetSpawnBoxHalfExtents()
         {
-            if (vehicleCollider == null) vehicleCollider = GetComponent<BoxCollider>();
-
             if (vehicleCollider != null)
             {
                 return (vehicleCollider.size / 2f) + new Vector3(spawnPadding, 0f, spawnPadding);
@@ -96,8 +94,6 @@ namespace Darkmatter.TrafficSystem
 
         public Vector3 GetSpawnBoxCenterOffset()
         {
-            if (vehicleCollider == null) vehicleCollider = GetComponent<BoxCollider>();
-
             if (vehicleCollider != null)
             {
                 return vehicleCollider.center;
@@ -125,7 +121,42 @@ namespace Darkmatter.TrafficSystem
 
         private void Update()
         {
-            UpdateWheelVisuals();
+            if (gameObject.activeSelf && IsVisibleToCamera())
+                UpdateWheelVisuals();
+        }
+
+        private bool IsVisibleToCamera()
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return true;
+
+            Bounds bounds = new Bounds(transform.position, GetSpawnBoxHalfExtents() * 2f);
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(cam);
+
+            return GeometryUtility.TestPlanesAABB(frustumPlanes, bounds);
+        }
+
+        public void ResetRuntimeState()
+        {
+            if (lookaheadWaypoints != null)
+            {
+                Array.Clear(lookaheadWaypoints, 0, lookaheadWaypoints.Length);
+            }
+
+            activeWaypointIndex = 0;
+            arrayIndex = -1;
+            steeringAngle = 0f;
+            isGrounded = false;
+            debugData = default;
+            laneChangeCooldownTimer = 0f;
+            isChangingLanes = false;
+
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.constraints = RigidbodyConstraints.None;
+            }
         }
 
         private void UpdateWheelVisuals()

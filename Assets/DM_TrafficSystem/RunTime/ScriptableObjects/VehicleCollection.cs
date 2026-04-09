@@ -10,18 +10,23 @@ namespace Darkmatter.TrafficSystem
 
         public AIVehicle GetRandomPrefabOfType(VehicleType type)
         {
-            List<AIVehicle> specificPrefabs = new List<AIVehicle>();
+            AIVehicle selectedPrefab = null;
+            int matchCount = 0;
+
             for (int i = 0; i < prefabs.Count; i++)
             {
-                if (prefabs[i].vehicleType == type)
+                AIVehicle prefab = prefabs[i];
+                if (prefab != null && prefab.vehicleType == type)
                 {
-                    specificPrefabs.Add(prefabs[i]);
+                    matchCount++;
+                    if (Random.Range(0, matchCount) == 0)
+                    {
+                        selectedPrefab = prefab;
+                    }
                 }
             }
 
-            if (specificPrefabs.Count == 0) return null;
-
-            return specificPrefabs[Random.Range(0, specificPrefabs.Count)];
+            return selectedPrefab;
         }
 
         public AIVehicle GetRandomPrefab()

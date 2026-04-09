@@ -12,7 +12,9 @@ namespace Darkmatter.TrafficSystem
     {
         // 1. Cache the list here so we never allocate memory during runtime
         private List<AIWaypoint> _validWaypoints = new List<AIWaypoint>();
-        public void UpdateWaypoint(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<Vector3> waypointBuffer)
+        private List<AIWaypoint> _fallbackWaypoints = new List<AIWaypoint>();
+
+        public void UpdateWaypoint(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<Vector3> waypointBuffer, float deltaTime)
         {
             // Process the graph logic for vehicles that finished driving to their target point
             for (int i = 0; i < activeVehicles.Count; i++)
@@ -20,12 +22,40 @@ namespace Darkmatter.TrafficSystem
                 AIVehicle vehicle = activeVehicles[i];
                 VehicleState state = vehicleStates[vehicle.arrayIndex];
 
-                UpdateCooldowns(vehicle);
-                ProcessLaneChangeIntent(vehicle, ref state, waypointBuffer);
-                
-                if (state.reachedCurrentWaypoint)
+                UpdateCooldowns(vehicle, deltaTime);
+
+                switch (state.currentBehavior)
                 {
-                    AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                    case AIState.Cruising:
+                        ProcessLaneChangeIntent(vehicle, ref state, waypointBuffer);
+                        if (state.reachedCurrentWaypoint && !state.isChangingLanes)
+                        {
+                            AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                        }
+                        if (state.isApproachingStopPoint && state.reachedCurrentWaypoint)
+                        {
+                            state.currentBehavior = AIState.Stopping;
+                        }
+                        break;
+
+                    case AIState.ChangingLanes:
+                        // No lane change intent processing, just finish the lane change
+                        if (state.reachedCurrentWaypoint)
+                        {
+                            AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                        }
+                        break;
+
+                    case AIState.Stopping:
+                        if (!state.isApproachingStopPoint)
+                        {
+                            state.currentBehavior = AIState.Cruising;
+                            if (state.reachedCurrentWaypoint)
+                            {
+                                AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                            }
+                        }
+                        break;
                 }
                 
                 // Write back
@@ -33,11 +63,11 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        private void UpdateCooldowns(AIVehicle vehicle)
+        private void UpdateCooldowns(AIVehicle vehicle, float deltaTime)
         {
             if (vehicle.laneChangeCooldownTimer > 0)
             {
-                vehicle.laneChangeCooldownTimer -= Time.deltaTime;
+                vehicle.laneChangeCooldownTimer = Mathf.Max(0f, vehicle.laneChangeCooldownTimer - deltaTime);
             }
         }
 
@@ -73,7 +103,7 @@ namespace Darkmatter.TrafficSystem
         private bool TryFindLaneChangeWaypoint(AIVehicle vehicle, bool tryLeft, bool tryRight, out AIWaypoint targetLaneWaypoint)
         {
             targetLaneWaypoint = null;
-            AIWaypoint currentTarget = vehicle.lookaheadWaypoints[vehicle.activeWaypointIndex];
+            AIWaypoint currentTarget = vehicle.lookaheadWaypoints[0];
             
             if (currentTarget == null || currentTarget.settings.laneChangePoints == null || currentTarget.settings.laneChangePoints.Length == 0)
                 return false;
@@ -127,17 +157,11 @@ namespace Darkmatter.TrafficSystem
 
             // Trigger logic swap
             state.isChangingLanes = true;
+            state.currentBehavior = AIState.ChangingLanes;
             vehicle.isChangingLanes = true;
             vehicle.laneChangeCooldownTimer = state.laneChangeCooldown; // Cooldown from personality
 
-            // Write directly to buffers
-            for (int j = 0; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
-            {
-                if (vehicle.lookaheadWaypoints[j] != null)
-                {
-                    waypointBuffer[state.waypointBufferStartIndex + j] = vehicle.lookaheadWaypoints[j].transform.position;
-                }
-            }
+            WriteLookaheadToBuffer(vehicle, state.waypointBufferStartIndex, waypointBuffer);
         }
 
         private void AdvanceWaypointQueue(AIVehicle vehicle, ref VehicleState state, NativeArray<Vector3> waypointBuffer)
@@ -166,6 +190,7 @@ namespace Darkmatter.TrafficSystem
             {
                 // Once we reach a lane change destination, we're no longer "changing" lanes
                 state.isChangingLanes = false;
+                state.currentBehavior = AIState.Cruising;
                 vehicle.isChangingLanes = false;
                 vehicle.laneChangeCooldownTimer = state.laneChangeCooldown; // Cooldown before changing again
             }
@@ -180,11 +205,18 @@ namespace Darkmatter.TrafficSystem
             }
 
             // 4. Write back to Native Memory so jobs can read the newly queued target
+            WriteLookaheadToBuffer(vehicle, state.waypointBufferStartIndex, waypointBuffer);
+        }
+
+        private void WriteLookaheadToBuffer(AIVehicle vehicle, int bufferStartIndex, NativeArray<Vector3> waypointBuffer)
+        {
             for (int j = 0; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
             {
+                waypointBuffer[bufferStartIndex + j] = Vector3.zero;
+
                 if (vehicle.lookaheadWaypoints[j] != null)
                 {
-                    waypointBuffer[state.waypointBufferStartIndex + j] = vehicle.lookaheadWaypoints[j].transform.position;
+                    waypointBuffer[bufferStartIndex + j] = vehicle.lookaheadWaypoints[j].transform.position;
                 }
             }
         }
@@ -236,10 +268,20 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
-            // Fallback: If no waypoints matched the specific type, we just pick from any valid next waypoint.
+            // Fallback: If no waypoints matched the specific type, we pick from any valid next waypoint.
             if (_validWaypoints.Count == 0)
             {
-                return nextWaypoints[Random.Range(0, nextWaypoints.Length)];
+                _fallbackWaypoints.Clear();
+                for (int i = 0; i < nextWaypoints.Length; i++)
+                {
+                    if (nextWaypoints[i] != null) _fallbackWaypoints.Add(nextWaypoints[i]);
+                }
+                
+                if (_fallbackWaypoints.Count > 0)
+                {
+                    return _fallbackWaypoints[Random.Range(0, _fallbackWaypoints.Count)];
+                }
+                return null;
             }
 
             // Otherwise, pick randomly from the matched type waypoints

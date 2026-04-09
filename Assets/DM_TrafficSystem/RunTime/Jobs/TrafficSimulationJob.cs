@@ -1,4 +1,4 @@
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Jobs;
@@ -14,10 +14,8 @@ namespace Darkmatter.TrafficSystem
     {
         public NativeArray<VehicleState> vehicleStates;
         [ReadOnly] public NativeArray<Vector3> waypointBuffer;
-        [ReadOnly] public NativeArray<RaycastHit> sensorHits;
-        [ReadOnly] public NativeArray<RaycastHit> leftSensorHits;
-        [ReadOnly] public NativeArray<RaycastHit> rightSensorHits;
-        [ReadOnly] public NativeArray<RaycastHit> playerSensorHits;
+
+        public NativeQueue<VehicleEvent>.ParallelWriter eventQueue;
 
         public Vector3 playerForward;
         public float deltaTime;
@@ -48,15 +46,19 @@ namespace Darkmatter.TrafficSystem
                 return;
             }
 
+            // Ensure we don't overflow the buffer if offset is out of bounds
+            if (state.currentTargetIndexOffset >= TrafficManager.WAYPOINT_LOOKAHEAD)
+            {
+                state.currentTargetIndexOffset = TrafficManager.WAYPOINT_LOOKAHEAD - 1;
+            }
+
             int targetBufferIndex = state.waypointBufferStartIndex + state.currentTargetIndexOffset;
             targetPos = waypointBuffer[targetBufferIndex];
 
             dir = targetPos - transform.position;
             distance = dir.magnitude;
 
-            // 1. Gather environmental state from sensors
-            EvaluateSensors(index, ref state);
-
+            // 1. Gather environmental state from sensors (Done by SensorAggregationJob beforehand)
             // 2. Decide what to do based on the environmental state
             DetermineSpeedAndPersonality(index, ref state, distance, transform);
 
@@ -80,58 +82,6 @@ namespace Darkmatter.TrafficSystem
                 {
                     // Trigger the Main Thread to give us our next point
                     state.reachedCurrentWaypoint = true;
-                }
-            }
-        }
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void EvaluateSensors(int index, ref VehicleState state)
-        {
-            // Behavior 0: Obstacle Collision Check
-            RaycastHit hit = sensorHits[index];
-            bool hitSomething = (hit.distance > 0f || hit.normal != Vector3.zero);
-
-            RaycastHit p_hit = playerSensorHits[index];
-            bool hitPlayerObj = (p_hit.distance > 0f || p_hit.normal != Vector3.zero);
-
-            state.trafficDetected = false;
-            state.detectedTrafficFar = false;
-            state.detectedPlayerFar = false;
-            state.obstacleDistance = 999f; // Default high distance
-
-            if (hitSomething)
-            {
-                state.obstacleDistance = hit.distance; // Store actual distance!
-
-                if (hit.distance <= state.sensorSize.z && hit.distance > 0f) state.trafficDetected = true;
-                else if (hit.distance > state.sensorSize.z) state.detectedTrafficFar = true;
-            }
-
-            if (hitPlayerObj)
-            {
-                if (p_hit.distance < state.obstacleDistance && p_hit.distance > 0f)
-                    state.obstacleDistance = p_hit.distance; // Player is closer
-
-                if (p_hit.distance <= state.sensorSize.z && p_hit.distance > 0f) state.trafficDetected = true;
-                else if (p_hit.distance > state.sensorSize.z) state.detectedPlayerFar = true;
-            }
-
-            // Side sensors logic
-            state.leftLaneBlocked = false;
-            state.rightLaneBlocked = false;
-
-            if (state.isSideSensorActive)
-            {
-                RaycastHit lHit = leftSensorHits[index];
-                if (lHit.distance > 0f || lHit.normal != Vector3.zero)
-                {
-                    state.leftLaneBlocked = true;
-                }
-
-                RaycastHit rHit = rightSensorHits[index];
-                if (rHit.distance > 0f || rHit.normal != Vector3.zero)
-                {
-                    state.rightLaneBlocked = true;
                 }
             }
         }
@@ -172,8 +122,10 @@ namespace Darkmatter.TrafficSystem
                         }
                         else
                         {
-                            state.wantsToHonk = true; //Honk and Brake
-                            BrakeHalt(ref state, 2f); // Apply brake
+                            state.wantsToHonk = true;
+                eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.HonkHorn }); //Honk and Brake
+                            BrakeHalt(ref state, 2f);
+                eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.BrakesApplied }); // Apply brake
                                                       // return;   //Removed 'return;' here so Normal Zone collision avoidance is still evaluated!
                         }
                     }

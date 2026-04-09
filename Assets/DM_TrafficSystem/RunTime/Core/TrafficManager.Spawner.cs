@@ -9,8 +9,9 @@ namespace Darkmatter.TrafficSystem
         {
             if (spatialGrid == null || serializedGrid == null || serializedGrid.Count == 0) return;
 
-            int spawnedCount = 0;
             int startAmount = Mathf.Min(densityControl, maxVehicleCountInGame);
+            float innerSpawnRadiusSqr = innerSpawnRadius * innerSpawnRadius;
+            float outerSpawnRadiusSqr = outerSpawnRadius * outerSpawnRadius;
 
             for (int i = 0; i < startAmount; i++)
             {
@@ -18,7 +19,6 @@ namespace Darkmatter.TrafficSystem
 
                 if (usePlayerPooling && mainCamera != null && playerTransform != null)
                 {
-                    Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(mainCamera);
                     List<AIWaypoint> localWaypoints = spatialGrid.GetNearbySpawnWaypoints(playerTransform.position);
                     if (localWaypoints.Count > 0)
                     {
@@ -27,8 +27,8 @@ namespace Darkmatter.TrafficSystem
                         for (int attempt = 0; attempt < 50; attempt++)
                         {
                             AIWaypoint candidate = localWaypoints[Random.Range(0, localWaypoints.Count)];
-                            float dist = Vector3.Distance(candidate.transform.position, playerTransform.position);
-                            if (dist >= innerSpawnRadius && dist <= outerSpawnRadius)
+                            float sqrDist = (candidate.transform.position - playerTransform.position).sqrMagnitude;
+                            if (sqrDist >= innerSpawnRadiusSqr && sqrDist <= outerSpawnRadiusSqr)
                             {
                                 if (IsSpawnPointHidden(candidate.transform.position))
                                 {
@@ -38,6 +38,7 @@ namespace Darkmatter.TrafficSystem
                             }
                         }
                     }
+                    spatialGrid.ReturnWaypointList(localWaypoints);
                 }
                 else
                 {
@@ -56,10 +57,7 @@ namespace Darkmatter.TrafficSystem
 
                 if (spawnPoint != null)
                 {
-                    if (SpawnVehicle(spawnPoint))
-                    {
-                        spawnedCount++;
-                    }
+                    SpawnVehicle(spawnPoint);
                 }
             }
         }
@@ -91,7 +89,7 @@ namespace Darkmatter.TrafficSystem
 
         private bool SpawnVehicle(AIWaypoint spawnPoint)
         {
-            if (_activeVehicles.Count >= maxVehicleCountInGame) return false;
+            if (_activeVehicles.Count >= Mathf.Max(10, densityControl)) return false;
 
             int newIndex = _activeVehicles.Count;
 
@@ -113,6 +111,7 @@ namespace Darkmatter.TrafficSystem
             if (vehicle.vehicleCollider != null) vehicle.vehicleCollider.enabled = true;
 
             vehicle.arrayIndex = newIndex;
+            vehicle.activeWaypointIndex = 0;
             vehicle.lookaheadWaypoints[0] = spawnPoint;
 
             _activeVehicles.Add(vehicle);
@@ -129,6 +128,7 @@ namespace Darkmatter.TrafficSystem
 
             VehicleState state = new VehicleState
             {
+                currentBehavior = AIState.Cruising,
                 currentSpeed = 1f,
                 physicalSpeed = 0f,
                 localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier, wpLimit),
@@ -157,8 +157,11 @@ namespace Darkmatter.TrafficSystem
                 playerMask = playerMask.value,
                 trafficDetected = false,
                 detectedTrafficFar = false,
+                detectedPlayerFar = false,
                 leftLaneBlocked = false,
                 rightLaneBlocked = false,
+                readyToChangeLane = false,
+                isChangingLanes = false,
                 isLaneChangingVehicle = vehicle.driverBehaviour.willChangeLane,
                 frustrationTime = randomFrustration,
                 laneChangeCooldown = randomCooldown,
@@ -190,10 +193,9 @@ namespace Darkmatter.TrafficSystem
         {
             if (vehicleIndex < 0 || vehicleIndex >= _activeVehicles.Count) return;
 
+            int lastIndex = _activeVehicles.Count - 1;
             AIVehicle vehicleToRemove = _activeVehicles[vehicleIndex];
             _vehiclePool.Despawn(vehicleToRemove);
-
-            int lastIndex = _activeVehicles.Count - 1;
 
             if (vehicleIndex != lastIndex)
             {
@@ -228,6 +230,26 @@ namespace Darkmatter.TrafficSystem
 
             // Re-create the transform array dropping the removed element effectively by SwapBack!
             _transformAccessArray.RemoveAtSwapBack(vehicleIndex);
+            ClearVehicleSlotData(lastIndex);
+        }
+
+        private void ClearVehicleSlotData(int vehicleIndex)
+        {
+            _vehicleStates[vehicleIndex] = default;
+
+            int waypointStartIndex = vehicleIndex * WAYPOINT_LOOKAHEAD;
+            for (int i = 0; i < WAYPOINT_LOOKAHEAD; i++)
+            {
+                _waypointBuffer[waypointStartIndex + i] = Vector3.zero;
+            }
+
+            _wheelCounts[vehicleIndex] = 0;
+            int wheelStartIndex = vehicleIndex * 4;
+            for (int w = 0; w < 4; w++)
+            {
+                _wheelLocalOffsets[wheelStartIndex + w] = Vector3.zero;
+                _wheelRayLengths[wheelStartIndex + w] = 0f;
+            }
         }
 
         private System.Collections.IEnumerator PlayerPoolingRoutine()
@@ -241,19 +263,22 @@ namespace Darkmatter.TrafficSystem
                     continue;
 
                 Vector3 playerPos = playerTransform.position;
+                float despawnRadiusSqr = despawnRadius * despawnRadius;
+                float innerSpawnRadiusSqr = innerSpawnRadius * innerSpawnRadius;
+                float outerSpawnRadiusSqr = outerSpawnRadius * outerSpawnRadius;
 
                 // 1. Despawn vehicles outside despawn radius
                 for (int i = _activeVehicles.Count - 1; i >= 0; i--)
                 {
-                    float dist = Vector3.Distance(_activeVehicles[i].transform.position, playerPos);
-                    if (dist > despawnRadius)
+                    float sqrDist = (_activeVehicles[i].transform.position - playerPos).sqrMagnitude;
+                    if (sqrDist > despawnRadiusSqr)
                     {
                         DespawnVehicleAt(i);
                     }
                 }
 
                 // 2. Spawn vehicles if we are below capacity
-                List<AIWaypoint> localWaypoints = spatialGrid.GetNearbyWaypoints(playerPos);
+                List<AIWaypoint> localWaypoints = spatialGrid.GetNearbySpawnWaypoints(playerPos);
                 if (localWaypoints.Count > 0)
                 {
                     int spawnAttempts = 0;
@@ -263,9 +288,9 @@ namespace Darkmatter.TrafficSystem
                     {
                         spawnAttempts++;
                         AIWaypoint cand = localWaypoints[Random.Range(0, localWaypoints.Count)];
-                        float dist = Vector3.Distance(cand.transform.position, playerPos);
+                        float sqrDist = (cand.transform.position - playerPos).sqrMagnitude;
 
-                        if (dist >= innerSpawnRadius && dist <= outerSpawnRadius)
+                        if (sqrDist >= innerSpawnRadiusSqr && sqrDist <= outerSpawnRadiusSqr)
                         {
                             if (IsSpawnPointHidden(cand.transform.position))
                             {
@@ -277,6 +302,7 @@ namespace Darkmatter.TrafficSystem
                         }
                     }
                 }
+                spatialGrid.ReturnWaypointList(localWaypoints);
             }
         }
 

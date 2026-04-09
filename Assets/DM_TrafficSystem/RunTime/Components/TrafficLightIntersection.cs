@@ -19,22 +19,22 @@ namespace Darkmatter.TrafficSystem
     /// Stores one traffic-light road group together with its stop points and light visuals.
     /// </summary>
     [System.Serializable]
-    public class TrafficLightRoad
+    public class TrafficLightRoad : IIntersectionRoad
     {
         public List<AIWaypoint> stopPoints = new List<AIWaypoint>();
         public List<TrafficLightVisuals> visuals = new List<TrafficLightVisuals>();
 
         //Tracks the current Light State for this assigned road group.
         [HideInInspector] public TrafficLightState currentLightState = TrafficLightState.Red;
+
+        public List<AIWaypoint> GetStopPoints() => stopPoints;
     }
 
     /// <summary>
     /// Cycles stop states and renderer emissions for configured traffic-light road groups at runtime.
     /// </summary>
-    public class TrafficLightIntersection : MonoBehaviour
+    public class TrafficLightIntersection : IntersectionBase
     {
-        public string intersectionName = "New Traffic Light Intersection";
-
         [Tooltip("Time the light stays green")]
         public float greenTime = 5f;
         [Tooltip("Time the light stays yellow before red")]
@@ -71,10 +71,10 @@ namespace Darkmatter.TrafficSystem
                 SetRoadVisualState(road, TrafficLightState.Red);
             }
 
-            SetAllRoadsToStop();
+            SetAllRoadsToStop(trafficLightRoads);
             if (trafficLightRoads.Count > 0)
             {
-                StartCoroutine(CycleLights());
+                cycleCoroutine = StartCoroutine(CycleLights());
             }
         }
 
@@ -131,32 +131,6 @@ namespace Darkmatter.TrafficSystem
             propBlock.SetColor(emissionColorId, targetColor);
             renderer.SetPropertyBlock(propBlock);
         }
-
-        /// <summary>
-        /// Applies one stop-state value to every stop point in the provided road group.
-        /// </summary>
-        private void SetRoadStopStatus(TrafficLightRoad road, bool isStop)
-        {
-            foreach (var wp in road.stopPoints)
-            {
-                if (wp != null)
-                {
-                    wp.settings.isStopPoint = isStop;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Forces every configured traffic-light road group into the stop state.
-        /// </summary>
-        private void SetAllRoadsToStop()
-        {
-            foreach (var road in trafficLightRoads)
-            {
-                SetRoadStopStatus(road, true);
-            }
-        }
-
 
         #region API
         /// <summary>

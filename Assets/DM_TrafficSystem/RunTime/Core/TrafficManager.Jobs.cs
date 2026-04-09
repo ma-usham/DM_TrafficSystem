@@ -1,5 +1,4 @@
-using UnityEngine;
-using System.Collections.Generic;
+﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Jobs;
@@ -10,42 +9,53 @@ namespace Darkmatter.TrafficSystem
     {
         private void InitializeBuffers()
         {
-            _vehicleStates = new NativeArray<VehicleState>(maxVehicleCountInGame, Allocator.Persistent);
-            _waypointBuffer = new NativeArray<Vector3>(maxVehicleCountInGame * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
-            _transformAccessArray = new TransformAccessArray(maxVehicleCountInGame);
+            // Set capacity dynamically. Buffer it up minimally.
+            int workingCapacity = Mathf.Max(10, densityControl); // Ensures minimum size
+            
+            _vehicleStates = new NativeArray<VehicleState>(workingCapacity, Allocator.Persistent);
+            _waypointBuffer = new NativeArray<Vector3>(workingCapacity * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
+            _transformAccessArray = new TransformAccessArray(workingCapacity);
 
-            _boxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
-            _raycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
+            _boxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
+            _raycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
 
-            _playerBoxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
-            _playerRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
+            _playerBoxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
+            _playerRaycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
 
-            _leftBoxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
-            _leftRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
+            _leftBoxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
+            _leftRaycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
 
-            _rightBoxcastCommands = new NativeArray<BoxcastCommand>(maxVehicleCountInGame, Allocator.Persistent);
-            _rightRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame, Allocator.Persistent);
+            _rightBoxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
+            _rightRaycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
 
-            _wheelRaycastCommands = new NativeArray<RaycastCommand>(maxVehicleCountInGame * 4, Allocator.Persistent);
-            _wheelRaycastHits = new NativeArray<RaycastHit>(maxVehicleCountInGame * 4, Allocator.Persistent);
+            _wheelCounts = new NativeArray<int>(workingCapacity, Allocator.Persistent);
+            _wheelLocalOffsets = new NativeArray<Vector3>(workingCapacity * 4, Allocator.Persistent);
+            _wheelRayLengths = new NativeArray<float>(workingCapacity * 4, Allocator.Persistent);
+            _wheelRaycastCommands = new NativeArray<RaycastCommand>(workingCapacity * 4, Allocator.Persistent);
+            _wheelRaycastHits = new NativeArray<RaycastHit>(workingCapacity * 4, Allocator.Persistent);
 
-            _wheelCounts = new NativeArray<int>(maxVehicleCountInGame, Allocator.Persistent);
-            _wheelLocalOffsets = new NativeArray<Vector3>(maxVehicleCountInGame * 4, Allocator.Persistent);
-            _wheelRayLengths = new NativeArray<float>(maxVehicleCountInGame * 4, Allocator.Persistent);
+            _jobEventQueue = new NativeQueue<VehicleEvent>(Allocator.Persistent);
 
             _isInitialized = true;
         }
 
         private void WarmupWaypoints(AIVehicle vehicle, VehicleState state)
         {
+            ClearWaypointBufferBlock(state.waypointBufferStartIndex);
+
+            for (int i = 1; i < WAYPOINT_LOOKAHEAD; i++)
+            {
+                vehicle.lookaheadWaypoints[i] = null;
+            }
+
             for (int i = 0; i < WAYPOINT_LOOKAHEAD - 1; i++)
             {
                 AIWaypoint currentObj = vehicle.lookaheadWaypoints[i];
+                if (currentObj == null) break;
+
                 AIWaypoint nextObj = _trafficWaypointUpdater.GetNextValidWaypoint(vehicle, currentObj);
-                if (nextObj != null)
-                {
-                    vehicle.lookaheadWaypoints[i + 1] = nextObj;
-                }
+                vehicle.lookaheadWaypoints[i + 1] = nextObj;
+                if (nextObj == null) break;
             }
 
             for (int i = 0; i < WAYPOINT_LOOKAHEAD; i++)
@@ -63,12 +73,20 @@ namespace Darkmatter.TrafficSystem
             _vehicleStates[vehicle.arrayIndex] = state;
         }
 
+        private void ClearWaypointBufferBlock(int startIndex)
+        {
+            for (int i = 0; i < WAYPOINT_LOOKAHEAD; i++)
+            {
+                _waypointBuffer[startIndex + i] = Vector3.zero;
+            }
+        }
+
         void FixedUpdate()
         {
             if (!_isInitialized) return;
 
             // 1. Route Management System processes completed waypoints and reads stop points
-            _trafficWaypointUpdater.UpdateWaypoint(_activeVehicles, _vehicleStates, _waypointBuffer);
+            _trafficWaypointUpdater.UpdateWaypoint(_activeVehicles, _vehicleStates, _waypointBuffer, Time.fixedDeltaTime);
             _trafficWaypointUpdater.UpdateStopWaypoints(_activeVehicles, _vehicleStates);
 
             // Sync the real physics speed to the Job memory
@@ -152,15 +170,23 @@ namespace Darkmatter.TrafficSystem
             // Combine the handles
             combinedPhysicsHandle = JobHandle.CombineDependencies(combinedPhysicsHandle, wheelPhysicsHandle);
 
+            // Job 2.75: Aggregate Sensor Data
+            SensorAggregationJob sensorAggregationJob = new SensorAggregationJob
+            {
+                vehicleStates = _vehicleStates,
+                sensorHits = _raycastHits,
+                leftSensorHits = _leftRaycastHits,
+                rightSensorHits = _rightRaycastHits,
+                playerSensorHits = _playerRaycastHits
+            };
+            JobHandle aggregationJobHandle = sensorAggregationJob.Schedule(_activeVehicles.Count, 64, combinedPhysicsHandle);
+
             // Job 3: Movement Simulation
             TrafficSimulationJob simulationJob = new TrafficSimulationJob
             {
                 vehicleStates = _vehicleStates,
                 waypointBuffer = _waypointBuffer,
-                sensorHits = _raycastHits,
-                leftSensorHits = _leftRaycastHits,
-                rightSensorHits = _rightRaycastHits,
-                playerSensorHits = _playerRaycastHits,
+                eventQueue = _jobEventQueue.AsParallelWriter(),
                 playerForward = playerTransform != null ? playerTransform.forward : Vector3.forward,
                 deltaTime = Time.fixedDeltaTime,
                 arrivalDistance = 2f,
@@ -168,10 +194,16 @@ namespace Darkmatter.TrafficSystem
             };
 
             // Final handle allows the Main Thread to wait for all simulation
-            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, combinedPhysicsHandle);
+            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, aggregationJobHandle);
 
             // Wait for everything to complete before applying
             _finalJobHandle.Complete();
+
+            // Process Vehicle Events
+            while (_jobEventQueue.TryDequeue(out VehicleEvent vehicleEvent))
+            {
+                HandleVehicleEvent(vehicleEvent);
+            }
 
             // --- 3. Apply the Calculated Physics Results ---
             // Apply Rigidbody movement using the computed values
@@ -255,7 +287,7 @@ namespace Darkmatter.TrafficSystem
                     rb.constraints = RigidbodyConstraints.None;
                     // Calculate the difference between desired and current velocity
                     Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;
-                     velocityDifference.y = 0f; 
+                    velocityDifference.y = 0f;
                     // Apply the difference as a velocity change so suspension/gravity are preserved
                     rb.AddForce(velocityDifference, ForceMode.VelocityChange);
 
@@ -278,11 +310,38 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        private void HandleVehicleEvent(VehicleEvent vehicleEvent)
+        {
+            if (vehicleEvent.vehicleIndex < 0 || vehicleEvent.vehicleIndex >= _activeVehicles.Count) return;
+            
+            AIVehicle vehicle = _activeVehicles[vehicleEvent.vehicleIndex];
+            switch (vehicleEvent.eventType)
+            {
+                case VehicleEventType.HonkHorn:
+                    // vehicle.HonkHorn();
+                    break;
+                case VehicleEventType.BrakesApplied:
+                    // vehicle.SetBrakeLights(true);
+                    break;
+                case VehicleEventType.BrakesReleased:
+                    // vehicle.SetBrakeLights(false);
+                    break;
+                case VehicleEventType.TurnSignalLeft:
+                    break;
+                case VehicleEventType.TurnSignalRight:
+                    break;
+                case VehicleEventType.TurnSignalsOff:
+                    break;
+            }
+        }
+
         void OnDestroy()
         {
             // IMPORTANT: Unmanaged Collections MUST be disposed on destroy or you create a nasty memory leak.
             if (_isInitialized)
             {
+                _finalJobHandle.Complete();
+
                 if (_vehicleStates.IsCreated) _vehicleStates.Dispose();
                 if (_waypointBuffer.IsCreated) _waypointBuffer.Dispose();
                 if (_transformAccessArray.isCreated) _transformAccessArray.Dispose(); // Note the lowercase 'i' on isCreated here
@@ -301,6 +360,7 @@ namespace Darkmatter.TrafficSystem
 
                 if (_wheelRaycastCommands.IsCreated) _wheelRaycastCommands.Dispose();
                 if (_wheelRaycastHits.IsCreated) _wheelRaycastHits.Dispose();
+                if (_jobEventQueue.IsCreated) _jobEventQueue.Dispose();
 
                 if (_wheelCounts.IsCreated) _wheelCounts.Dispose();
                 if (_wheelLocalOffsets.IsCreated) _wheelLocalOffsets.Dispose();
