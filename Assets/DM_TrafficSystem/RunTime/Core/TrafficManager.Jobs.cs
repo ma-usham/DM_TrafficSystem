@@ -16,8 +16,8 @@ namespace Darkmatter.TrafficSystem
             _waypointBuffer = new NativeArray<Vector3>(workingCapacity * WAYPOINT_LOOKAHEAD, Allocator.Persistent);
             _transformAccessArray = new TransformAccessArray(workingCapacity);
 
-            _boxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
-            _raycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
+            _frontBoxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
+            _frontRaycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
 
             _playerBoxcastCommands = new NativeArray<BoxcastCommand>(workingCapacity, Allocator.Persistent);
             _playerRaycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
@@ -106,7 +106,7 @@ namespace Darkmatter.TrafficSystem
             VehicleSensorJob sensorJob = new VehicleSensorJob
             {
                 vehicleStates = _vehicleStates,
-                boxcastCommands = _boxcastCommands,
+                boxcastCommands = _frontBoxcastCommands,
                 leftBoxcastCommands = _leftBoxcastCommands,
                 rightBoxcastCommands = _rightBoxcastCommands,
                 playerBoxcastCommands = _playerBoxcastCommands,
@@ -116,8 +116,8 @@ namespace Darkmatter.TrafficSystem
 
             // Job 2: Process Physics Overlaps
             JobHandle physicsJobHandle = BoxcastCommand.ScheduleBatch(
-                _boxcastCommands,
-                _raycastHits,
+                _frontBoxcastCommands,
+                _frontRaycastHits,
                 64,
                 sensorJobHandle
             );
@@ -174,7 +174,7 @@ namespace Darkmatter.TrafficSystem
             SensorAggregationJob sensorAggregationJob = new SensorAggregationJob
             {
                 vehicleStates = _vehicleStates,
-                sensorHits = _raycastHits,
+                frontSensorHits = _frontRaycastHits,
                 leftSensorHits = _leftRaycastHits,
                 rightSensorHits = _rightRaycastHits,
                 playerSensorHits = _playerRaycastHits
@@ -346,8 +346,8 @@ namespace Darkmatter.TrafficSystem
                 if (_waypointBuffer.IsCreated) _waypointBuffer.Dispose();
                 if (_transformAccessArray.isCreated) _transformAccessArray.Dispose(); // Note the lowercase 'i' on isCreated here
 
-                if (_boxcastCommands.IsCreated) _boxcastCommands.Dispose();
-                if (_raycastHits.IsCreated) _raycastHits.Dispose();
+                if (_frontBoxcastCommands.IsCreated) _frontBoxcastCommands.Dispose();
+                if (_frontRaycastHits.IsCreated) _frontRaycastHits.Dispose();
 
                 if (_playerBoxcastCommands.IsCreated) _playerBoxcastCommands.Dispose();
                 if (_playerRaycastHits.IsCreated) _playerRaycastHits.Dispose();

@@ -55,7 +55,7 @@ namespace Darkmatter.TrafficSystem
 
         // Unity will save this list in the editor
         [HideInInspector]
-        public List<WaypointGridCell> serializedGrid = new List<WaypointGridCell>();
+        public List<WaypointGridCell> serializedGrid = new List<WaypointGridCell>(); //used to save the spatial grid data in the editor, which is then loaded into a runtime-optimized dictionary in the TrafficSpatialGrid class
 
         public TrafficSpatialGrid spatialGrid { get; private set; }
 
@@ -65,8 +65,8 @@ namespace Darkmatter.TrafficSystem
         private TransformAccessArray _transformAccessArray;
 
         // Sensor memory
-        private NativeArray<BoxcastCommand> _boxcastCommands;
-        private NativeArray<RaycastHit> _raycastHits;
+        private NativeArray<BoxcastCommand> _frontBoxcastCommands;
+        private NativeArray<RaycastHit> _frontRaycastHits;
 
         private NativeArray<BoxcastCommand> _playerBoxcastCommands;
         private NativeArray<RaycastHit> _playerRaycastHits;
@@ -87,8 +87,8 @@ namespace Darkmatter.TrafficSystem
         private NativeArray<float> _wheelRayLengths;
 
         // Job execution handling
-        private Unity.Collections.NativeQueue<VehicleEvent> _jobEventQueue;
-        private Unity.Jobs.JobHandle _finalJobHandle;
+        private NativeQueue<VehicleEvent> _jobEventQueue;
+        private JobHandle _finalJobHandle;
 
         // Helper Classes
         private TrafficWaypointUpdater _trafficWaypointUpdater;
@@ -154,16 +154,15 @@ namespace Darkmatter.TrafficSystem
         /// <summary>
         /// Flattens the spatial grid and returns every single waypoint in the map.
         /// </summary>
-        public List<AIWaypoint> GetAllWaypointsInMap()
+        public IReadOnlyList<AIWaypoint> GetAllWaypointsInMap()
         {
             EnsureWaypointCacheBuilt();
-            return new List<AIWaypoint>(_allWaypointsInMap);
+            return _allWaypointsInMap;
         }
 
         internal bool TryGetWaypointIndexCached(AIWaypoint waypoint, out int index)
         {
             EnsureWaypointCacheBuilt();
-
             if (waypoint == null)
             {
                 index = -1;
@@ -176,7 +175,6 @@ namespace Darkmatter.TrafficSystem
         internal AIWaypoint GetWaypointByCachedIndex(int index)
         {
             EnsureWaypointCacheBuilt();
-
             if (index < 0 || index >= _allWaypointsInMap.Count)
             {
                 return null;

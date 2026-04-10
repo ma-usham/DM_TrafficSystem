@@ -7,7 +7,7 @@ namespace Darkmatter.TrafficSystem
     {
         private void SpawnInitialVehicles()
         {
-            if (spatialGrid == null || serializedGrid == null || serializedGrid.Count == 0) return;
+            if (spatialGrid == null || !spatialGrid.HasSpawnableCells()) return;
 
             int startAmount = Mathf.Min(densityControl, maxVehicleCountInGame);
             float innerSpawnRadiusSqr = innerSpawnRadius * innerSpawnRadius;
@@ -22,6 +22,9 @@ namespace Darkmatter.TrafficSystem
                     List<AIWaypoint> localWaypoints = spatialGrid.GetNearbySpawnWaypoints(playerTransform.position);
                     if (localWaypoints.Count > 0)
                     {
+                        Camera cam = mainCamera != null ? mainCamera : Camera.main;
+                        Plane[] frustumPlanes = cam != null ? GeometryUtility.CalculateFrustumPlanes(cam) : null;
+
                         //Attempted 50 times because for pooling camera and frustum should be checked and there might not be many spawn points that are hidden from the camera in the starting area, so it might fail to find a spawn point and spawn no vehicles if the attempt count is too low.
                         //Its the initial spawn attempt so no worrises.
                         for (int attempt = 0; attempt < 50; attempt++)
@@ -30,7 +33,7 @@ namespace Darkmatter.TrafficSystem
                             float sqrDist = (candidate.transform.position - playerTransform.position).sqrMagnitude;
                             if (sqrDist >= innerSpawnRadiusSqr && sqrDist <= outerSpawnRadiusSqr)
                             {
-                                if (IsSpawnPointHidden(candidate.transform.position))
+                                if (IsSpawnPointHidden(candidate.transform.position, cam, frustumPlanes))
                                 {
                                     spawnPoint = candidate;
                                     break;
@@ -42,17 +45,8 @@ namespace Darkmatter.TrafficSystem
                 }
                 else
                 {
-                    //The attempt 10 is checked because there arent spawn point in edges of map, so the car might not get spawnned.
-                    //Even if under 10 attemp it fails then no vehicel will spawn (total vehicle -1).
-                    for (int attempt = 0; attempt < 10; attempt++)
-                    {
-                        var randomCell = serializedGrid[Random.Range(0, serializedGrid.Count)];
-                        if (randomCell.spawnWaypoints != null && randomCell.spawnWaypoints.Count > 0)
-                        {
-                            spawnPoint = randomCell.spawnWaypoints[Random.Range(0, randomCell.spawnWaypoints.Count)];
-                        }
-                    }
-
+                    // Fetch instantly from the runtime grid with a 100% success rate
+                    spawnPoint = spatialGrid.GetRandomSpawnWaypoint();
                 }
 
                 if (spawnPoint != null)
@@ -62,13 +56,11 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        private bool IsSpawnPointHidden(Vector3 pos)
+        private bool IsSpawnPointHidden(Vector3 pos, Camera cam, Plane[] frustumPlanes)
         {
-            Camera cam = mainCamera != null ? mainCamera : Camera.main;
-            if (cam == null) return false;
+            if (cam == null || frustumPlanes == null) return false;
 
             Bounds bounds = new Bounds(pos, new Vector3(3f, 3f, 5f));
-            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(cam);
 
             if (!GeometryUtility.TestPlanesAABB(frustumPlanes, bounds))
             {
@@ -281,6 +273,9 @@ namespace Darkmatter.TrafficSystem
                 List<AIWaypoint> localWaypoints = spatialGrid.GetNearbySpawnWaypoints(playerPos);
                 if (localWaypoints.Count > 0)
                 {
+                    Camera cam = mainCamera != null ? mainCamera : Camera.main;
+                    Plane[] frustumPlanes = cam != null ? GeometryUtility.CalculateFrustumPlanes(cam) : null;
+
                     int spawnAttempts = 0;
                     int safeDensityTarget = Mathf.Min(densityControl, maxVehicleCountInGame);
 
@@ -292,7 +287,7 @@ namespace Darkmatter.TrafficSystem
 
                         if (sqrDist >= innerSpawnRadiusSqr && sqrDist <= outerSpawnRadiusSqr)
                         {
-                            if (IsSpawnPointHidden(cand.transform.position))
+                            if (IsSpawnPointHidden(cand.transform.position, cam, frustumPlanes))
                             {
                                 if (SpawnVehicle(cand))
                                 {

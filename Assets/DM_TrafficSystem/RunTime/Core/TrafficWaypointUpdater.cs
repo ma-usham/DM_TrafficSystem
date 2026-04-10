@@ -12,7 +12,7 @@ namespace Darkmatter.TrafficSystem
     {
         // 1. Cache the list here so we never allocate memory during runtime
         private List<AIWaypoint> _validWaypoints = new List<AIWaypoint>();
-        private List<AIWaypoint> _fallbackWaypoints = new List<AIWaypoint>();
+        // private List<AIWaypoint> _fallbackWaypoints = new List<AIWaypoint>();
 
         public void UpdateWaypoint(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<Vector3> waypointBuffer, float deltaTime)
         {
@@ -57,7 +57,7 @@ namespace Darkmatter.TrafficSystem
                         }
                         break;
                 }
-                
+
                 // Write back
                 vehicleStates[vehicle.arrayIndex] = state;
             }
@@ -87,7 +87,7 @@ namespace Darkmatter.TrafficSystem
             state.readyToChangeLane = false;
             state.wantsToOvertake = false;
             state.impatienceTimer = state.frustrationTime;
-            
+
             bool tryLeft = !state.leftLaneBlocked;
             bool tryRight = !state.rightLaneBlocked;
 
@@ -104,7 +104,7 @@ namespace Darkmatter.TrafficSystem
         {
             targetLaneWaypoint = null;
             AIWaypoint currentTarget = vehicle.lookaheadWaypoints[0];
-            
+
             if (currentTarget == null || currentTarget.settings.laneChangePoints == null || currentTarget.settings.laneChangePoints.Length == 0)
                 return false;
 
@@ -185,7 +185,7 @@ namespace Darkmatter.TrafficSystem
             // Reset job state flags
             state.reachedCurrentWaypoint = false;
             state.currentTargetIndexOffset = 0;
-            
+
             if (state.isChangingLanes)
             {
                 // Once we reach a lane change destination, we're no longer "changing" lanes
@@ -231,11 +231,11 @@ namespace Darkmatter.TrafficSystem
                 {
                     VehicleState state = vehicleStates[vehicle.arrayIndex];
                     state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
-                    
+
                     float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
                     float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * state.speedMultiplier) : state.engineMaxSpeed;
                     state.localMaxSpeed = Mathf.Min(state.engineMaxSpeed, adjustedWpSpeed);
-                    
+
                     vehicleStates[vehicle.arrayIndex] = state;
                 }
             }
@@ -267,25 +267,30 @@ namespace Darkmatter.TrafficSystem
                     }
                 }
             }
-
-            // Fallback: If no waypoints matched the specific type, we pick from any valid next waypoint.
-            if (_validWaypoints.Count == 0)
+            if (_validWaypoints.Count > 0) return _validWaypoints[Random.Range(0, _validWaypoints.Count)];
+            else
             {
-                _fallbackWaypoints.Clear();
-                for (int i = 0; i < nextWaypoints.Length; i++)
-                {
-                    if (nextWaypoints[i] != null) _fallbackWaypoints.Add(nextWaypoints[i]);
-                }
-                
-                if (_fallbackWaypoints.Count > 0)
-                {
-                    return _fallbackWaypoints[Random.Range(0, _fallbackWaypoints.Count)];
-                }
-                return null;
+                return nextWaypoints[Random.Range(0, nextWaypoints.Length)];
             }
 
-            // Otherwise, pick randomly from the matched type waypoints
-            return _validWaypoints[Random.Range(0, _validWaypoints.Count)];
+            // // Fallback: If no waypoints matched the specific type, we pick from any valid next waypoint.
+            // if (_validWaypoints.Count == 0)
+            // {
+            //     _fallbackWaypoints.Clear();
+            //     for (int i = 0; i < nextWaypoints.Length; i++)
+            //     {
+            //         if (nextWaypoints[i] != null) _fallbackWaypoints.Add(nextWaypoints[i]);
+            //     }
+
+            //     if (_fallbackWaypoints.Count > 0)
+            //     {
+            //         return _fallbackWaypoints[Random.Range(0, _fallbackWaypoints.Count)];
+            //     }
+            //     return null;
+            // }
+
+            // // Otherwise, pick randomly from the matched type waypoints
+            // return _validWaypoints[Random.Range(0, _validWaypoints.Count)];
         }
     }
 }

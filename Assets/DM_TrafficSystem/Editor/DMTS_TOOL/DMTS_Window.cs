@@ -84,6 +84,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private void OnEnable()
         {
             editorWindow = this;
+            TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
             pageStack.Clear();
             pageStack.Push(new MainPage());
             SceneView.duringSceneGui -= OnSceneGUI;

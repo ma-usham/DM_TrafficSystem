@@ -12,7 +12,7 @@ namespace Darkmatter.TrafficSystem
     {
         public NativeArray<VehicleState> vehicleStates;
         
-        [ReadOnly] public NativeArray<RaycastHit> sensorHits;
+        [ReadOnly] public NativeArray<RaycastHit> frontSensorHits;
         [ReadOnly] public NativeArray<RaycastHit> leftSensorHits;
         [ReadOnly] public NativeArray<RaycastHit> rightSensorHits;
         [ReadOnly] public NativeArray<RaycastHit> playerSensorHits;
@@ -22,7 +22,7 @@ namespace Darkmatter.TrafficSystem
             VehicleState state = vehicleStates[index];
 
             // Behavior 0: Obstacle Collision Check
-            RaycastHit hit = sensorHits[index];
+            RaycastHit hit = frontSensorHits[index];
             bool hitSomething = (hit.distance > 0f && hit.normal != Vector3.zero);
 
             RaycastHit p_hit = playerSensorHits[index];

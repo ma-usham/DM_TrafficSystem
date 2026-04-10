@@ -6,8 +6,9 @@ namespace Darkmatter.TrafficSystem
     public class TrafficSpatialGrid
     {
         private TrafficManager _manager;
-        private Dictionary<Vector2Int, WaypointGridCell> _runtimeGrid;
-
+        private Dictionary<Vector2Int, WaypointGridCell> _runtimeGrid; //the runtime-optimized grid for fast lookups, loaded from the serializedGrid data created in the editor
+        private List<WaypointGridCell> _spawnableCells;
+        private static Stack<List<AIWaypoint>> _waypointListPool = new Stack<List<AIWaypoint>>();
         public TrafficSpatialGrid(TrafficManager manager)
         {
             _manager = manager;
@@ -16,14 +17,33 @@ namespace Darkmatter.TrafficSystem
         public void InitializeRuntimeGrid()
         {
             _runtimeGrid = new Dictionary<Vector2Int, WaypointGridCell>();
+            _spawnableCells = new List<WaypointGridCell>();
 
             foreach (var cell in _manager.serializedGrid)
             {
                 _runtimeGrid[cell.cellCoordinate] = cell;
+
+                // Cache cells that contain spawn points so we can pick them instantly later
+                if (cell.spawnWaypoints != null && cell.spawnWaypoints.Count > 0)
+                {
+                    _spawnableCells.Add(cell);
+                }
             }
         }
 
-        private static Stack<List<AIWaypoint>> _waypointListPool = new Stack<List<AIWaypoint>>();
+        public bool HasSpawnableCells()
+        {
+            return _spawnableCells != null && _spawnableCells.Count > 0;
+        }
+
+        public AIWaypoint GetRandomSpawnWaypoint()
+        {
+            if (!HasSpawnableCells()) return null;
+            
+            WaypointGridCell randomCell = _spawnableCells[Random.Range(0, _spawnableCells.Count)];
+            return randomCell.spawnWaypoints[Random.Range(0, randomCell.spawnWaypoints.Count)];
+        }
+
 
         public void ReturnWaypointList(List<AIWaypoint> list)
         {
@@ -33,6 +53,8 @@ namespace Darkmatter.TrafficSystem
                 _waypointListPool.Push(list);
             }
         }
+
+
 
         public List<AIWaypoint> GetNearbyWaypoints(Vector3 position)
         {
@@ -125,7 +147,7 @@ namespace Darkmatter.TrafficSystem
             for (int i = 0; i < localWaypoints.Count; i++)
             {
                 Vector3 dirToWaypoint = localWaypoints[i].transform.position - position;
-                
+
                 if (Vector3.Dot(dirToWaypoint.normalized, normDir) > 0f)
                 {
                     float sqrDist = dirToWaypoint.sqrMagnitude;

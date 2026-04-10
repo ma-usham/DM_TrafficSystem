@@ -198,7 +198,7 @@ namespace Darkmatter.TrafficSystem
         /// <summary>
         /// Retrieves the master list of all waypoints currently active in the traffic system.
         /// </summary>
-        public static List<AIWaypoint> GetAllWaypoints()
+        public static IReadOnlyList<AIWaypoint> GetAllWaypoints()
         {
             if (Manager != null)
             {
@@ -206,7 +206,7 @@ namespace Darkmatter.TrafficSystem
             }
 
             Debug.LogWarning("DMTS_API: TrafficManager not found. Returning empty list.");
-            return new List<AIWaypoint>();
+            return System.Array.Empty<AIWaypoint>();
         }
 
         /// <summary>
