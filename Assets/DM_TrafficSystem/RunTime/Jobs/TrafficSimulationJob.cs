@@ -123,10 +123,10 @@ namespace Darkmatter.TrafficSystem
                         else
                         {
                             state.wantsToHonk = true;
-                eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.HonkHorn }); //Honk and Brake
+                            eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.HonkHorn }); //Honk and Brake
                             BrakeHalt(ref state, 2f);
-                eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.BrakesApplied }); // Apply brake
-                                                      // return;   //Removed 'return;' here so Normal Zone collision avoidance is still evaluated!
+                            eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.BrakesApplied }); // Apply brake
+                                                                                                                                       // return;   //Removed 'return;' here so Normal Zone collision avoidance is still evaluated!
                         }
                     }
                 }
@@ -146,7 +146,7 @@ namespace Darkmatter.TrafficSystem
                 // Smooth Braking ONLY happens inside the Normal Sensor length
                 float maxSensorRange = state.sensorSize.z;
                 // 1. Define the actual 'Target Stop Line' (20% closer than the sensor's stopping distance)
-                float actualStopLine = state.stoppingDistance;
+                float actualStopLine = state.stoppingDistance*0.1f;
 
                 // 2. The braking zone length is the distance between the tip of the sensor and this stop line
                 float brakingZoneLength = maxSensorRange - actualStopLine;
@@ -176,7 +176,7 @@ namespace Darkmatter.TrafficSystem
                     {
                         // STRICT CHECK: The car must be outside the stopping distance to turn.
                         // If it has reached the stopping line, it cannot overtake and must wait.
-                        bool hasRoomToTurn = state.obstacleDistance > state.stoppingDistance+0.5f;
+                        bool hasRoomToTurn = state.obstacleDistance > state.stoppingDistance + 0.5f;
                         // ONLY trigger overtake if at least one side lane is actually clear
                         if ((!state.leftLaneBlocked || !state.rightLaneBlocked) && hasRoomToTurn)
                         {
