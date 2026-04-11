@@ -35,8 +35,5 @@ namespace Darkmatter.TrafficSystem
 
         [Tooltip("Probability (0.0 to 1.0) of overtaking when an AI is detected far away.")]
         [Range(0f, 1f)] public float aiOvertakeProbability;
-
-        [Tooltip("Probability (0.0 to 1.0) of overtaking when the Player is detected far away.")]
-        [Range(0f, 1f)] public float playerOvertakeProbability;
     }
 }

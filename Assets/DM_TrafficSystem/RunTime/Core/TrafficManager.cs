@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+﻿﻿using UnityEngine;
 using UnityEngine.Serialization;
 using Unity.Collections;
 using Unity.Jobs;
@@ -60,6 +60,7 @@ namespace Darkmatter.TrafficSystem
         public TrafficSpatialGrid spatialGrid { get; private set; }
 
         // Native memory arrays for the Jobs
+        private NativeArray<VehicleConfig> _vehicleConfigs;
         private NativeArray<VehicleState> _vehicleStates;
         private NativeArray<Vector3> _waypointBuffer;
         private TransformAccessArray _transformAccessArray;
@@ -67,9 +68,6 @@ namespace Darkmatter.TrafficSystem
         // Sensor memory
         private NativeArray<BoxcastCommand> _frontBoxcastCommands;
         private NativeArray<RaycastHit> _frontRaycastHits;
-
-        private NativeArray<BoxcastCommand> _playerBoxcastCommands;
-        private NativeArray<RaycastHit> _playerRaycastHits;
 
         private NativeArray<BoxcastCommand> _leftBoxcastCommands;
         private NativeArray<RaycastHit> _leftRaycastHits;

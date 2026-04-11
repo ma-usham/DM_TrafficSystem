@@ -241,8 +241,6 @@ namespace Darkmatter.TrafficSystem
                 EditorGUI.indentLevel--;
                 
                 EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("aiOvertakeProbability"));
-                EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("playerOvertakeProbability"));
-
                 EditorGUI.indentLevel--;
             }
         }

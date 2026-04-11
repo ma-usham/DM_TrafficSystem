@@ -118,18 +118,32 @@ namespace Darkmatter.TrafficSystem
             float randomMultiplier = Random.Range(vehicle.driverBehaviour.speedMultiplierRange.x, vehicle.driverBehaviour.speedMultiplierRange.y);
             float wpLimit = spawnPoint.settings.speed > 0 ? (spawnPoint.settings.speed * randomMultiplier) : vehicle.driverBehaviour.engineMaxSpeed;
 
-            VehicleState state = new VehicleState
+            VehicleConfig config = new VehicleConfig
             {
-                currentBehavior = AIState.Cruising,
-                currentSpeed = 1f,
-                physicalSpeed = 0f,
-                localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier, wpLimit),
                 engineMaxSpeed = vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier,
                 speedMultiplier = randomMultiplier,
                 acceleration = vehicle.driverBehaviour.acceleration,
                 brakingPower = vehicle.driverBehaviour.brakingPower,
                 turnSpeed = vehicle.driverBehaviour.turnSpeed,
                 stoppingDistance = vehicle.driverBehaviour.stoppingDistance,
+                sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
+                sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
+                obstacleMask = trafficMask.value | playerMask.value,
+                leftSensorSize = sideSensorActive ? vehicle.leftSensor.localScale : Vector3.zero,
+                leftSensorOffset = sideSensorActive ? vehicle.leftSensor.localPosition : Vector3.zero,
+                rightSensorSize = sideSensorActive ? vehicle.rightSensor.localScale : Vector3.zero,
+                rightSensorOffset = sideSensorActive ? vehicle.rightSensor.localPosition : Vector3.zero,
+                frustrationTime = randomFrustration,
+                laneChangeCooldown = randomCooldown,
+                aiOvertakeProbability = vehicle.driverBehaviour.aiOvertakeProbability
+            };
+
+            VehicleState state = new VehicleState
+            {
+                currentBehavior = AIState.Cruising,
+                currentSpeed = 1f,
+                physicalSpeed = 0f,
+                localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier, wpLimit),
                 waypointBufferStartIndex = newIndex * WAYPOINT_LOOKAHEAD,
                 currentTargetIndexOffset = 0,
                 reachedCurrentWaypoint = false,
@@ -138,33 +152,19 @@ namespace Darkmatter.TrafficSystem
                 desiredRotation = vehicle.transform.rotation,
                 isSensorActive = sensorActive,
                 sensorFacesWaypoint = vehicle.sensorFacesWaypoint,
-                sensorSize = sensorActive ? vehicle.frontSensor.localScale : Vector3.zero,
-                sensorOffset = sensorActive ? vehicle.frontSensor.localPosition : Vector3.zero,
                 isSideSensorActive = sideSensorActive,
-                leftSensorSize = sideSensorActive ? vehicle.leftSensor.localScale : Vector3.zero,
-                leftSensorOffset = sideSensorActive ? vehicle.leftSensor.localPosition : Vector3.zero,
-                rightSensorSize = sideSensorActive ? vehicle.rightSensor.localScale : Vector3.zero,
-                rightSensorOffset = sideSensorActive ? vehicle.rightSensor.localPosition : Vector3.zero,
-                obstacleMask = trafficMask.value,
-                playerMask = playerMask.value,
                 trafficDetected = false,
                 detectedTrafficFar = false,
-                detectedPlayerFar = false,
                 leftLaneBlocked = false,
                 rightLaneBlocked = false,
-                readyToChangeLane = false,
                 isChangingLanes = false,
                 isLaneChangingVehicle = vehicle.driverBehaviour.willChangeLane,
-                frustrationTime = randomFrustration,
-                laneChangeCooldown = randomCooldown,
-                aiOvertakeProbability = vehicle.driverBehaviour.aiOvertakeProbability,
-                playerOvertakeProbability = vehicle.driverBehaviour.playerOvertakeProbability,
                 impatienceTimer = randomFrustration,
-                wantsToOvertake = false,
-                wantsToHonk = false
+                wantsToChangeLane = false
             };
 
             // Update state
+            _vehicleConfigs[newIndex] = config;
             _vehicleStates[newIndex] = state;
             WarmupWaypoints(vehicle, state);
 
@@ -208,6 +208,7 @@ namespace Darkmatter.TrafficSystem
                 }
 
                 _vehicleStates[vehicleIndex] = movedState;
+                _vehicleConfigs[vehicleIndex] = _vehicleConfigs[lastIndex];
 
                 // Wheel update
                 _wheelCounts[vehicleIndex] = _wheelCounts[lastIndex];
@@ -228,6 +229,7 @@ namespace Darkmatter.TrafficSystem
         private void ClearVehicleSlotData(int vehicleIndex)
         {
             _vehicleStates[vehicleIndex] = default;
+            _vehicleConfigs[vehicleIndex] = default;
 
             int waypointStartIndex = vehicleIndex * WAYPOINT_LOOKAHEAD;
             for (int i = 0; i < WAYPOINT_LOOKAHEAD; i++)

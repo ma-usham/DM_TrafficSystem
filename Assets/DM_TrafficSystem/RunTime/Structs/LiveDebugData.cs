@@ -9,9 +9,11 @@ namespace Darkmatter.TrafficSystem
         public float localMaxSpeed;
         public float engineMaxSpeed;
         public bool isChangingLanes;
-        public bool wantsToOvertake;
-        public bool wantsToHonk;
+        public bool wantsToChangeLane;
         public bool leftLaneBlocked;
         public bool rightLaneBlocked;
+        public float impatienceTimer;
+        public float frustrationTime;
+        public float laneChangeCooldownTimer;
     }
 }

@@ -779,11 +779,10 @@ MonoBehaviour:
     brakingPower: 5
     turnSpeed: 5
     stoppingDistance: 5
-    willChangeLane: 1
+    willChangeLane: 0
     frustrationTime: {x: 10, y: 15}
     laneChangeCooldown: {x: 15, y: 20}
-    aiOvertakeProbability: 0
-    playerOvertakeProbability: 0
+    aiOvertakeProbability: 0.707
   wheels:
   - raycastTransform: {fileID: 4565691815504819783}
     visualMesh: {fileID: 1277289663938139567}
@@ -832,10 +831,12 @@ MonoBehaviour:
     localMaxSpeed: 0
     engineMaxSpeed: 0
     isChangingLanes: 0
-    wantsToOvertake: 0
-    wantsToHonk: 0
+    wantsToChangeLane: 0
     leftLaneBlocked: 0
     rightLaneBlocked: 0
+    impatienceTimer: 0
+    frustrationTime: 0
+    laneChangeCooldownTimer: 0
   laneChangeCooldownTimer: 0
   isChangingLanes: 0
   spawnPadding: 3

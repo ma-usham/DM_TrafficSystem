@@ -11,6 +11,7 @@ namespace Darkmatter.TrafficSystem
     public struct VehicleSensorJob : IJobParallelForTransform
     {
         [ReadOnly] public NativeArray<VehicleState> vehicleStates;
+        [ReadOnly] public NativeArray<VehicleConfig> vehicleConfigs;
         [ReadOnly] public NativeArray<Vector3> waypointBuffer;
 
         [WriteOnly] public NativeArray<BoxcastCommand> boxcastCommands;
@@ -18,25 +19,22 @@ namespace Darkmatter.TrafficSystem
         [WriteOnly] public NativeArray<BoxcastCommand> leftBoxcastCommands;
         [WriteOnly] public NativeArray<BoxcastCommand> rightBoxcastCommands;
 
-        [WriteOnly] public NativeArray<BoxcastCommand> playerBoxcastCommands;
-
         public void Execute(int index, TransformAccess transform)
         {
             VehicleState state = vehicleStates[index];
-            QueryParameters queryParams = new QueryParameters(state.obstacleMask, false, QueryTriggerInteraction.Ignore, false);
-            QueryParameters playerQueryParams = new QueryParameters(state.playerMask, false, QueryTriggerInteraction.Ignore, false);
+            VehicleConfig config = vehicleConfigs[index];
+            QueryParameters queryParams = new QueryParameters(config.obstacleMask, false, QueryTriggerInteraction.Ignore, false);
 
             if (!state.isSensorActive)
             {
                 // Generate a dummy command that does nothing if sensor is off
                 boxcastCommands[index] = new BoxcastCommand();
-                playerBoxcastCommands[index] = new BoxcastCommand();
             }
             else
             {
                 // Sweep from the rear of the sensor bounds up to the front based on the desired depth (sensorSize.z)
-                Vector3 centerOffset = state.sensorOffset;
-                centerOffset.z -= state.sensorSize.z * 0.5f; // Pull back by half the depth
+                Vector3 centerOffset = config.sensorOffset;
+                centerOffset.z -= config.sensorSize.z * 0.5f; // Pull back by half the depth
 
                 Vector3 origin = transform.position + transform.rotation * centerOffset;
                 Vector3 direction = transform.rotation * Vector3.forward;
@@ -58,25 +56,16 @@ namespace Darkmatter.TrafficSystem
                     }
                 }
 
-                Vector3 halfExtents = new Vector3(state.sensorSize.x * 0.5f, state.sensorSize.y * 0.5f, 0.01f);
+                Vector3 halfExtents = new Vector3(config.sensorSize.x * 0.5f, config.sensorSize.y * 0.5f, 0.01f);
                 
                 // [FIX] Removed dangerous hardcoded padding; now bases safety sweep on driver braking profile
-                float extendedDistance = state.sensorSize.z + state.stoppingDistance;
+                float extendedDistance = config.sensorSize.z + config.stoppingDistance;
                 boxcastCommands[index] = new BoxcastCommand(
                     origin,
                     halfExtents,
                     boxRotation,
                     direction,
                     queryParams,
-                    extendedDistance 
-                );
-                
-                playerBoxcastCommands[index] = new BoxcastCommand(
-                    origin,
-                    halfExtents,
-                    boxRotation,
-                    direction,
-                    playerQueryParams,
                     extendedDistance 
                 );
             }
@@ -89,14 +78,14 @@ namespace Darkmatter.TrafficSystem
             else
             {
                 // Left Sensor setup
-                Vector3 leftOffset = state.leftSensorOffset;
-                leftOffset.x += state.leftSensorSize.x * 0.5f; // pull inward
+                Vector3 leftOffset = config.leftSensorOffset;
+                leftOffset.x += config.leftSensorSize.x * 0.5f; // pull inward
                 Vector3 leftOrigin = transform.position + transform.rotation * leftOffset;
                 // Move in the -X local direction
                 Vector3 leftDirection = transform.rotation * Vector3.left;
                 
-                Vector3 leftHalfExtents = new Vector3(0.01f, state.leftSensorSize.y * 0.5f, state.leftSensorSize.z * 0.5f);
-                float leftExtendedDistance = state.leftSensorSize.x;
+                Vector3 leftHalfExtents = new Vector3(0.01f, config.leftSensorSize.y * 0.5f, config.leftSensorSize.z * 0.5f);
+                float leftExtendedDistance = config.leftSensorSize.x;
                 
                 leftBoxcastCommands[index] = new BoxcastCommand(
                     leftOrigin,
@@ -108,14 +97,14 @@ namespace Darkmatter.TrafficSystem
                 );
 
                 // Right Sensor setup
-                Vector3 rightOffset = state.rightSensorOffset;
-                rightOffset.x -= state.rightSensorSize.x * 0.5f; // pull inward
+                Vector3 rightOffset = config.rightSensorOffset;
+                rightOffset.x -= config.rightSensorSize.x * 0.5f; // pull inward
                 Vector3 rightOrigin = transform.position + transform.rotation * rightOffset;
                 // Move in the +X local direction
                 Vector3 rightDirection = transform.rotation * Vector3.right;
                 
-                Vector3 rightHalfExtents = new Vector3(0.01f, state.rightSensorSize.y * 0.5f, state.rightSensorSize.z * 0.5f);
-                float rightExtendedDistance = state.rightSensorSize.x;
+                Vector3 rightHalfExtents = new Vector3(0.01f, config.rightSensorSize.y * 0.5f, config.rightSensorSize.z * 0.5f);
+                float rightExtendedDistance = config.rightSensorSize.x;
 
                 rightBoxcastCommands[index] = new BoxcastCommand(
                     rightOrigin,

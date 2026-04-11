@@ -14,23 +14,24 @@ namespace Darkmatter.TrafficSystem
         private List<AIWaypoint> _validWaypoints = new List<AIWaypoint>();
         // private List<AIWaypoint> _fallbackWaypoints = new List<AIWaypoint>();
 
-        public void UpdateWaypoint(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<Vector3> waypointBuffer, float deltaTime)
+        public void UpdateWaypoint(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<VehicleConfig> vehicleConfigs, NativeArray<Vector3> waypointBuffer, float deltaTime)
         {
             // Process the graph logic for vehicles that finished driving to their target point
             for (int i = 0; i < activeVehicles.Count; i++)
             {
                 AIVehicle vehicle = activeVehicles[i];
                 VehicleState state = vehicleStates[vehicle.arrayIndex];
+                VehicleConfig config = vehicleConfigs[vehicle.arrayIndex];
 
                 UpdateCooldowns(vehicle, deltaTime);
 
                 switch (state.currentBehavior)
                 {
                     case AIState.Cruising:
-                        ProcessLaneChangeIntent(vehicle, ref state, waypointBuffer);
+                        ProcessLaneChangeIntent(vehicle, ref state, in config, waypointBuffer);
                         if (state.reachedCurrentWaypoint && !state.isChangingLanes)
                         {
-                            AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                            AdvanceWaypointQueue(vehicle, ref state, in config, waypointBuffer);
                         }
                         if (state.isApproachingStopPoint && state.reachedCurrentWaypoint)
                         {
@@ -42,7 +43,7 @@ namespace Darkmatter.TrafficSystem
                         // No lane change intent processing, just finish the lane change
                         if (state.reachedCurrentWaypoint)
                         {
-                            AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                            AdvanceWaypointQueue(vehicle, ref state, in config, waypointBuffer);
                         }
                         break;
 
@@ -52,7 +53,7 @@ namespace Darkmatter.TrafficSystem
                             state.currentBehavior = AIState.Cruising;
                             if (state.reachedCurrentWaypoint)
                             {
-                                AdvanceWaypointQueue(vehicle, ref state, waypointBuffer);
+                                AdvanceWaypointQueue(vehicle, ref state, in config, waypointBuffer);
                             }
                         }
                         break;
@@ -71,38 +72,33 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        private void ProcessLaneChangeIntent(AIVehicle vehicle, ref VehicleState state, NativeArray<Vector3> waypointBuffer)
+        private void ProcessLaneChangeIntent(AIVehicle vehicle, ref VehicleState state, in VehicleConfig config, NativeArray<Vector3> waypointBuffer)
         {
-            if (state.wantsToOvertake && vehicle.laneChangeCooldownTimer <= 0 && state.isLaneChangingVehicle)
-            {
-                if (!state.leftLaneBlocked || !state.rightLaneBlocked)
-                {
-                    state.readyToChangeLane = true;
-                }
-            }
+            // 1. Check if we have the intent, the cooldown is ready, and the vehicle is allowed to change lanes
+            bool canChange = state.wantsToChangeLane && vehicle.laneChangeCooldownTimer <= 0 && state.isLaneChangingVehicle;
+            
+            // 2. Abort if we can't change, or if both side lanes are currently blocked
+            if (!canChange || (state.leftLaneBlocked && state.rightLaneBlocked)) return;
 
-            if (!state.readyToChangeLane || vehicle.laneChangeCooldownTimer > 0) return;
-
-            // Unset ready flag immediately
-            state.readyToChangeLane = false;
-            state.wantsToOvertake = false;
-            state.impatienceTimer = state.frustrationTime;
+            state.wantsToChangeLane = false;
+            state.impatienceTimer = config.frustrationTime;
 
             bool tryLeft = !state.leftLaneBlocked;
             bool tryRight = !state.rightLaneBlocked;
 
             if (tryLeft || tryRight)
             {
-                if (TryFindLaneChangeWaypoint(vehicle, tryLeft, tryRight, out AIWaypoint targetLaneWaypoint))
+                if (TryFindLaneChangeWaypoint(vehicle, tryLeft, tryRight, out AIWaypoint targetLaneWaypoint, out int turnDirection))
                 {
-                    ExecuteLaneSwitch(vehicle, ref state, targetLaneWaypoint, waypointBuffer);
+                    ExecuteLaneSwitch(vehicle, ref state, in config, targetLaneWaypoint, waypointBuffer, turnDirection);
                 }
             }
         }
 
-        private bool TryFindLaneChangeWaypoint(AIVehicle vehicle, bool tryLeft, bool tryRight, out AIWaypoint targetLaneWaypoint)
+        private bool TryFindLaneChangeWaypoint(AIVehicle vehicle, bool tryLeft, bool tryRight, out AIWaypoint targetLaneWaypoint, out int turnDirection)
         {
             targetLaneWaypoint = null;
+            turnDirection = 0;
             AIWaypoint currentTarget = vehicle.lookaheadWaypoints[0];
 
             if (currentTarget == null || currentTarget.settings.laneChangePoints == null || currentTarget.settings.laneChangePoints.Length == 0)
@@ -135,18 +131,20 @@ namespace Darkmatter.TrafficSystem
                 if (tryLeft && lateralSignedAngle < -5f)
                 {
                     targetLaneWaypoint = lp;
+                    turnDirection = -1; // Left
                     return true;
                 }
                 if (tryRight && lateralSignedAngle > 5f)
                 {
                     targetLaneWaypoint = lp;
+                    turnDirection = 1; // Right
                     return true;
                 }
             }
             return false;
         }
 
-        private void ExecuteLaneSwitch(AIVehicle vehicle, ref VehicleState state, AIWaypoint targetLaneWaypoint, NativeArray<Vector3> waypointBuffer)
+        private void ExecuteLaneSwitch(AIVehicle vehicle, ref VehicleState state, in VehicleConfig config, AIWaypoint targetLaneWaypoint, NativeArray<Vector3> waypointBuffer, int turnDirection)
         {
             // Regenerate the lookahead queue starting from the new lane change point
             vehicle.lookaheadWaypoints[0] = targetLaneWaypoint;
@@ -159,12 +157,15 @@ namespace Darkmatter.TrafficSystem
             state.isChangingLanes = true;
             state.currentBehavior = AIState.ChangingLanes;
             vehicle.isChangingLanes = true;
-            vehicle.laneChangeCooldownTimer = state.laneChangeCooldown; // Cooldown from personality
+            vehicle.laneChangeCooldownTimer = config.laneChangeCooldown; // Cooldown from personality
+            
+            // Turn on the blinkers!
+            vehicle.SetTurnSignals(turnDirection);
 
             WriteLookaheadToBuffer(vehicle, state.waypointBufferStartIndex, waypointBuffer);
         }
 
-        private void AdvanceWaypointQueue(AIVehicle vehicle, ref VehicleState state, NativeArray<Vector3> waypointBuffer)
+        private void AdvanceWaypointQueue(AIVehicle vehicle, ref VehicleState state, in VehicleConfig config, NativeArray<Vector3> waypointBuffer)
         {
             // 1. Shift the entire queue back by 1
             for (int j = 0; j < TrafficManager.WAYPOINT_LOOKAHEAD - 1; j++)
@@ -192,7 +193,10 @@ namespace Darkmatter.TrafficSystem
                 state.isChangingLanes = false;
                 state.currentBehavior = AIState.Cruising;
                 vehicle.isChangingLanes = false;
-                vehicle.laneChangeCooldownTimer = state.laneChangeCooldown; // Cooldown before changing again
+                vehicle.laneChangeCooldownTimer = config.laneChangeCooldown; // Cooldown before changing again
+                
+                // Turn off the blinkers!
+                vehicle.SetTurnSignals(0);
             }
 
             // Update stop state for the new target
@@ -200,8 +204,8 @@ namespace Darkmatter.TrafficSystem
             {
                 state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
                 float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
-                float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * state.speedMultiplier) : state.engineMaxSpeed;
-                state.localMaxSpeed = Mathf.Min(state.engineMaxSpeed, adjustedWpSpeed);
+                float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * config.speedMultiplier) : config.engineMaxSpeed;
+                state.localMaxSpeed = Mathf.Min(config.engineMaxSpeed, adjustedWpSpeed);
             }
 
             // 4. Write back to Native Memory so jobs can read the newly queued target
@@ -221,7 +225,7 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        public void UpdateStopWaypoints(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates)
+        public void UpdateStopWaypoints(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<VehicleConfig> vehicleConfigs)
         {
             // Poll dynamic stop states so we can toggle lights in real-time in the Inspector
             for (int i = 0; i < activeVehicles.Count; i++)
@@ -230,11 +234,12 @@ namespace Darkmatter.TrafficSystem
                 if (vehicle.lookaheadWaypoints[0] != null)
                 {
                     VehicleState state = vehicleStates[vehicle.arrayIndex];
+                    VehicleConfig config = vehicleConfigs[vehicle.arrayIndex];
                     state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
 
                     float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
-                    float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * state.speedMultiplier) : state.engineMaxSpeed;
-                    state.localMaxSpeed = Mathf.Min(state.engineMaxSpeed, adjustedWpSpeed);
+                    float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * config.speedMultiplier) : config.engineMaxSpeed;
+                    state.localMaxSpeed = Mathf.Min(config.engineMaxSpeed, adjustedWpSpeed);
 
                     vehicleStates[vehicle.arrayIndex] = state;
                 }

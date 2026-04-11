@@ -5,7 +5,6 @@ namespace Darkmatter.TrafficSystem
     public enum AIState : byte
     {
         Cruising,
-        PreparingToOvertake,
         ChangingLanes,
         Stopping
     }
@@ -25,10 +24,36 @@ namespace Darkmatter.TrafficSystem
         public int vehicleIndex;
         public VehicleEventType eventType;
     }
+    
+    /// <summary>
+    /// Read-Only configuration data passed into the Job System. 
+    /// Holds static vehicle capabilities that never change during runtime to save memory bandwidth.
+    /// </summary>
+    public struct VehicleConfig
+    {
+        public float engineMaxSpeed;
+        public float speedMultiplier;
+        public float acceleration;
+        public float brakingPower;
+        public float turnSpeed;
+        public float stoppingDistance;
+
+        public Vector3 sensorSize;
+        public Vector3 sensorOffset;
+        public int obstacleMask;
+
+        public Vector3 leftSensorSize;
+        public Vector3 leftSensorOffset;
+        public Vector3 rightSensorSize;
+        public Vector3 rightSensorOffset;
+
+        public float frustrationTime;
+        public float laneChangeCooldown;
+        public float aiOvertakeProbability;
+    }
 
     /// <summary>
-    /// Pure data struct used by the C# Job System to process vehicle movement and AI.
-    /// Needs to be passable into NativeArrays, so it contains no classes (like Transforms).
+    /// Mutable runtime data struct used by the C# Job System to process live vehicle movement and AI.
     /// </summary>
     public struct VehicleState
     {
@@ -37,12 +62,6 @@ namespace Darkmatter.TrafficSystem
         public float currentSpeed;
         public float physicalSpeed; // True Rigidbody forward velocity
         public float localMaxSpeed;
-        public float engineMaxSpeed;
-        public float speedMultiplier;
-        public float acceleration;
-        public float brakingPower;
-        public float turnSpeed;
-        public float stoppingDistance;
         
         // Output from the job to be applied to Rigidbody
         
@@ -66,14 +85,11 @@ namespace Darkmatter.TrafficSystem
             IsSideSensorActive = 1 << 4,
             TrafficDetected = 1 << 5,
             DetectedTrafficFar = 1 << 6,
-            DetectedPlayerFar = 1 << 7,
-            LeftLaneBlocked = 1 << 8,
-            RightLaneBlocked = 1 << 9,
-            ReadyToChangeLane = 1 << 10,
-            IsChangingLanes = 1 << 11,
-            IsLaneChangingVehicle = 1 << 12,
-            WantsToOvertake = 1 << 13,
-            WantsToHonk = 1 << 14
+            LeftLaneBlocked = 1 << 7,
+            RightLaneBlocked = 1 << 8,
+            IsChangingLanes = 1 << 9,
+            IsLaneChangingVehicle = 1 << 10,
+            WantsToChangeLane = 1 << 11
         }
         
         public uint stateFlags;
@@ -101,21 +117,12 @@ namespace Darkmatter.TrafficSystem
             get => (stateFlags & (uint)StateFlags.SensorFacesWaypoint) != 0;
             set => stateFlags = value ? (stateFlags | (uint)StateFlags.SensorFacesWaypoint) : (stateFlags & ~(uint)StateFlags.SensorFacesWaypoint);
         }
-        public Vector3 sensorSize;
-        public Vector3 sensorOffset;
-        public int obstacleMask;
 
         public bool isSideSensorActive
         {
             get => (stateFlags & (uint)StateFlags.IsSideSensorActive) != 0;
             set => stateFlags = value ? (stateFlags | (uint)StateFlags.IsSideSensorActive) : (stateFlags & ~(uint)StateFlags.IsSideSensorActive);
         }
-        public Vector3 leftSensorSize;
-        public Vector3 leftSensorOffset;
-        public Vector3 rightSensorSize;
-        public Vector3 rightSensorOffset;
-        
-        public int playerMask;
 
         // Sensor status output
         public bool trafficDetected
@@ -127,11 +134,6 @@ namespace Darkmatter.TrafficSystem
         {
             get => (stateFlags & (uint)StateFlags.DetectedTrafficFar) != 0;
             set => stateFlags = value ? (stateFlags | (uint)StateFlags.DetectedTrafficFar) : (stateFlags & ~(uint)StateFlags.DetectedTrafficFar);
-        }
-        public bool detectedPlayerFar
-        {
-            get => (stateFlags & (uint)StateFlags.DetectedPlayerFar) != 0;
-            set => stateFlags = value ? (stateFlags | (uint)StateFlags.DetectedPlayerFar) : (stateFlags & ~(uint)StateFlags.DetectedPlayerFar);
         }
         public float obstacleDistance;
         
@@ -148,11 +150,6 @@ namespace Darkmatter.TrafficSystem
         }
 
         // Internal Lane Changing States
-        public bool readyToChangeLane
-        {
-            get => (stateFlags & (uint)StateFlags.ReadyToChangeLane) != 0;
-            set => stateFlags = value ? (stateFlags | (uint)StateFlags.ReadyToChangeLane) : (stateFlags & ~(uint)StateFlags.ReadyToChangeLane);
-        }
         public bool isChangingLanes
         {
             get => (stateFlags & (uint)StateFlags.IsChangingLanes) != 0;
@@ -165,22 +162,13 @@ namespace Darkmatter.TrafficSystem
             get => (stateFlags & (uint)StateFlags.IsLaneChangingVehicle) != 0;
             set => stateFlags = value ? (stateFlags | (uint)StateFlags.IsLaneChangingVehicle) : (stateFlags & ~(uint)StateFlags.IsLaneChangingVehicle);
         }
-        public float frustrationTime;
-        public float laneChangeCooldown;
-        public float aiOvertakeProbability;
-        public float playerOvertakeProbability;
 
         // Runtime states
         public float impatienceTimer;
-        public bool wantsToOvertake
+        public bool wantsToChangeLane
         {
-            get => (stateFlags & (uint)StateFlags.WantsToOvertake) != 0;
-            set => stateFlags = value ? (stateFlags | (uint)StateFlags.WantsToOvertake) : (stateFlags & ~(uint)StateFlags.WantsToOvertake);
-        }
-        public bool wantsToHonk
-        {
-            get => (stateFlags & (uint)StateFlags.WantsToHonk) != 0;
-            set => stateFlags = value ? (stateFlags | (uint)StateFlags.WantsToHonk) : (stateFlags & ~(uint)StateFlags.WantsToHonk);
+            get => (stateFlags & (uint)StateFlags.WantsToChangeLane) != 0;
+            set => stateFlags = value ? (stateFlags | (uint)StateFlags.WantsToChangeLane) : (stateFlags & ~(uint)StateFlags.WantsToChangeLane);
         }
     }
 }

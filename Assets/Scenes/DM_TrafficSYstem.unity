@@ -50880,7 +50880,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 8
   vehicleCollection: {fileID: 11400000, guid: 2190a845144e14f4990546b130eafcc2, type: 2}
-  usePlayerPooling: 1
+  usePlayerPooling: 0
   innerSpawnRadius: 100
   outerSpawnRadius: 200
   despawnRadius: 250

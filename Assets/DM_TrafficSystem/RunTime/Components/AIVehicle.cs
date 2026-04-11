@@ -37,7 +37,6 @@ namespace Darkmatter.TrafficSystem
             frustrationTime = new Vector2(5f, 15f),
             laneChangeCooldown = new Vector2(5f, 10f),
             aiOvertakeProbability = 0.5f,
-            playerOvertakeProbability = 0.8f
         };
 
         [Header("Raycast Suspension")]
@@ -82,6 +81,10 @@ namespace Darkmatter.TrafficSystem
         [Header("Spawning Clearance")]
         [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]
         public float spawnPadding = 2f;
+        
+        // Event timers
+        private float _hornTimer = 0f;
+        private int _turnSignalState = 0; // 0=Off, -1=Left, 1=Right
 
         public Vector3 GetSpawnBoxHalfExtents()
         {
@@ -123,6 +126,11 @@ namespace Darkmatter.TrafficSystem
         {
             if (gameObject.activeSelf && IsVisibleToCamera())
                 UpdateWheelVisuals();
+                
+            if (_hornTimer > 0)
+            {
+                _hornTimer -= Time.deltaTime;
+            }
         }
 
         private bool IsVisibleToCamera()
@@ -150,6 +158,8 @@ namespace Darkmatter.TrafficSystem
             debugData = default;
             laneChangeCooldownTimer = 0f;
             isChangingLanes = false;
+            _hornTimer = 0f;
+            _turnSignalState = 0;
 
             if (rb != null)
             {
@@ -157,6 +167,31 @@ namespace Darkmatter.TrafficSystem
                 rb.angularVelocity = Vector3.zero;
                 rb.constraints = RigidbodyConstraints.None;
             }
+        }
+
+        public void HonkHorn()
+        {
+            // Prevent spamming the horn every frame
+            if (_hornTimer > 0f) return;
+            _hornTimer = 2f; // Cooldown
+            
+            Debug.Log($"Vehicle {gameObject.name} is HONKING and FLASHING LIGHTS!");
+            // TODO: Play AudioSource clip here
+            // TODO: Enable Headlight GameObject here, and use a Coroutine to turn it off after 0.5s
+        }
+        
+        public void SetBrakeLights(bool active)
+        {
+            // TODO: Toggle red brake light materials/GameObjects
+        }
+        
+        public void SetTurnSignals(int direction)
+        {
+            _turnSignalState = direction;
+            // direction == -1 (Left), 1 (Right), 0 (Off)
+            // TODO: Start a Coroutine that blinks the respective yellow light GameObjects
+            if (direction == 0) Debug.Log($"Vehicle {gameObject.name} turned signals OFF");
+            else Debug.Log($"Vehicle {gameObject.name} turned {(direction == -1 ? "LEFT" : "RIGHT")} signal ON");
         }
 
         private void UpdateWheelVisuals()
@@ -381,10 +416,11 @@ namespace Darkmatter.TrafficSystem
                 $"Local Max: {debugData.localMaxSpeed:F1}\n" +
                 $"Current Spd: {debugData.currentSpeed:F1}\n" +
                 $"Changing Lanes: {debugData.isChangingLanes}\n" +
-                $"Wants To Overtake: {debugData.wantsToOvertake}\n" +
-                $"Wants To Honk: {debugData.wantsToHonk}\n" +
+                $"Wants To Overtake: {debugData.wantsToChangeLane}\n" +
                 $"Left Blocked: {debugData.leftLaneBlocked}\n" +
-                $"Right Blocked: {debugData.rightLaneBlocked}";
+                $"Right Blocked: {debugData.rightLaneBlocked}\n" +
+                $"Impatience: {debugData.impatienceTimer:F1} / {debugData.frustrationTime:F1}\n" +
+                $"Lane Cooldown: {debugData.laneChangeCooldownTimer:F1}";
 
             Vector3 labelPosition = transform.position + Vector3.up * 4.5f;
 
