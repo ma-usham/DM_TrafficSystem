@@ -170,22 +170,15 @@ namespace Darkmatter.TrafficSystem
             // Combine the handles
             combinedPhysicsHandle = JobHandle.CombineDependencies(combinedPhysicsHandle, wheelPhysicsHandle);
 
-            // Job 2.75: Aggregate Sensor Data
-            SensorAggregationJob sensorAggregationJob = new SensorAggregationJob
-            {
-                vehicleStates = _vehicleStates,
-                frontSensorHits = _frontRaycastHits,
-                leftSensorHits = _leftRaycastHits,
-                rightSensorHits = _rightRaycastHits,
-                playerSensorHits = _playerRaycastHits
-            };
-            JobHandle aggregationJobHandle = sensorAggregationJob.Schedule(_activeVehicles.Count, 64, combinedPhysicsHandle);
-
             // Job 3: Movement Simulation
             TrafficSimulationJob simulationJob = new TrafficSimulationJob
             {
                 vehicleStates = _vehicleStates,
                 waypointBuffer = _waypointBuffer,
+                sensorHits = _frontRaycastHits,
+                leftSensorHits = _leftRaycastHits,
+                rightSensorHits = _rightRaycastHits,
+                playerSensorHits = _playerRaycastHits,
                 eventQueue = _jobEventQueue.AsParallelWriter(),
                 playerForward = playerTransform != null ? playerTransform.forward : Vector3.forward,
                 deltaTime = Time.fixedDeltaTime,
@@ -194,7 +187,7 @@ namespace Darkmatter.TrafficSystem
             };
 
             // Final handle allows the Main Thread to wait for all simulation
-            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, aggregationJobHandle);
+            _finalJobHandle = simulationJob.Schedule(_transformAccessArray, combinedPhysicsHandle);
 
             // Wait for everything to complete before applying
             _finalJobHandle.Complete();

@@ -14,6 +14,10 @@ namespace Darkmatter.TrafficSystem
     {
         public NativeArray<VehicleState> vehicleStates;
         [ReadOnly] public NativeArray<Vector3> waypointBuffer;
+        [ReadOnly] public NativeArray<RaycastHit> sensorHits;
+        [ReadOnly] public NativeArray<RaycastHit> leftSensorHits;
+        [ReadOnly] public NativeArray<RaycastHit> rightSensorHits;
+        [ReadOnly] public NativeArray<RaycastHit> playerSensorHits;
 
         public NativeQueue<VehicleEvent>.ParallelWriter eventQueue;
 
@@ -26,53 +30,60 @@ namespace Darkmatter.TrafficSystem
         {
             VehicleState state = vehicleStates[index];
 
-            // Helper 1: Braking and target selection
-            ProcessBraking(index, ref state, transform, out float distance, out Vector3 dir, out Vector3 targetPos);
-
-            // Helper 2: Movement
-            ProcessMovement(ref state, transform, distance, dir, targetPos);
-
-            // Write back to Native memory
-            vehicleStates[index] = state;
-        }
-
-        private void ProcessBraking(int index, ref VehicleState state, TransformAccess transform, out float distance, out Vector3 dir, out Vector3 targetPos)
-        {
-            if (state.reachedCurrentWaypoint)
-            {
-                distance = 0f;
-                dir = Vector3.zero;
-                targetPos = transform.position;
-                return;
-            }
-
             // Ensure we don't overflow the buffer if offset is out of bounds
             if (state.currentTargetIndexOffset >= TrafficManager.WAYPOINT_LOOKAHEAD)
             {
                 state.currentTargetIndexOffset = TrafficManager.WAYPOINT_LOOKAHEAD - 1;
             }
 
+            // 1. Gather environmental state from sensors
+            EvaluateSensors(index, ref state);
+
+            // 2. Job-Based State Machine for scalable, isolated logic paths
+            switch (state.currentBehavior)
+            {
+                case AIState.Cruising:
+                case AIState.ChangingLanes:
+                    ProcessCruising(index, ref state, transform);
+                    break;
+                case AIState.Stopping:
+                    ProcessStopping(index, ref state, transform);
+                    break;
+                case AIState.PreparingToOvertake:
+                    // Reserved for future scalability
+                    break;
+            }
+
+            // Write back to Native memory
+            vehicleStates[index] = state;
+        }
+
+        private void GetTargetWaypointData(ref VehicleState state, TransformAccess transform, out float distance, out Vector3 dir, out Vector3 targetPos)
+        {
             int targetBufferIndex = state.waypointBufferStartIndex + state.currentTargetIndexOffset;
             targetPos = waypointBuffer[targetBufferIndex];
 
             dir = targetPos - transform.position;
             distance = dir.magnitude;
+        }
 
-            // 1. Gather environmental state from sensors (Done by SensorAggregationJob beforehand)
+        private void ProcessCruising(int index, ref VehicleState state, TransformAccess transform)
+        {
+            GetTargetWaypointData(ref state, transform, out float distance, out Vector3 dir, out Vector3 targetPos);
+
             // 2. Decide what to do based on the environmental state
             DetermineSpeedAndPersonality(index, ref state, distance, transform);
 
             // Calculate the vehicle's forward vector (TransformAccess doesn't have .forward)
             Vector3 currentForward = transform.rotation * Vector3.forward;
 
-            // If the dot product is less than 0, the waypoint is behind the vehicle.
-            // We also add a reasonable distance check so it doesn't accidentally skip waypoints 
-            // that are far away just because it's facing away from them temporarily.
             bool passedWaypoint = Vector3.Dot(currentForward, dir) < 0f && distance < (arrivalDistance * 3f);
 
             // Behavior 2: Intersecting the Waypoint
             if (distance <= arrivalDistance || passedWaypoint)
             {
+                state.reachedCurrentWaypoint = true;
+
                 if (state.isApproachingStopPoint)
                 {
                     // Fully halt if we hit the red light trigger distance
@@ -80,8 +91,80 @@ namespace Darkmatter.TrafficSystem
                 }
                 else
                 {
-                    // Trigger the Main Thread to give us our next point
-                    state.reachedCurrentWaypoint = true;
+                    // [FIX] Double-Buffering Waypoints: Instantly shift the local target to the next 
+                    // buffer element to prevent steering micro-stutters while waiting for Main Thread
+                    if (state.currentTargetIndexOffset < TrafficManager.WAYPOINT_LOOKAHEAD - 1)
+                    {
+                        state.currentTargetIndexOffset++;
+                        GetTargetWaypointData(ref state, transform, out distance, out dir, out targetPos);
+                    }
+                }
+            }
+
+            // Helper 2: Movement
+            ProcessMovement(ref state, transform, distance, dir, targetPos);
+        }
+
+        private void ProcessStopping(int index, ref VehicleState state, TransformAccess transform)
+        {
+            GetTargetWaypointData(ref state, transform, out float distance, out Vector3 dir, out Vector3 targetPos);
+
+            // Hard halt logic while waiting at a red light or stop sign
+            BrakeHalt(ref state, 2f);
+            ResetPersonality(ref state);
+
+            // Keep wheels aligned to the stop line
+            ProcessMovement(ref state, transform, distance, dir, targetPos);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private void EvaluateSensors(int index, ref VehicleState state)
+        {
+            // Behavior 0: Obstacle Collision Check
+            RaycastHit hit = sensorHits[index];
+            bool hitSomething = (hit.distance > 0f || hit.normal != Vector3.zero);
+
+            RaycastHit p_hit = playerSensorHits[index];
+            bool hitPlayerObj = (p_hit.distance > 0f || p_hit.normal != Vector3.zero);
+
+            state.trafficDetected = false;
+            state.detectedTrafficFar = false;
+            state.detectedPlayerFar = false;
+            state.obstacleDistance = 999f; // Default high distance
+
+            if (hitSomething)
+            {
+                state.obstacleDistance = hit.distance; // Store actual distance!
+
+                if (hit.distance <= state.sensorSize.z && hit.distance > 0f) state.trafficDetected = true;
+                else if (hit.distance > state.sensorSize.z) state.detectedTrafficFar = true;
+            }
+
+            if (hitPlayerObj)
+            {
+                if (p_hit.distance < state.obstacleDistance && p_hit.distance > 0f)
+                    state.obstacleDistance = p_hit.distance; // Player is closer
+
+                if (p_hit.distance <= state.sensorSize.z && p_hit.distance > 0f) state.trafficDetected = true;
+                else if (p_hit.distance > state.sensorSize.z) state.detectedPlayerFar = true;
+            }
+
+            // Side sensors logic
+            state.leftLaneBlocked = false;
+            state.rightLaneBlocked = false;
+
+            if (state.isSideSensorActive)
+            {
+                RaycastHit lHit = leftSensorHits[index];
+                if (lHit.distance > 0f || lHit.normal != Vector3.zero)
+                {
+                    state.leftLaneBlocked = true;
+                }
+
+                RaycastHit rHit = rightSensorHits[index];
+                if (rHit.distance > 0f || rHit.normal != Vector3.zero)
+                {
+                    state.rightLaneBlocked = true;
                 }
             }
         }
@@ -95,7 +178,8 @@ namespace Darkmatter.TrafficSystem
             // --- 1. FAR ZONE ENCOUNTER: Decision Making Only ---
             if (isDecidingStatus && !state.isApproachingStopPoint && (state.detectedPlayerFar || state.detectedTrafficFar))
             {
-                uint seed = (uint)(index * 1000 + (timeSinceLevelLoad * 100) + 1);
+                // [FIX] Improved RNG seed via spatial hash to prevent deterministic synchronized lane-changes
+                uint seed = (uint)(index * 1337 + (timeSinceLevelLoad * 10000) + (transform.position.sqrMagnitude * 100) + 1);
                 Unity.Mathematics.Random rng = new Unity.Mathematics.Random(seed);
                 bool sideLanesClear = !state.leftLaneBlocked || !state.rightLaneBlocked;
 
@@ -240,10 +324,11 @@ namespace Darkmatter.TrafficSystem
 
         private void ProcessMovement(ref VehicleState state, TransformAccess transform, float distance, Vector3 dir, Vector3 targetPos)
         {
-            // If we are fully stopped or waiting for the graph, skip the heavy math
-            if (state.reachedCurrentWaypoint || state.currentSpeed <= 0.001f)
+            // If we are fully stopped, skip the heavy math. 
+            // (ReachedCurrentWaypoint flag is no longer checked here due to Double-Buffering)
+            if (state.currentSpeed <= 0.001f)
             {
-                return;
+                //return;
             }
 
             dir.Normalize();
