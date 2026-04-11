@@ -13,6 +13,7 @@ namespace Darkmatter.TrafficSystem
         [ReadOnly] public NativeArray<Vector3> wheelLocalOffsets;
         [ReadOnly] public NativeArray<float> wheelRayLengths;
         public int groundMask;
+        public int maxWheels;
         
         [WriteOnly] 
         [NativeDisableParallelForRestriction] 
@@ -24,8 +25,8 @@ namespace Darkmatter.TrafficSystem
             if (wheelCount == 0) return;
 
             // The data in the 1D arrays are stored sequentially for each vehicle's wheels
-            // Maximum supported wheels per vehicle is hardcoded via indexing formula (e.g. index * 4) 
-            int startIndex = index * 4; 
+            // Maximum supported wheels per vehicle is dynamic via indexing formula
+            int startIndex = index * maxWheels; 
 
             Vector3 position = transform.position;
             Quaternion rotation = transform.rotation;

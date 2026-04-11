@@ -168,10 +168,10 @@ namespace Darkmatter.TrafficSystem
             _vehicleStates[newIndex] = state;
             WarmupWaypoints(vehicle, state);
 
-            int wCount = vehicle.wheels != null ? Mathf.Min(vehicle.wheels.Length, 4) : 0;
+            int wCount = vehicle.wheels != null ? Mathf.Min(vehicle.wheels.Length, MAX_WHEELS) : 0;
             _wheelCounts[newIndex] = wCount;
 
-            int startWIndex = newIndex * 4;
+            int startWIndex = newIndex * MAX_WHEELS;
             for (int w = 0; w < wCount; w++)
             {
                 _wheelLocalOffsets[startWIndex + w] = vehicle.wheels[w].localPosition;
@@ -212,10 +212,10 @@ namespace Darkmatter.TrafficSystem
 
                 // Wheel update
                 _wheelCounts[vehicleIndex] = _wheelCounts[lastIndex];
-                for (int w = 0; w < 4; w++)
+                for (int w = 0; w < MAX_WHEELS; w++)
                 {
-                    _wheelLocalOffsets[vehicleIndex * 4 + w] = _wheelLocalOffsets[lastIndex * 4 + w];
-                    _wheelRayLengths[vehicleIndex * 4 + w] = _wheelRayLengths[lastIndex * 4 + w];
+                    _wheelLocalOffsets[vehicleIndex * MAX_WHEELS + w] = _wheelLocalOffsets[lastIndex * MAX_WHEELS + w];
+                    _wheelRayLengths[vehicleIndex * MAX_WHEELS + w] = _wheelRayLengths[lastIndex * MAX_WHEELS + w];
                 }
             }
 
@@ -238,8 +238,8 @@ namespace Darkmatter.TrafficSystem
             }
 
             _wheelCounts[vehicleIndex] = 0;
-            int wheelStartIndex = vehicleIndex * 4;
-            for (int w = 0; w < 4; w++)
+            int wheelStartIndex = vehicleIndex * MAX_WHEELS;
+            for (int w = 0; w < MAX_WHEELS; w++)
             {
                 _wheelLocalOffsets[wheelStartIndex + w] = Vector3.zero;
                 _wheelRayLengths[wheelStartIndex + w] = 0f;

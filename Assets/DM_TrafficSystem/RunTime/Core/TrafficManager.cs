@@ -1,4 +1,4 @@
-﻿﻿using UnityEngine;
+﻿﻿﻿﻿using UnityEngine;
 using UnityEngine.Serialization;
 using Unity.Collections;
 using Unity.Jobs;
@@ -21,6 +21,7 @@ namespace Darkmatter.TrafficSystem
     public partial class TrafficManager : MonoBehaviour
     {
         public const int WAYPOINT_LOOKAHEAD = 5;
+        public const int MAX_WHEELS = 10; // The absolute maximum wheels any single vehicle can have. Increase if you add 18-wheelers!
 
         [FormerlySerializedAs("VehicleCount")]
         [Header("Hard Memory Limits")]

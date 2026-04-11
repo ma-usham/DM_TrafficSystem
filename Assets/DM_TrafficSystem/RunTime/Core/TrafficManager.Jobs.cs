@@ -27,10 +27,10 @@ namespace Darkmatter.TrafficSystem
             _rightRaycastHits = new NativeArray<RaycastHit>(workingCapacity, Allocator.Persistent);
 
             _wheelCounts = new NativeArray<int>(workingCapacity, Allocator.Persistent);
-            _wheelLocalOffsets = new NativeArray<Vector3>(workingCapacity * 4, Allocator.Persistent);
-            _wheelRayLengths = new NativeArray<float>(workingCapacity * 4, Allocator.Persistent);
-            _wheelRaycastCommands = new NativeArray<RaycastCommand>(workingCapacity * 4, Allocator.Persistent);
-            _wheelRaycastHits = new NativeArray<RaycastHit>(workingCapacity * 4, Allocator.Persistent);
+            _wheelLocalOffsets = new NativeArray<Vector3>(workingCapacity * MAX_WHEELS, Allocator.Persistent);
+            _wheelRayLengths = new NativeArray<float>(workingCapacity * MAX_WHEELS, Allocator.Persistent);
+            _wheelRaycastCommands = new NativeArray<RaycastCommand>(workingCapacity * MAX_WHEELS, Allocator.Persistent);
+            _wheelRaycastHits = new NativeArray<RaycastHit>(workingCapacity * MAX_WHEELS, Allocator.Persistent);
 
             _jobEventQueue = new NativeQueue<VehicleEvent>(Allocator.Persistent);
 
@@ -146,6 +146,7 @@ namespace Darkmatter.TrafficSystem
                 wheelLocalOffsets = _wheelLocalOffsets,
                 wheelRayLengths = _wheelRayLengths,
                 groundMask = groundMask.value,
+                maxWheels = MAX_WHEELS,
                 wheelRaycastCommands = _wheelRaycastCommands
             };
             JobHandle buildWheelHandle = buildWheelJob.Schedule(_transformAccessArray);
@@ -208,7 +209,7 @@ namespace Darkmatter.TrafficSystem
                 vehicle.debugData.laneChangeCooldownTimer = vehicle.laneChangeCooldownTimer;
 
                 int wCount = _wheelCounts[vehicle.arrayIndex];
-                int startWIndex = vehicle.arrayIndex * 4;
+                int startWIndex = vehicle.arrayIndex * MAX_WHEELS;
 
                 bool isGrounded = false;
                 for (int w = 0; w < wCount; w++)
@@ -251,7 +252,7 @@ namespace Darkmatter.TrafficSystem
                 // This checks if the car is leaning sideways (rolling) and applies a counter-torque to keep it flat,
                 // while completely ignoring pitch so the car can still drive up and down steep hills!
                 float rollAmount = vehicle.transform.right.y;
-                if (Mathf.Abs(rollAmount) > 0.02f)
+                if (Mathf.Abs(rollAmount) > 10f)
                 {
                     // Multiply by mass and a strength multiplier (50f) to dynamically push the roof back to the sky
                     Vector3 antiRollTorque = vehicle.transform.forward * (-rollAmount * rb.mass * 50f);
