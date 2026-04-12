@@ -80,6 +80,9 @@ namespace Darkmatter.TrafficSystem
         [HideInInspector] public float laneChangeCooldownTimer;
         [HideInInspector] public bool isChangingLanes;
 
+        // Crash State
+        [HideInInspector] public float crashSleepTimer = 0f;
+
         [Header("Spawning Clearance")]
         [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]
         public float spawnPadding = 2f;
@@ -137,7 +140,7 @@ namespace Darkmatter.TrafficSystem
                     }
                 }
             }
-            
+
             _mainCamera = Camera.main;
         }
 
@@ -153,6 +156,11 @@ namespace Darkmatter.TrafficSystem
             if (_hornTimer > 0)
             {
                 _hornTimer -= Time.deltaTime;
+            }
+
+            if (crashSleepTimer > 0f)
+            {
+                crashSleepTimer -= Time.deltaTime;
             }
         }
 
@@ -185,7 +193,7 @@ namespace Darkmatter.TrafficSystem
             {
                 return _isVisible;
             }
-            
+
             // Offset the next check slightly so not all cars check on the exact same frame
             _nextVisibilityCheckTime = Time.time + 0.2f + UnityEngine.Random.Range(0f, 0.05f);
 
@@ -214,6 +222,7 @@ namespace Darkmatter.TrafficSystem
             isChangingLanes = false;
             _hornTimer = 0f;
             _turnSignalState = 0;
+            crashSleepTimer = 0f;
 
             if (rb != null)
             {
@@ -246,6 +255,17 @@ namespace Darkmatter.TrafficSystem
             // TODO: Start a Coroutine that blinks the respective yellow light GameObjects
             if (direction == 0) Debug.Log($"Vehicle {gameObject.name} turned signals OFF");
             else Debug.Log($"Vehicle {gameObject.name} turned {(direction == -1 ? "LEFT" : "RIGHT")} signal ON");
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            Debug.Log("Collided" + collision.relativeVelocity.magnitude);
+            // Only trigger on significant impacts to avoid sleeping on tiny physics jitters
+            if (collision.relativeVelocity.magnitude > 5f)
+            {
+                // Put the car to sleep for 3 seconds
+                crashSleepTimer = 5f;
+            }
         }
 
         private void UpdateWheelVisuals()
@@ -459,46 +479,46 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
-                if (showDebugStats)
-                {
-                    // Ensure UnityEditor is available before calling Handles
-                    GUIStyle labelStyle = new GUIStyle();
-                    labelStyle.normal.textColor = Color.white;
-                    labelStyle.fontSize = 12;
-                    labelStyle.fontStyle = FontStyle.Bold;
-                    labelStyle.alignment = TextAnchor.MiddleCenter;
+            if (showDebugStats)
+            {
+                // Ensure UnityEditor is available before calling Handles
+                GUIStyle labelStyle = new GUIStyle();
+                labelStyle.normal.textColor = Color.white;
+                labelStyle.fontSize = 12;
+                labelStyle.fontStyle = FontStyle.Bold;
+                labelStyle.alignment = TextAnchor.MiddleCenter;
 
-                    // Draw a dark background box for readability
-                    GUIStyle bgStyle = new GUIStyle(GUI.skin.box);
-                    bgStyle.normal.background = UnityEditor.EditorGUIUtility.whiteTexture;
+                // Draw a dark background box for readability
+                GUIStyle bgStyle = new GUIStyle(GUI.skin.box);
+                bgStyle.normal.background = UnityEditor.EditorGUIUtility.whiteTexture;
 
-                    string debugText =
-                        $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
-                        $"Local Max: {debugData.localMaxSpeed:F1}\n" +
-                        $"Current Spd: {debugData.currentSpeed:F1}\n" +
-                        $"Changing Lanes: {debugData.isChangingLanes}\n" +
-                        $"Wants To Overtake: {debugData.wantsToChangeLane}\n" +
-                        $"Left Blocked: {debugData.leftLaneBlocked}\n" +
-                        $"Right Blocked: {debugData.rightLaneBlocked}\n" +
-                        $"Impatience: {debugData.impatienceTimer:F1} / {debugData.frustrationTime:F1}\n" +
-                        $"Lane Cooldown: {debugData.laneChangeCooldownTimer:F1}";
+                string debugText =
+                    $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
+                    $"Local Max: {debugData.localMaxSpeed:F1}\n" +
+                    $"Current Spd: {debugData.currentSpeed:F1}\n" +
+                    $"Changing Lanes: {debugData.isChangingLanes}\n" +
+                    $"Wants To Overtake: {debugData.wantsToChangeLane}\n" +
+                    $"Left Blocked: {debugData.leftLaneBlocked}\n" +
+                    $"Right Blocked: {debugData.rightLaneBlocked}\n" +
+                    $"Impatience: {debugData.impatienceTimer:F1} / {debugData.frustrationTime:F1}\n" +
+                    $"Lane Cooldown: {debugData.laneChangeCooldownTimer:F1}";
 
-                    Vector3 labelPosition = transform.position + Vector3.up * 4.5f;
+                Vector3 labelPosition = transform.position + Vector3.up * 4.5f;
 
-                    // Create a small dark box behind text
-                    UnityEditor.Handles.BeginGUI();
-                    Vector2 screenPos = UnityEditor.HandleUtility.WorldToGUIPoint(labelPosition);
+                // Create a small dark box behind text
+                UnityEditor.Handles.BeginGUI();
+                Vector2 screenPos = UnityEditor.HandleUtility.WorldToGUIPoint(labelPosition);
 
-                    // Note: This relies on the Scene view camera viewing it, it sets a dark box
-                    GUI.color = new Color(0, 0, 0, 0.7f);
-                    Vector2 size = labelStyle.CalcSize(new GUIContent(debugText));
-                    GUI.Box(new Rect(screenPos.x - (size.x / 2f) - 10, screenPos.y - (size.y / 2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
-                    GUI.color = Color.white;
-                    UnityEditor.Handles.EndGUI();
+                // Note: This relies on the Scene view camera viewing it, it sets a dark box
+                GUI.color = new Color(0, 0, 0, 0.7f);
+                Vector2 size = labelStyle.CalcSize(new GUIContent(debugText));
+                GUI.Box(new Rect(screenPos.x - (size.x / 2f) - 10, screenPos.y - (size.y / 2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
+                GUI.color = Color.white;
+                UnityEditor.Handles.EndGUI();
 
-                    // Draw the actual text
-                    UnityEditor.Handles.Label(labelPosition, debugText, labelStyle);
-                }
+                // Draw the actual text
+                UnityEditor.Handles.Label(labelPosition, debugText, labelStyle);
+            }
         }
 #endif
     }

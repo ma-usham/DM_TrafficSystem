@@ -84,7 +84,6 @@ namespace Darkmatter.TrafficSystem.Editor
         private void OnEnable()
         {
             editorWindow = this;
-            TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
             pageStack.Clear();
             pageStack.Push(new MainPage());
             SceneView.duringSceneGui -= OnSceneGUI;
@@ -109,6 +108,16 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private void OnGUI()
         {
+            if (GameObject.Find("DM_TrafficSystem") == null)
+            {
+                EditorGUILayout.HelpBox("Traffic System hierarchy is missing in the current scene.", MessageType.Warning);
+                if (GUILayout.Button("Create Traffic System Hierarchy", GUILayout.Height(30)))
+                {
+                    TrafficSystemHierarchyUtility.EnsureSceneHierarchy("Organize Traffic System Hierarchy");
+                }
+                EditorGUILayout.Space();
+            }
+
             DrawGlobalSceneGizmoPanel();
 
             if (pageStack.Count > 0)

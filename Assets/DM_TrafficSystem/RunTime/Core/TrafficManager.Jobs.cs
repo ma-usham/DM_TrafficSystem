@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+﻿﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Jobs;
@@ -263,6 +263,22 @@ namespace Darkmatter.TrafficSystem
                 if (!vehicle.isGrounded)
                 {
                     continue; // Skip the rest of the loop for this car
+                }
+
+                // --- CRASH SLEEP STATE ---
+                // If the vehicle recently collided, skip AI movement and let physics/gravity take over
+                if (vehicle.crashSleepTimer > 0f)
+                {
+                    // Dampen horizontal velocity to simulate friction while crashed, keeping gravity active
+                    Vector3 crashVel = rb.linearVelocity;
+                    crashVel.x = Mathf.Lerp(crashVel.x, 0f, Time.fixedDeltaTime * 2f);
+                    crashVel.z = Mathf.Lerp(crashVel.z, 0f, Time.fixedDeltaTime * 2f);
+                    rb.linearVelocity = crashVel;
+                    
+                    // Dampen angular velocity so it doesn't spin endlessly
+                    rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, Vector3.zero, Time.fixedDeltaTime * 4f);
+
+                    continue;
                 }
 
                 //Anti-Roll/ Braking
