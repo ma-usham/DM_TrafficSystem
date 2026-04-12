@@ -20,6 +20,7 @@ namespace Darkmatter.TrafficSystem
     /// This keeps track of the MonoBehaviour Waypoints for the Main Thread to trace the graph.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(BoxCollider))]
     public class AIVehicle : MonoBehaviour
     {
 
@@ -72,6 +73,7 @@ namespace Darkmatter.TrafficSystem
 
         // Internal logic
         [Header("Job System Debug Sync")]
+        public bool showDebugStats = false;
         public LiveDebugData debugData;
 
         //Helpers
@@ -289,6 +291,9 @@ namespace Darkmatter.TrafficSystem
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
+            BoxCollider col = GetComponent<BoxCollider>();
+            float autoHeight = col != null ? col.size.y : 1f;
+
             // Draw the Spawning Box based on BoxCollider
             Vector3 halfExtents = GetSpawnBoxHalfExtents();
             Vector3 centerOffset = GetSpawnBoxCenterOffset();
@@ -325,18 +330,18 @@ namespace Darkmatter.TrafficSystem
                 Matrix4x4 currentMatrix = Gizmos.matrix;
                 Gizmos.matrix = Matrix4x4.TRS(transform.position, frontSensorRot, Vector3.one);
                 Gizmos.color = new Color(1.0f, 0.6f, 0.0f, 0.25f); // Orange semi-transparent fill
-                Gizmos.DrawCube(frontSensor.localPosition, frontSensor.localScale);
+                Gizmos.DrawCube(frontSensor.localPosition, new Vector3(frontSensor.localScale.x, autoHeight, frontSensor.localScale.z));
                 Gizmos.matrix = currentMatrix;
             }
             if (leftSensor != null)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 1.0f, 0.25f); // Magenta semi-transparent fill
-                Gizmos.DrawCube(leftSensor.localPosition, leftSensor.localScale);
+                Gizmos.DrawCube(leftSensor.localPosition, new Vector3(leftSensor.localScale.x, autoHeight, leftSensor.localScale.z));
             }
             if (rightSensor != null)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 1.0f, 0.25f); // Magenta semi-transparent fill
-                Gizmos.DrawCube(rightSensor.localPosition, rightSensor.localScale);
+                Gizmos.DrawCube(rightSensor.localPosition, new Vector3(rightSensor.localScale.x, autoHeight, rightSensor.localScale.z));
             }
 
             Gizmos.matrix = oldMatrix;
@@ -400,15 +405,17 @@ namespace Darkmatter.TrafficSystem
                 // Now rotate around that precise worldOrigin based on the sensor's look rotation
                 Gizmos.matrix = Matrix4x4.TRS(worldOrigin, sensorRotation, Vector3.one);
 
+                Vector3 autoFrontSize = new Vector3(frontSensor.localScale.x, autoHeight, frontSensor.localScale.z);
+
                 // Normal Sensor Box (origin is now zero because we pushed worldOrigin into the matrix)
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.3f); // Semi-Transparent Orange
-                Gizmos.DrawCube(Vector3.zero, frontSensor.localScale);
+                Gizmos.DrawCube(Vector3.zero, autoFrontSize);
                 Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.8f);
-                Gizmos.DrawWireCube(Vector3.zero, frontSensor.localScale);
+                Gizmos.DrawWireCube(Vector3.zero, autoFrontSize);
 
                 // Extended Sensor Box (5m ahead of normal sensor)
-                Vector3 extendedSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, 5f);
-                Vector3 extendedCenterPath = new Vector3(0, 0, frontSensor.localScale.z * 0.5f + extendedSize.z * 0.5f);
+                Vector3 extendedSize = new Vector3(autoFrontSize.x, autoFrontSize.y, 5f);
+                Vector3 extendedCenterPath = new Vector3(0, 0, autoFrontSize.z * 0.5f + extendedSize.z * 0.5f);
 
                 Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.3f); // Semi-Transparent Light Blue
                 Gizmos.DrawCube(extendedCenterPath, extendedSize);
@@ -417,8 +424,8 @@ namespace Darkmatter.TrafficSystem
 
                 // Stopping Distance Box (Red)
                 // The BoxCast starts sweeping from the BACK of the normal sensor, so the gizmo must start there too
-                float zStart = -frontSensor.localScale.z * 0.5f;
-                Vector3 stoppingSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, driverBehaviour.stoppingDistance);
+                float zStart = -autoFrontSize.z * 0.5f;
+                Vector3 stoppingSize = new Vector3(autoFrontSize.x, autoFrontSize.y, driverBehaviour.stoppingDistance);
                 Vector3 stoppingCenter = new Vector3(0, 0, zStart + driverBehaviour.stoppingDistance * 0.5f);
 
                 Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.3f); // Semi-Transparent Red
@@ -452,43 +459,46 @@ namespace Darkmatter.TrafficSystem
                 }
             }
 
-            // Ensure UnityEditor is available before calling Handles
-            GUIStyle labelStyle = new GUIStyle();
-            labelStyle.normal.textColor = Color.white;
-            labelStyle.fontSize = 12;
-            labelStyle.fontStyle = FontStyle.Bold;
-            labelStyle.alignment = TextAnchor.MiddleCenter;
+                if (showDebugStats)
+                {
+                    // Ensure UnityEditor is available before calling Handles
+                    GUIStyle labelStyle = new GUIStyle();
+                    labelStyle.normal.textColor = Color.white;
+                    labelStyle.fontSize = 12;
+                    labelStyle.fontStyle = FontStyle.Bold;
+                    labelStyle.alignment = TextAnchor.MiddleCenter;
 
-            // Draw a dark background box for readability
-            GUIStyle bgStyle = new GUIStyle(GUI.skin.box);
-            bgStyle.normal.background = UnityEditor.EditorGUIUtility.whiteTexture;
+                    // Draw a dark background box for readability
+                    GUIStyle bgStyle = new GUIStyle(GUI.skin.box);
+                    bgStyle.normal.background = UnityEditor.EditorGUIUtility.whiteTexture;
 
-            string debugText =
-                $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
-                $"Local Max: {debugData.localMaxSpeed:F1}\n" +
-                $"Current Spd: {debugData.currentSpeed:F1}\n" +
-                $"Changing Lanes: {debugData.isChangingLanes}\n" +
-                $"Wants To Overtake: {debugData.wantsToChangeLane}\n" +
-                $"Left Blocked: {debugData.leftLaneBlocked}\n" +
-                $"Right Blocked: {debugData.rightLaneBlocked}\n" +
-                $"Impatience: {debugData.impatienceTimer:F1} / {debugData.frustrationTime:F1}\n" +
-                $"Lane Cooldown: {debugData.laneChangeCooldownTimer:F1}";
+                    string debugText =
+                        $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
+                        $"Local Max: {debugData.localMaxSpeed:F1}\n" +
+                        $"Current Spd: {debugData.currentSpeed:F1}\n" +
+                        $"Changing Lanes: {debugData.isChangingLanes}\n" +
+                        $"Wants To Overtake: {debugData.wantsToChangeLane}\n" +
+                        $"Left Blocked: {debugData.leftLaneBlocked}\n" +
+                        $"Right Blocked: {debugData.rightLaneBlocked}\n" +
+                        $"Impatience: {debugData.impatienceTimer:F1} / {debugData.frustrationTime:F1}\n" +
+                        $"Lane Cooldown: {debugData.laneChangeCooldownTimer:F1}";
 
-            Vector3 labelPosition = transform.position + Vector3.up * 4.5f;
+                    Vector3 labelPosition = transform.position + Vector3.up * 4.5f;
 
-            // Create a small dark box behind text
-            UnityEditor.Handles.BeginGUI();
-            Vector2 screenPos = UnityEditor.HandleUtility.WorldToGUIPoint(labelPosition);
+                    // Create a small dark box behind text
+                    UnityEditor.Handles.BeginGUI();
+                    Vector2 screenPos = UnityEditor.HandleUtility.WorldToGUIPoint(labelPosition);
 
-            // Note: This relies on the Scene view camera viewing it, it sets a dark box
-            GUI.color = new Color(0, 0, 0, 0.7f);
-            Vector2 size = labelStyle.CalcSize(new GUIContent(debugText));
-            GUI.Box(new Rect(screenPos.x - (size.x / 2f) - 10, screenPos.y - (size.y / 2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
-            GUI.color = Color.white;
-            UnityEditor.Handles.EndGUI();
+                    // Note: This relies on the Scene view camera viewing it, it sets a dark box
+                    GUI.color = new Color(0, 0, 0, 0.7f);
+                    Vector2 size = labelStyle.CalcSize(new GUIContent(debugText));
+                    GUI.Box(new Rect(screenPos.x - (size.x / 2f) - 10, screenPos.y - (size.y / 2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
+                    GUI.color = Color.white;
+                    UnityEditor.Handles.EndGUI();
 
-            // Draw the actual text
-            UnityEditor.Handles.Label(labelPosition, debugText, labelStyle);
+                    // Draw the actual text
+                    UnityEditor.Handles.Label(labelPosition, debugText, labelStyle);
+                }
         }
 #endif
     }

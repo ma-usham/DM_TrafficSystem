@@ -10,7 +10,7 @@ namespace Darkmatter.TrafficSystem
         private BoxBoundsHandle _sensorBoundsHandle = new BoxBoundsHandle();
 
         private int _currentTab = 0;
-        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors", "Visuals" };
+        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors" };
 
         private SerializedProperty vehicleTypeProp;
         private SerializedProperty behaviorProp;
@@ -22,6 +22,7 @@ namespace Darkmatter.TrafficSystem
         private SerializedProperty leftSensorProp;
         private SerializedProperty rightSensorProp;
         private SerializedProperty debugDataProp;
+        private SerializedProperty showDebugStatsProp;
         private SerializedProperty spawnPaddingProp;
         private SerializedProperty bodyTransformProp;
         private SerializedProperty tiltAmountProp;
@@ -39,6 +40,7 @@ namespace Darkmatter.TrafficSystem
             leftSensorProp = serializedObject.FindProperty("leftSensor");
             rightSensorProp = serializedObject.FindProperty("rightSensor");
             debugDataProp = serializedObject.FindProperty("debugData");
+            showDebugStatsProp = serializedObject.FindProperty("showDebugStats");
             spawnPaddingProp = serializedObject.FindProperty("spawnPadding");
             bodyTransformProp = serializedObject.FindProperty("bodyTransform");
             tiltAmountProp = serializedObject.FindProperty("tiltAmount");
@@ -50,20 +52,26 @@ namespace Darkmatter.TrafficSystem
             AIVehicle vehicle = (AIVehicle)target;
 
             DrawWheelHandles(vehicle);
-            DrawSensorHandle(vehicle, vehicle.frontSensor, new Color(1.0f, 0.6f, 0.0f, 1.0f), "Change Front Sensor Bounds");
+            DrawSensorHandle(vehicle, vehicle.frontSensor, new Color(1.0f, 0.6f, 0.0f, 1.0f), "Change Front Sensor Bounds", null, false, true, false);
             
             // Draw left and right sensors with identical colors (Magenta) and pass mirror reference
-            DrawSensorHandle(vehicle, vehicle.leftSensor, Color.magenta, "Change Left Sensor Bounds", vehicle.rightSensor, true);
-            DrawSensorHandle(vehicle, vehicle.rightSensor, Color.magenta, "Change Right Sensor Bounds", vehicle.leftSensor, true);
+            DrawSensorHandle(vehicle, vehicle.leftSensor, Color.magenta, "Change Left Sensor Bounds", vehicle.rightSensor, true, false, true);
+            DrawSensorHandle(vehicle, vehicle.rightSensor, Color.magenta, "Change Right Sensor Bounds", vehicle.leftSensor, true, false, true);
+
+            DrawStoppingDistanceHandle(vehicle);
+            DrawSpawnPaddingHandle(vehicle);
         }
 
-        private void DrawSensorHandle(AIVehicle vehicle, Transform sensorT, Color drawColor, string undoMessage, Transform mirrorSensorT = null, bool mirrorInvertX = false)
+        private void DrawSensorHandle(AIVehicle vehicle, Transform sensorT, Color drawColor, string undoMessage, Transform mirrorSensorT = null, bool mirrorInvertX = false, bool forceSymmetricX = false, bool forceSymmetricZ = false)
         {
             if (sensorT == null) return;
 
+            Vector3 originalCenter = sensorT.localPosition;
+            Vector3 originalSize = sensorT.localScale;
+
             // Set the handle's current data from the sensor's transform properties
-            _sensorBoundsHandle.center = sensorT.localPosition;
-            _sensorBoundsHandle.size = sensorT.localScale;
+            _sensorBoundsHandle.center = originalCenter;
+            _sensorBoundsHandle.size = originalSize;
 
             EditorGUI.BeginChangeCheck();
 
@@ -89,11 +97,31 @@ namespace Darkmatter.TrafficSystem
                     Undo.RecordObject(sensorT, undoMessage);
                 }
 
+                Vector3 newCenter = _sensorBoundsHandle.center;
+                Vector3 newSize = _sensorBoundsHandle.size;
+
+                // Enforce symmetric scaling around the center if requested
+                if (forceSymmetricX)
+                {
+                    if (Mathf.Abs(newSize.x - originalSize.x) > 0.001f)
+                    {
+                        newSize.x = 2f * newSize.x - originalSize.x;
+                        newCenter.x = originalCenter.x;
+                    }
+                }
+                if (forceSymmetricZ)
+                {
+                    if (Mathf.Abs(newSize.z - originalSize.z) > 0.001f)
+                    {
+                        newSize.z = 2f * newSize.z - originalSize.z;
+                        newCenter.z = originalCenter.z;
+                    }
+                }
+
                 // Apply changes from the handle back to the sensor transform
-                sensorT.localPosition = _sensorBoundsHandle.center;
+                sensorT.localPosition = newCenter;
                 
                 // Keep scale positive
-                Vector3 newSize = _sensorBoundsHandle.size;
                 newSize.x = Mathf.Max(0.01f, newSize.x);
                 newSize.y = Mathf.Max(0.01f, newSize.y);
                 newSize.z = Mathf.Max(0.01f, newSize.z);
@@ -105,7 +133,7 @@ namespace Darkmatter.TrafficSystem
                     mirrorSensorT.localScale = newSize;
                     if (mirrorInvertX)
                     {
-                        Vector3 mirroredCenter = _sensorBoundsHandle.center;
+                        Vector3 mirroredCenter = newCenter;
                         mirroredCenter.x = -mirroredCenter.x;
                         mirrorSensorT.localPosition = mirroredCenter;
                     }
@@ -113,6 +141,103 @@ namespace Darkmatter.TrafficSystem
 
                 SceneView.RepaintAll();
             }
+        }
+
+        private void DrawStoppingDistanceHandle(AIVehicle vehicle)
+        {
+            if (vehicle.frontSensor == null) return;
+
+            // Calculate the world position of the tip of the stopping distance box
+            Vector3 worldOrigin = vehicle.transform.position + vehicle.transform.rotation * vehicle.frontSensor.localPosition;
+            float zStart = -vehicle.frontSensor.localScale.z * 0.5f;
+            float currentDist = vehicle.driverBehaviour.stoppingDistance;
+
+            Vector3 handleLocalPos = new Vector3(0, 0, zStart + currentDist);
+            Vector3 handleWorldPos = worldOrigin + vehicle.transform.rotation * handleLocalPos;
+
+            Handles.color = Color.red;
+            EditorGUI.BeginChangeCheck();
+
+            float handleSize = HandleUtility.GetHandleSize(handleWorldPos) * 0.03f;
+            Vector3 newWorldPos = Handles.Slider(handleWorldPos, vehicle.transform.forward, handleSize, Handles.DotHandleCap, 0f);
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                float delta = Vector3.Dot(newWorldPos - handleWorldPos, vehicle.transform.forward);
+                float newDist = Mathf.Max(0.1f, currentDist + delta);
+
+                // Modify through SerializedProperty to correctly support prefabs and Undo
+                serializedObject.Update();
+                SerializedProperty stopDistProp = serializedObject.FindProperty("driverBehaviour.stoppingDistance");
+                if (stopDistProp != null)
+                {
+                    stopDistProp.floatValue = newDist;
+                    serializedObject.ApplyModifiedProperties();
+                }
+                
+                SceneView.RepaintAll();
+            }
+
+            GUIStyle labelStyle = new GUIStyle { fontStyle = FontStyle.Bold };
+            labelStyle.normal.textColor = Color.red;
+            Handles.Label(handleWorldPos + vehicle.transform.up * 0.5f, $"Stop Dist: {vehicle.driverBehaviour.stoppingDistance:F1}m", labelStyle);
+        }
+
+        private void DrawSpawnPaddingHandle(AIVehicle vehicle)
+        {
+            Vector3 extents = vehicle.GetSpawnBoxHalfExtents();
+            Vector3 centerOffset = vehicle.GetSpawnBoxCenterOffset();
+
+            Handles.color = Color.cyan;
+            float deltaPadding = 0f;
+            bool isChanged = false;
+
+            // Helper function to draw a slider handle for a specific side
+            void DrawDirectionalHandle(Vector3 localDir, Vector3 worldDir)
+            {
+                Vector3 localHandlePos = centerOffset + Vector3.Scale(extents, localDir);
+                Vector3 handleWorldPos = vehicle.transform.position + vehicle.transform.rotation * localHandlePos;
+
+                EditorGUI.BeginChangeCheck();
+                float handleSize = HandleUtility.GetHandleSize(handleWorldPos) * 0.03f;
+                Vector3 newWorldPos = Handles.Slider(handleWorldPos, worldDir, handleSize, Handles.DotHandleCap, 0f);
+
+                if (EditorGUI.EndChangeCheck())
+                {
+                    deltaPadding = Vector3.Dot(newWorldPos - handleWorldPos, worldDir);
+                    isChanged = true;
+                }
+            }
+
+            // Draw the 4 side handles
+            DrawDirectionalHandle(Vector3.right, vehicle.transform.right);
+            DrawDirectionalHandle(Vector3.left, -vehicle.transform.right);
+            DrawDirectionalHandle(Vector3.forward, vehicle.transform.forward);
+            DrawDirectionalHandle(Vector3.back, -vehicle.transform.forward);
+
+            // Apply changes if any handle was dragged
+            if (isChanged)
+            {
+                float newPadding = Mathf.Max(0f, vehicle.spawnPadding + deltaPadding);
+
+                // Modify through SerializedProperty to correctly support prefabs and Undo
+                serializedObject.Update();
+                SerializedProperty paddingProp = serializedObject.FindProperty("spawnPadding");
+                if (paddingProp != null)
+                {
+                    paddingProp.floatValue = newPadding;
+                    serializedObject.ApplyModifiedProperties();
+                }
+                
+                SceneView.RepaintAll();
+            }
+
+            // Draw the label next to the right handle
+            Vector3 labelLocalPos = centerOffset + new Vector3(extents.x, 0, 0);
+            Vector3 labelWorldPos = vehicle.transform.position + vehicle.transform.rotation * labelLocalPos;
+            GUIStyle labelStyle = new GUIStyle { fontStyle = FontStyle.Bold };
+            labelStyle.normal.textColor = Color.cyan;
+            Handles.Label(labelWorldPos + vehicle.transform.up * 0.5f, $"Spawn Padding: {vehicle.spawnPadding:F1}m", labelStyle);
         }
 
         private void DrawWheelHandles(AIVehicle vehicle)
@@ -178,10 +303,6 @@ namespace Darkmatter.TrafficSystem
             else if (_currentTab == 1)
             {
                 DrawSuspensionAndSensors();
-            }
-            else if (_currentTab == 2)
-            {
-                DrawVisuals();
             }
 
             serializedObject.ApplyModifiedProperties();
@@ -277,15 +398,15 @@ namespace Darkmatter.TrafficSystem
             if (rightSensorProp != null) EditorGUILayout.PropertyField(rightSensorProp);
 
             GUILayout.Space(10);
-            if (debugDataProp != null) EditorGUILayout.PropertyField(debugDataProp, true);
-        }
 
-        private void DrawVisuals()
-        {
             EditorGUILayout.LabelField("Fake Physics & Body Tilt", EditorStyles.boldLabel);
             if (bodyTransformProp != null) EditorGUILayout.PropertyField(bodyTransformProp);
             if (tiltAmountProp != null) EditorGUILayout.PropertyField(tiltAmountProp);
             if (smoothProp != null) EditorGUILayout.PropertyField(smoothProp);
+
+            GUILayout.Space(10);
+            if (showDebugStatsProp != null) EditorGUILayout.PropertyField(showDebugStatsProp);
+            if (debugDataProp != null) EditorGUILayout.PropertyField(debugDataProp, true);
         }
 
         private void AutoSetup(AIVehicle vehicle)
@@ -344,38 +465,66 @@ namespace Darkmatter.TrafficSystem
 
             // 2. Setup Sensors
             Transform sensorsRoot = vehicle.transform.Find("Sensors");
-            if (sensorsRoot != null)
+            if (sensorsRoot == null)
             {
-                Transform frontSensorT = sensorsRoot.Find("FrontSensor");
-                if (frontSensorT != null)
-                {
-                    vehicle.frontSensor = frontSensorT;
-                    Debug.Log("Auto Setup: Successfully assigned FrontSensor.");
-                }
+                GameObject sensorsObj = new GameObject("Sensors");
+                sensorsObj.transform.SetParent(vehicle.transform);
+                sensorsObj.transform.localPosition = Vector3.zero;
+                sensorsObj.transform.localRotation = Quaternion.identity;
+                Undo.RegisterCreatedObjectUndo(sensorsObj, "Create Sensors Root");
+                sensorsRoot = sensorsObj.transform;
+                Debug.Log("Auto Setup: Created 'Sensors' root object.");
+            }
 
-                Transform leftSensorT = sensorsRoot.Find("LeftSensor");
-                if (leftSensorT != null)
-                {
-                    vehicle.leftSensor = leftSensorT;
-                    Debug.Log("Auto Setup: Successfully assigned LeftSensor.");
-                }
+            Transform frontSensorT = sensorsRoot.Find("FrontSensor");
+            if (frontSensorT == null)
+            {
+                GameObject fsObj = new GameObject("FrontSensor");
+                fsObj.transform.SetParent(sensorsRoot);
+                fsObj.transform.localPosition = new Vector3(0f, 0.5f, 2.5f);
+                fsObj.transform.localRotation = Quaternion.identity;
+                Undo.RegisterCreatedObjectUndo(fsObj, "Create FrontSensor");
+                frontSensorT = fsObj.transform;
+                Debug.Log("Auto Setup: Created 'FrontSensor'.");
+            }
+            vehicle.frontSensor = frontSensorT;
 
-                Transform rightSensorT = sensorsRoot.Find("RightSensor");
-                if (rightSensorT != null)
-                {
-                    vehicle.rightSensor = rightSensorT;
-                    Debug.Log("Auto Setup: Successfully assigned RightSensor.");
-                }
+            Transform leftSensorT = sensorsRoot.Find("LeftSensor");
+            if (leftSensorT == null)
+            {
+                GameObject lsObj = new GameObject("LeftSensor");
+                lsObj.transform.SetParent(sensorsRoot);
+                lsObj.transform.localPosition = new Vector3(-1f, 0.5f, 0f);
+                lsObj.transform.localRotation = Quaternion.identity;
+                Undo.RegisterCreatedObjectUndo(lsObj, "Create LeftSensor");
+                leftSensorT = lsObj.transform;
+                Debug.Log("Auto Setup: Created 'LeftSensor'.");
+            }
+            vehicle.leftSensor = leftSensorT;
+
+            Transform rightSensorT = sensorsRoot.Find("RightSensor");
+            if (rightSensorT == null)
+            {
+                GameObject rsObj = new GameObject("RightSensor");
+                rsObj.transform.SetParent(sensorsRoot);
+                rsObj.transform.localPosition = new Vector3(1f, 0.5f, 0f);
+                rsObj.transform.localRotation = Quaternion.identity;
+                Undo.RegisterCreatedObjectUndo(rsObj, "Create RightSensor");
+                rightSensorT = rsObj.transform;
+                Debug.Log("Auto Setup: Created 'RightSensor'.");
+            }
+            vehicle.rightSensor = rightSensorT;
+
+            // 3. Setup Body
+            Transform bodyT = vehicle.transform.Find("Body");
+            if (bodyT != null)
+            {
+                vehicle.bodyTransform = bodyT;
+                Debug.Log("Auto Setup: Successfully assigned Body.");
             }
             else
             {
-                // Fallback check if FrontSensor is just at the root
-                Transform frontSensorT = vehicle.transform.Find("FrontSensor");
-                if (frontSensorT != null)
-                {
-                    vehicle.frontSensor = frontSensorT;
-                    Debug.Log("Auto Setup: Successfully assigned FrontSensor from root.");
-                }
+                Debug.LogWarning("Auto Setup: Could not find a child GameObject named 'Body' at the root of the vehicle.");
             }
         }
     }

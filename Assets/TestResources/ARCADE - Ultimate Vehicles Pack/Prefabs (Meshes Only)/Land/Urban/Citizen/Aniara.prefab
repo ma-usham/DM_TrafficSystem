@@ -270,8 +270,8 @@ Transform:
   m_GameObject: {fileID: 2378815492253563076}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.4896314, y: 0.8398553, z: 2.0231943}
-  m_LocalScale: {x: 3.1475682, y: 1.2414672, z: 32.014008}
+  m_LocalPosition: {x: 3.2068841, y: 0.8398553, z: 0}
+  m_LocalScale: {x: 4.2575746, y: 1.2414672, z: 26.255054}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.024205863, y: 0.85537636, z: 7.2239523}
-  m_LocalScale: {x: 1.8230017, y: 1.2422304, z: 11.655123}
+  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.3266015}
+  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.860421}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -668,8 +668,8 @@ Transform:
   m_GameObject: {fileID: 6441267291102839488}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.4896314, y: 0.8398553, z: 2.0231943}
-  m_LocalScale: {x: 3.1475682, y: 1.2414672, z: 32.014008}
+  m_LocalPosition: {x: -3.2068841, y: 0.8398553, z: 0}
+  m_LocalScale: {x: 4.2575746, y: 1.2414672, z: 26.255054}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -778,7 +778,7 @@ MonoBehaviour:
     acceleration: 2
     brakingPower: 3
     turnSpeed: 5
-    stoppingDistance: 5
+    stoppingDistance: 4.876821
     willChangeLane: 0
     frustrationTime: {x: 10, y: 15}
     laneChangeCooldown: {x: 15, y: 20}
@@ -788,25 +788,25 @@ MonoBehaviour:
     visualMesh: {fileID: 1277289663938139567}
     isFrontWheel: 1
     radius: 0.37674612
-    restLength: 0.40307587
+    restLength: 0.38
     localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 4881855343964104100}
     visualMesh: {fileID: 4794382752735696153}
     isFrontWheel: 1
     radius: 0.37674612
-    restLength: 0.40307587
+    restLength: 0.38
     localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 507745478127205945}
     visualMesh: {fileID: 6237217901199794556}
     isFrontWheel: 0
     radius: 0.37674612
-    restLength: 0.39972207
+    restLength: 0.38
     localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 4659767193756277940}
     visualMesh: {fileID: 2480291060529105190}
     isFrontWheel: 0
     radius: 0.37674612
-    restLength: 0.39972204
+    restLength: 0.38
     localPosition: {x: 0, y: 0, z: 0}
   springStrength: 30000
   springDamper: 3000
@@ -826,6 +826,7 @@ MonoBehaviour:
   vehicleCollider: {fileID: 7519925572664834760}
   steeringAngle: 0
   isGrounded: 0
+  showDebugStats: 0
   debugData:
     currentSpeed: 0
     localMaxSpeed: 0
