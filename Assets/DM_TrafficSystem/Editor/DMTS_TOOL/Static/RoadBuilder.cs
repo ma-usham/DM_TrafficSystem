@@ -137,7 +137,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             AILane lane = road.laneObjects[laneIndex];
 
-            if (!LaneTravelsWithSpline(lane, laneOffset))
+            if (!LaneTravelsWithSpline(road, laneOffset))
                 lanePositions.Reverse();
 
             road.generatedLanes.Add(CreateWaypoints(lane, lanePositions, road.laneWidth));
@@ -414,8 +414,8 @@ namespace Darkmatter.TrafficSystem.Editor
             float currentLaneOffset = GetLaneOffset(currentLaneIndex, laneCount, road.laneWidth);
             float adjacentLaneOffset = GetLaneOffset(adjacentLaneIndex, laneCount, road.laneWidth);
 
-            return LaneTravelsWithSpline(road.laneObjects[currentLaneIndex], currentLaneOffset) 
-                == LaneTravelsWithSpline(road.laneObjects[adjacentLaneIndex], adjacentLaneOffset);
+            return LaneTravelsWithSpline(road, currentLaneOffset) 
+                == LaneTravelsWithSpline(road, adjacentLaneOffset);
         }
 
         /// <summary>
@@ -728,12 +728,6 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 lane.gameObject.name = $"Lane_{laneIndex}";
 
-                // Ensure initial direction matches the road default when first created or synced
-                if (lane.drivingDirection != road.drivingDirection)
-                {
-                    lane.drivingDirection = road.drivingDirection;
-                }
-
                 EditorUtility.SetDirty(lane);
             }
         }
@@ -809,14 +803,14 @@ namespace Darkmatter.TrafficSystem.Editor
         /// <summary>
         /// Determines whether the forward travel direction of the given lane follows or opposes the spline's sample order.
         /// </summary>
-        private static bool LaneTravelsWithSpline(AILane lane, float laneOffset)
+        private static bool LaneTravelsWithSpline(Road road, float laneOffset)
         {
             if (Mathf.Abs(laneOffset) < 0.001f)
-                return lane.drivingDirection == DrivingDirection.Left;
+                return road.drivingDirection == DrivingDirection.Left;
 
-            return lane.drivingDirection == DrivingDirection.Left
-                ? laneOffset < 0f
-                : laneOffset > 0f;
+            return road.drivingDirection == DrivingDirection.Left
+                ? laneOffset <= 0.001f
+                : laneOffset > -0.001f;
         }
     }
 }

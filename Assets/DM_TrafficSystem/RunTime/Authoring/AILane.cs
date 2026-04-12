@@ -11,6 +11,5 @@ namespace Darkmatter.TrafficSystem
         public List<AIWaypoint> waypoints = new List<AIWaypoint>();
         public float laneSpeedLimit = 30f;
         public VehicleType[] laneVehicleType = new VehicleType[] { VehicleType.Default };
-        public DrivingDirection drivingDirection = DrivingDirection.Left;
     }
 }
