@@ -23,12 +23,24 @@ namespace Darkmatter.TrafficSystem.Editor
             SerializedProperty waypointsProperty = serializedLane.FindProperty("waypoints");
             SerializedProperty speedLimitProperty = serializedLane.FindProperty("laneSpeedLimit");
             SerializedProperty vehicleTypeProperty = serializedLane.FindProperty("laneVehicleType");
+            SerializedProperty drivingDirectionProperty = serializedLane.FindProperty("drivingDirection");
 
             serializedLane.Update();
 
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(speedLimitProperty, new GUIContent("Speed Limit"));
             EditorGUILayout.PropertyField(vehicleTypeProperty, new GUIContent("Vehicle Type"));
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel("Driving Direction");
+            if (GUILayout.Button(drivingDirectionProperty.enumValueIndex == (int)DrivingDirection.Left ? "Left" : "Right", GUILayout.Width(100)))
+            {
+                drivingDirectionProperty.enumValueIndex = drivingDirectionProperty.enumValueIndex == (int)DrivingDirection.Left 
+                    ? (int)DrivingDirection.Right 
+                    : (int)DrivingDirection.Left;
+            }
+            EditorGUILayout.EndHorizontal();
+
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Apply", GUILayout.Width(100)))
