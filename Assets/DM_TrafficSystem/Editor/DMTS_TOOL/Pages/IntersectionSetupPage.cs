@@ -77,7 +77,7 @@ namespace Darkmatter.TrafficSystem.Editor
                         EditorGUIUtility.PingObject(intersection.gameObject);
                         if (SceneView.lastActiveSceneView != null)
                         {
-                            SceneView.lastActiveSceneView.FrameSelected();
+                            SceneView.lastActiveSceneView.Frame(GetIntersectionBounds(intersection), false);
                         }
                     }
                     if (GUILayout.Button("Delete", GUILayout.Width(60)))
@@ -128,7 +128,7 @@ namespace Darkmatter.TrafficSystem.Editor
                         EditorGUIUtility.PingObject(intersection.gameObject);
                         if (SceneView.lastActiveSceneView != null)
                         {
-                            SceneView.lastActiveSceneView.FrameSelected();
+                            SceneView.lastActiveSceneView.Frame(GetIntersectionBounds(intersection), false);
                         }
                     }
                     if (GUILayout.Button("Delete", GUILayout.Width(60)))
@@ -157,6 +157,44 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
+        }
+
+        private Bounds GetIntersectionBounds(IntersectionBase intersection)
+        {
+            bool hasBounds = false;
+            Bounds bounds = new Bounds(intersection.transform.position, Vector3.zero);
+
+            if (intersection != null)
+            {
+                foreach (var road in intersection.GetAllRoads())
+                {
+                    if (road == null || road.GetStopPoints() == null) continue;
+                    foreach (var wp in road.GetStopPoints())
+                    {
+                        if (wp == null) continue;
+                        if (!hasBounds)
+                        {
+                            bounds = new Bounds(wp.transform.position, Vector3.zero);
+                            hasBounds = true;
+                        }
+                        else
+                        {
+                            bounds.Encapsulate(wp.transform.position);
+                        }
+                    }
+                }
+            }
+
+            if (!hasBounds)
+            {
+                bounds = new Bounds(intersection.transform.position, new Vector3(10f, 10f, 10f));
+            }
+            else
+            {
+                bounds.Expand(10f); // Add proper padding
+            }
+
+            return bounds;
         }
     }
 }

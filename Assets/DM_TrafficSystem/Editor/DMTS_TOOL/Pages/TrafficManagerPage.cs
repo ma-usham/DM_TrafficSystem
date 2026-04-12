@@ -13,6 +13,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private UnityEditor.Editor editor;
         private Vector2 scrollPos;
         private int activeTab = 1; // 0 = Layer, 1 = Traffic, 2 = Pooling
+        private bool drawGridDebug = false;
 
         /// <summary>
         /// Finds the scene traffic manager and caches the result for repeated UI draws.
@@ -143,6 +144,10 @@ namespace Darkmatter.TrafficSystem.Editor
                 {
                     BakeWaypointsAndGrid(manager);
                 }
+
+                EditorGUILayout.Space(6);
+                drawGridDebug = EditorGUILayout.Toggle("Draw Grid Cells (Scene)", drawGridDebug);
+
                 EditorGUILayout.EndScrollView();
 
 
@@ -160,85 +165,146 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         public void OnSceneGUI(SceneView sceneView, DMTS_Window ctx)
         {
+            if (!drawGridDebug) return;
+
+            TrafficManager manager = FindTrafficManager();
+            if (manager == null || manager.serializedGrid == null) return;
+
+            float size = manager.gridSize;
+
+            Handles.color = new Color(0f, 1f, 0f, 0.5f);
+            GUIStyle textStyle = new GUIStyle();
+            textStyle.normal.textColor = Color.white;
+            textStyle.alignment = TextAnchor.MiddleCenter;
+
+            foreach (var cell in manager.serializedGrid)
+            {
+                // Calculate world center of this cell on the X and Z axes
+                float centerX = (cell.cellCoordinate.x * size) + (size * 0.5f);
+                float centerZ = (cell.cellCoordinate.y * size) + (size * 0.5f);
+                float centerY = 0f;
+
+                // Estimate an average Y height based on the waypoints in this cell
+                if (cell.allWaypoints != null && cell.allWaypoints.Count > 0)
+                {
+                    float ySum = 0f;
+                    int validCount = 0;
+                    foreach (var wp in cell.allWaypoints)
+                    {
+                        if (wp != null)
+                        {
+                            ySum += wp.transform.position.y;
+                            validCount++;
+                        }
+                    }
+                    if (validCount > 0) centerY = ySum / validCount;
+                }
+
+                Vector3 boxCenter = new Vector3(centerX, centerY, centerZ);
+                Vector3 boxSize = new Vector3(size, 2f, size);
+
+                Handles.DrawWireCube(boxCenter, boxSize);
+                
+                string labelText = $"Cell: {cell.cellCoordinate}\nSpawns: {(cell.spawnWaypoints == null ? 0 : cell.spawnWaypoints.Count)}\nTotal: {(cell.allWaypoints == null ? 0 : cell.allWaypoints.Count)}";
+                
+                Handles.Label(boxCenter, labelText, textStyle);
+            }
         }
 
         private void BakeWaypointsAndGrid(TrafficManager manager)
         {
             float angleThreshold = 10f; // Set a threshold for straightness
-            AILane[] lanes = Object.FindObjectsByType<AILane>(FindObjectsInactive.Include);
             
-            if (lanes == null || lanes.Length == 0)
+            AILane[] lanes = Object.FindObjectsByType<AILane>(FindObjectsInactive.Include);
+            AIWaypointConnection[] connections = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Include);
+            
+            if ((lanes == null || lanes.Length == 0) && (connections == null || connections.Length == 0))
             {
-                Debug.LogWarning("No AILanes found in the scene to bake spawn points from.");
+                Debug.LogWarning("No AILanes or Connections found in the scene to bake waypoints from.");
                 return;
             }
 
             Undo.RecordObject(manager, "Bake Waypoint Grid");
-
-            // Dictionary using the actual Struct/Class instead of just a List of spawn points
             Dictionary<Vector2Int, WaypointGridCell> tempGrid = new Dictionary<Vector2Int, WaypointGridCell>();
 
-            foreach (var lane in lanes)
+            // 1. Process Lanes (True = Eligible for Spawning)
+            if (lanes != null)
             {
-                if (lane == null || lane.waypoints == null) continue;
-
-                for (int i = 0; i < lane.waypoints.Count; i++)
+                foreach (var lane in lanes)
                 {
-                    AIWaypoint current = lane.waypoints[i];
-                    if (current == null) continue;
-
-                    // 1. Calculate Cell Coordinate
-                    Vector2Int cellPosition = new Vector2Int(
-                        Mathf.FloorToInt(current.transform.position.x / manager.gridSize),
-                        Mathf.FloorToInt(current.transform.position.z / manager.gridSize)
-                    );
-
-                    // 2. Initialize cell if it doesn't exist
-                    if (!tempGrid.ContainsKey(cellPosition))
-                    {
-                        tempGrid[cellPosition] = new WaypointGridCell
-                        {
-                            cellCoordinate = cellPosition,
-                            allWaypoints = new List<AIWaypoint>(),
-                            spawnWaypoints = new List<AIWaypoint>()
-                        };
-                    }
-
-                    // 3. Add to ALL waypoints list
-                    tempGrid[cellPosition].allWaypoints.Add(current);
-
-                    // 4. Run the Angle Check to see if it's a valid spawn point
-                    if (i > 0 && i < lane.waypoints.Count - 1)
-                    {
-                        AIWaypoint prev = lane.waypoints[i - 1];
-                        AIWaypoint next = lane.waypoints[i + 1];
-
-                        if (prev != null && next != null)
-                        {
-                            Vector3 dirIn = (current.transform.position - prev.transform.position).normalized;
-                            Vector3 dirOut = (next.transform.position - current.transform.position).normalized;
-                            
-                            if (Vector3.Angle(dirIn, dirOut) <= angleThreshold)
-                            {
-                                // Valid straight lane = safe to spawn
-                                tempGrid[cellPosition].spawnWaypoints.Add(current); 
-                            }
-                        }
-                    }
+                    if (lane == null || lane.waypoints == null) continue;
+                    ProcessWaypointList(manager, tempGrid, lane.waypoints, angleThreshold, true);
                 }
             }
 
-            // 5. Clear the old saved list, and copy the new data into it
+            // 2. Process Connections (False = Not Eligible for Spawning)
+            if (connections != null)
+            {
+                foreach (var connection in connections)
+                {
+                    if (connection == null || connection.transitionWaypoints == null) continue;
+                    ProcessWaypointList(manager, tempGrid, connection.transitionWaypoints, angleThreshold, false);
+                }
+            }
+
+            // 3. Save
+            int totalWaypoints = 0;
             manager.serializedGrid.Clear();
             foreach (var kvp in tempGrid)
             {
                 manager.serializedGrid.Add(kvp.Value);
+                totalWaypoints += kvp.Value.allWaypoints.Count;
             }
 
             EditorUtility.SetDirty(manager);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
 
-            Debug.Log($"Baked Waypoints into {manager.serializedGrid.Count} Grid Cells.");
+            Debug.Log($"Baked {totalWaypoints} Waypoints into {manager.serializedGrid.Count} Grid Cells.");
+        }
+
+        private void ProcessWaypointList(TrafficManager manager, Dictionary<Vector2Int, WaypointGridCell> tempGrid, List<AIWaypoint> waypoints, float angleThreshold, bool canSpawn)
+        {
+            for (int i = 0; i < waypoints.Count; i++)
+            {
+                AIWaypoint current = waypoints[i];
+                if (current == null) continue;
+
+                Vector2Int cellPosition = new Vector2Int(
+                    Mathf.FloorToInt(current.transform.position.x / manager.gridSize),
+                    Mathf.FloorToInt(current.transform.position.z / manager.gridSize)
+                );
+
+                if (!tempGrid.ContainsKey(cellPosition))
+                {
+                    tempGrid[cellPosition] = new WaypointGridCell
+                    {
+                        cellCoordinate = cellPosition,
+                        allWaypoints = new List<AIWaypoint>(),
+                        spawnWaypoints = new List<AIWaypoint>()
+                    };
+                }
+
+                // ALWAYS add to allWaypoints
+                tempGrid[cellPosition].allWaypoints.Add(current);
+
+                // ONLY evaluate for spawnWaypoints if permitted
+                if (canSpawn && i > 0 && i < waypoints.Count - 1)
+                {
+                    AIWaypoint prev = waypoints[i - 1];
+                    AIWaypoint next = waypoints[i + 1];
+
+                    if (prev != null && next != null)
+                    {
+                        Vector3 dirIn = (current.transform.position - prev.transform.position).normalized;
+                        Vector3 dirOut = (next.transform.position - current.transform.position).normalized;
+                        
+                        if (Vector3.Angle(dirIn, dirOut) <= angleThreshold)
+                        {
+                            tempGrid[cellPosition].spawnWaypoints.Add(current); 
+                        }
+                    }
+                }
+            }
         }
     }
 }

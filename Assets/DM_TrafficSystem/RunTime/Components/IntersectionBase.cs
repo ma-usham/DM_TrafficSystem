@@ -22,6 +22,8 @@ namespace Darkmatter.TrafficSystem
 
         protected Coroutine cycleCoroutine;
 
+        public abstract IEnumerable<IIntersectionRoad> GetAllRoads();
+
         /// <summary>
         /// Applies one stop-state value to every stop point in the provided road group.
         /// </summary>

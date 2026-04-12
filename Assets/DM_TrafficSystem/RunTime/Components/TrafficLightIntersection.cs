@@ -48,6 +48,8 @@ namespace Darkmatter.TrafficSystem
 
         public List<TrafficLightRoad> trafficLightRoads = new List<TrafficLightRoad>();
 
+        public override IEnumerable<IIntersectionRoad> GetAllRoads() => trafficLightRoads;
+
         private int currentRoadIndex = 0;
 
         private MaterialPropertyBlock propBlock;

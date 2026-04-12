@@ -26,6 +26,8 @@ namespace Darkmatter.TrafficSystem
 
         public List<PriorityStopRoad> priorityStopRoads = new List<PriorityStopRoad>();
 
+        public override IEnumerable<IIntersectionRoad> GetAllRoads() => priorityStopRoads;
+
         private int currentStopRoadIndex = 0;
 
         /// <summary>
