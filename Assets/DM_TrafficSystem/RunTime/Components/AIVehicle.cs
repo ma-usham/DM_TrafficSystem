@@ -88,12 +88,17 @@ namespace Darkmatter.TrafficSystem
 
         //Fake Physics
         public Transform bodyTransform;
-        public float tiltAmount = 0.02f;   // strength
+        public float tiltAmount = 1.5f;    // strength
         public float smooth = 5f;          // smoothing
+        public float maxTiltAngle = 2f;   // maximum degrees of tilt
 
         private float currentTilt;
         private float _previousForwardSpeed;
 
+        // Visibility Caching
+        private Camera _mainCamera;
+        private bool _isVisible = true;
+        private float _nextVisibilityCheckTime = 0f;
 
 
         public Vector3 GetSpawnBoxHalfExtents()
@@ -130,6 +135,8 @@ namespace Darkmatter.TrafficSystem
                     }
                 }
             }
+            
+            _mainCamera = Camera.main;
         }
 
         private void Update()
@@ -159,6 +166,9 @@ namespace Darkmatter.TrafficSystem
             // Target tilt (negative = tilt backward on accel, positive = tilt forward on brake)
             float targetTilt = -acceleration * tiltAmount;
 
+            // Clamp the target tilt to prevent extreme spikes (especially on the first frame of spawning)
+            targetTilt = Mathf.Clamp(targetTilt, -maxTiltAngle, maxTiltAngle);
+
             // Smooth (Use Time.deltaTime in Update, not fixedDeltaTime)
             currentTilt = Mathf.Lerp(currentTilt, targetTilt, Time.deltaTime * smooth);
 
@@ -168,13 +178,22 @@ namespace Darkmatter.TrafficSystem
 
         private bool IsVisibleToCamera()
         {
-            Camera cam = Camera.main;
-            if (cam == null) return true;
+            // Throttle the heavy frustum math to only run 5 times a second per vehicle
+            if (Time.time < _nextVisibilityCheckTime)
+            {
+                return _isVisible;
+            }
+            
+            // Offset the next check slightly so not all cars check on the exact same frame
+            _nextVisibilityCheckTime = Time.time + 0.2f + UnityEngine.Random.Range(0f, 0.05f);
+
+            if (_mainCamera == null) return true;
 
             Bounds bounds = new Bounds(transform.position, GetSpawnBoxHalfExtents() * 2f);
-            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(cam);
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(_mainCamera);
 
-            return GeometryUtility.TestPlanesAABB(frustumPlanes, bounds);
+            _isVisible = GeometryUtility.TestPlanesAABB(frustumPlanes, bounds);
+            return _isVisible;
         }
 
         public void ResetRuntimeState()
