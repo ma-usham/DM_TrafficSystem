@@ -81,10 +81,20 @@ namespace Darkmatter.TrafficSystem
         [Header("Spawning Clearance")]
         [Tooltip("Extra space added around the collider to ensure safe spawning distance.")]
         public float spawnPadding = 2f;
-        
+
         // Event timers
         private float _hornTimer = 0f;
         private int _turnSignalState = 0; // 0=Off, -1=Left, 1=Right
+
+        //Fake Physics
+        public Transform bodyTransform;
+        public float tiltAmount = 0.02f;   // strength
+        public float smooth = 5f;          // smoothing
+
+        private float currentTilt;
+        private float _previousForwardSpeed;
+
+
 
         public Vector3 GetSpawnBoxHalfExtents()
         {
@@ -125,12 +135,35 @@ namespace Darkmatter.TrafficSystem
         private void Update()
         {
             if (gameObject.activeSelf && IsVisibleToCamera())
+            {
                 UpdateWheelVisuals();
-                
+                UpdateFakePhysics();
+            }
+
+
             if (_hornTimer > 0)
             {
                 _hornTimer -= Time.deltaTime;
             }
+        }
+
+        private void UpdateFakePhysics()
+        {
+            // Forward velocity (local space)
+            float forwardSpeed = transform.InverseTransformDirection(rb.linearVelocity).z;
+
+            // Calculate acceleration (change in speed over time)
+            float acceleration = Time.deltaTime > 0f ? (forwardSpeed - _previousForwardSpeed) / Time.deltaTime : 0f;
+            _previousForwardSpeed = forwardSpeed;
+
+            // Target tilt (negative = tilt backward on accel, positive = tilt forward on brake)
+            float targetTilt = -acceleration * tiltAmount;
+
+            // Smooth (Use Time.deltaTime in Update, not fixedDeltaTime)
+            currentTilt = Mathf.Lerp(currentTilt, targetTilt, Time.deltaTime * smooth);
+
+            // Apply (X axis = forward/back tilt)
+            bodyTransform.localRotation = Quaternion.Euler(currentTilt, 0f, 0f);
         }
 
         private bool IsVisibleToCamera()
@@ -174,17 +207,17 @@ namespace Darkmatter.TrafficSystem
             // Prevent spamming the horn every frame
             if (_hornTimer > 0f) return;
             _hornTimer = 2f; // Cooldown
-            
+
             Debug.Log($"Vehicle {gameObject.name} is HONKING and FLASHING LIGHTS!");
             // TODO: Play AudioSource clip here
             // TODO: Enable Headlight GameObject here, and use a Coroutine to turn it off after 0.5s
         }
-        
+
         public void SetBrakeLights(bool active)
         {
             // TODO: Toggle red brake light materials/GameObjects
         }
-        
+
         public void SetTurnSignals(int direction)
         {
             _turnSignalState = direction;
@@ -368,7 +401,7 @@ namespace Darkmatter.TrafficSystem
                 float zStart = -frontSensor.localScale.z * 0.5f;
                 Vector3 stoppingSize = new Vector3(frontSensor.localScale.x, frontSensor.localScale.y, driverBehaviour.stoppingDistance);
                 Vector3 stoppingCenter = new Vector3(0, 0, zStart + driverBehaviour.stoppingDistance * 0.5f);
-                
+
                 Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.3f); // Semi-Transparent Red
                 Gizmos.DrawCube(stoppingCenter, stoppingSize);
                 Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.9f);
@@ -411,7 +444,7 @@ namespace Darkmatter.TrafficSystem
             GUIStyle bgStyle = new GUIStyle(GUI.skin.box);
             bgStyle.normal.background = UnityEditor.EditorGUIUtility.whiteTexture;
 
-            string debugText = 
+            string debugText =
                 $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
                 $"Local Max: {debugData.localMaxSpeed:F1}\n" +
                 $"Current Spd: {debugData.currentSpeed:F1}\n" +
@@ -427,11 +460,11 @@ namespace Darkmatter.TrafficSystem
             // Create a small dark box behind text
             UnityEditor.Handles.BeginGUI();
             Vector2 screenPos = UnityEditor.HandleUtility.WorldToGUIPoint(labelPosition);
-            
+
             // Note: This relies on the Scene view camera viewing it, it sets a dark box
-            GUI.color = new Color(0, 0, 0, 0.7f); 
+            GUI.color = new Color(0, 0, 0, 0.7f);
             Vector2 size = labelStyle.CalcSize(new GUIContent(debugText));
-            GUI.Box(new Rect(screenPos.x - (size.x/2f) - 10, screenPos.y - (size.y/2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
+            GUI.Box(new Rect(screenPos.x - (size.x / 2f) - 10, screenPos.y - (size.y / 2f) - 10, size.x + 20, size.y + 20), "", bgStyle);
             GUI.color = Color.white;
             UnityEditor.Handles.EndGUI();
 

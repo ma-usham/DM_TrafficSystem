@@ -10,7 +10,7 @@ namespace Darkmatter.TrafficSystem
         private BoxBoundsHandle _sensorBoundsHandle = new BoxBoundsHandle();
 
         private int _currentTab = 0;
-        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors" };
+        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors", "Visuals" };
 
         private SerializedProperty vehicleTypeProp;
         private SerializedProperty behaviorProp;
@@ -23,6 +23,9 @@ namespace Darkmatter.TrafficSystem
         private SerializedProperty rightSensorProp;
         private SerializedProperty debugDataProp;
         private SerializedProperty spawnPaddingProp;
+        private SerializedProperty bodyTransformProp;
+        private SerializedProperty tiltAmountProp;
+        private SerializedProperty smoothProp;
 
         private void OnEnable()
         {
@@ -37,6 +40,9 @@ namespace Darkmatter.TrafficSystem
             rightSensorProp = serializedObject.FindProperty("rightSensor");
             debugDataProp = serializedObject.FindProperty("debugData");
             spawnPaddingProp = serializedObject.FindProperty("spawnPadding");
+            bodyTransformProp = serializedObject.FindProperty("bodyTransform");
+            tiltAmountProp = serializedObject.FindProperty("tiltAmount");
+            smoothProp = serializedObject.FindProperty("smooth");
         }
 
         private void OnSceneGUI()
@@ -173,6 +179,10 @@ namespace Darkmatter.TrafficSystem
             {
                 DrawSuspensionAndSensors();
             }
+            else if (_currentTab == 2)
+            {
+                DrawVisuals();
+            }
 
             serializedObject.ApplyModifiedProperties();
 
@@ -268,6 +278,14 @@ namespace Darkmatter.TrafficSystem
 
             GUILayout.Space(10);
             if (debugDataProp != null) EditorGUILayout.PropertyField(debugDataProp, true);
+        }
+
+        private void DrawVisuals()
+        {
+            EditorGUILayout.LabelField("Fake Physics & Body Tilt", EditorStyles.boldLabel);
+            if (bodyTransformProp != null) EditorGUILayout.PropertyField(bodyTransformProp);
+            if (tiltAmountProp != null) EditorGUILayout.PropertyField(tiltAmountProp);
+            if (smoothProp != null) EditorGUILayout.PropertyField(smoothProp);
         }
 
         private void AutoSetup(AIVehicle vehicle)

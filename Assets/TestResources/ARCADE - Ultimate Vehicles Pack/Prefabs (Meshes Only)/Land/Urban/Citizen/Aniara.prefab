@@ -840,6 +840,9 @@ MonoBehaviour:
   laneChangeCooldownTimer: 0
   isChangingLanes: 0
   spawnPadding: 3
+  bodyTransform: {fileID: 3610515905274031898}
+  tiltAmount: 0.1
+  smooth: 5
 --- !u!1 &8414287651470153809
 GameObject:
   m_ObjectHideFlags: 0
