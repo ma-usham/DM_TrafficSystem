@@ -399,7 +399,7 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
-        /// Returns whether two adjacent lane indices travel in the same spline direction and can therefore lane-change between each other.
+        /// Returns whether two adjacent lanes travel in the same global direction.
         /// </summary>
         private static bool CanLinkAdjacentLanes(Road road, int currentLaneIndex, int adjacentLaneIndex, int laneCount)
         {
@@ -411,11 +411,20 @@ namespace Darkmatter.TrafficSystem.Editor
                 return false;
             }
 
-            float currentLaneOffset = GetLaneOffset(currentLaneIndex, laneCount, road.laneWidth);
-            float adjacentLaneOffset = GetLaneOffset(adjacentLaneIndex, laneCount, road.laneWidth);
+            AILane currentLane = road.laneObjects[currentLaneIndex];
+            AILane adjacentLane = road.laneObjects[adjacentLaneIndex];
 
-            return LaneTravelsWithSpline(road, currentLaneOffset) 
-                == LaneTravelsWithSpline(road, adjacentLaneOffset);
+            if (currentLane == null || adjacentLane == null || 
+                currentLane.waypoints == null || adjacentLane.waypoints == null ||
+                currentLane.waypoints.Count < 2 || adjacentLane.waypoints.Count < 2)
+            {
+                return false;
+            }
+
+            Vector3 currentDir = (currentLane.waypoints[currentLane.waypoints.Count - 1].transform.position - currentLane.waypoints[0].transform.position).normalized;
+            Vector3 adjacentDir = (adjacentLane.waypoints[adjacentLane.waypoints.Count - 1].transform.position - adjacentLane.waypoints[0].transform.position).normalized;
+
+            return Vector3.Dot(currentDir, adjacentDir) > 0.5f;
         }
 
         /// <summary>

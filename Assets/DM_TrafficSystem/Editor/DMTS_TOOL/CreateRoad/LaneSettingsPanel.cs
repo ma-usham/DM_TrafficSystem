@@ -30,6 +30,8 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUILayout.PropertyField(speedLimitProperty, new GUIContent("Speed Limit"));
             EditorGUILayout.PropertyField(vehicleTypeProperty, new GUIContent("Vehicle Type"));
 
+            bool needsApply = serializedLane.hasModifiedProperties || NeedsApplyConfig(lane);
+
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Change Direction", GUILayout.Width(130)))
@@ -40,12 +42,17 @@ namespace Darkmatter.TrafficSystem.Editor
                 
                 EditorUtility.SetDirty(lane);
             }
+            
+            Color originalColor = GUI.backgroundColor;
+            GUI.backgroundColor = needsApply ? Color.red : Color.green;
             if (GUILayout.Button("Apply", GUILayout.Width(100)))
             {
                 serializedLane.ApplyModifiedProperties();
                 ApplyWaypointSettingsFromLane(lane);
                 EditorUtility.SetDirty(lane);
             }
+            GUI.backgroundColor = originalColor;
+            
             EditorGUILayout.EndHorizontal();
 
 
@@ -93,8 +100,30 @@ namespace Darkmatter.TrafficSystem.Editor
             }
         }
 
+        private static bool NeedsApplyConfig(AILane lane)
+        {
+            if (lane == null || lane.waypoints == null || lane.waypoints.Count == 0) return false;
+            AIWaypoint wp = lane.waypoints[0];
+            if (wp == null) return false;
+
+            if (Mathf.Abs(wp.settings.speed - lane.laneSpeedLimit) > 0.001f) return true;
+
+            if (wp.settings.vehicleType == null && lane.laneVehicleType != null) return true;
+            if (wp.settings.vehicleType != null && lane.laneVehicleType == null) return true;
+            if (wp.settings.vehicleType != null && lane.laneVehicleType != null)
+            {
+                if (wp.settings.vehicleType.Length != lane.laneVehicleType.Length) return true;
+                for (int i = 0; i < wp.settings.vehicleType.Length; i++)
+                {
+                    if (wp.settings.vehicleType[i] != lane.laneVehicleType[i]) return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// Reverses the physical waypoints of the given lane and updates their orientations to match the new driving direction.
+        /// Removes all incoming and outgoing connections to other lanes to prevent invalid traffic flow.
         /// </summary>
         private static void ReverseLaneWaypoints(AILane lane)
         {
@@ -105,6 +134,33 @@ namespace Darkmatter.TrafficSystem.Editor
 
             System.Collections.Generic.HashSet<AIWaypoint> internalWaypoints = 
                 new System.Collections.Generic.HashSet<AIWaypoint>(lane.waypoints);
+
+            // Sever all incoming external connections and delete connection objects
+            AIWaypointConnection[] connections = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Exclude);
+            foreach (var conn in connections)
+            {
+                if (conn == null) continue;
+                if (internalWaypoints.Contains(conn.sourceWaypoint) || internalWaypoints.Contains(conn.targetWaypoint))
+                {
+                    WaypointConnectionBuilder.DeleteConnection(conn, "Reverse Lane Direction");
+                }
+            }
+
+            AIWaypoint[] allWaypoints = Object.FindObjectsByType<AIWaypoint>(FindObjectsInactive.Exclude);
+            foreach (var extWp in allWaypoints)
+            {
+                if (extWp == null || internalWaypoints.Contains(extWp)) continue;
+
+                Undo.RecordObject(extWp, "Reverse Lane Direction");
+                WaypointSettings extSettings = extWp.settings;
+                
+                extSettings.nextWaypoint = FilterOutWaypoints(extSettings.nextWaypoint, internalWaypoints);
+                extSettings.previousWaypoint = FilterOutWaypoints(extSettings.previousWaypoint, internalWaypoints);
+                extSettings.laneChangePoints = FilterOutWaypoints(extSettings.laneChangePoints, internalWaypoints);
+                
+                extWp.settings = extSettings;
+                EditorUtility.SetDirty(extWp);
+            }
 
             lane.waypoints.Reverse();
 
@@ -176,6 +232,20 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             SceneView.RepaintAll();
+        }
+
+        private static AIWaypoint[] FilterOutWaypoints(AIWaypoint[] existing, System.Collections.Generic.HashSet<AIWaypoint> toRemove)
+        {
+            if (existing == null || existing.Length == 0) return existing;
+            
+            System.Collections.Generic.List<AIWaypoint> remaining = new System.Collections.Generic.List<AIWaypoint>();
+            for (int i = 0; i < existing.Length; i++)
+            {
+                if (existing[i] != null && !toRemove.Contains(existing[i]))
+                    remaining.Add(existing[i]);
+            }
+            
+            return remaining.ToArray();
         }
     }
 }
