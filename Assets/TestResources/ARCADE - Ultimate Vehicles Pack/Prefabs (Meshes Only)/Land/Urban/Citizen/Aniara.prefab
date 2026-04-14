@@ -730,8 +730,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.9073938, y: 1.2387877, z: 4.597736}
-  m_Center: {x: 0.023878753, y: 0.8516767, z: -0.015919447}
+  m_Size: {x: 1.9073938, y: 1.2507896, z: 4.597736}
+  m_Center: {x: 0.023878753, y: 0.8456757, z: -0.015919447}
 --- !u!54 &5287100366868719794
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -810,7 +810,7 @@ MonoBehaviour:
     localPosition: {x: 0, y: 0, z: 0}
   springStrength: 60000
   springDamper: 5000
-  sensorFacesWaypoint: 1
+  sensorFacesWaypoint: 0
   frontSensor: {fileID: 1997585314265276491}
   leftSensor: {fileID: 5823510284588927058}
   rightSensor: {fileID: 3071636954982558131}
@@ -826,7 +826,7 @@ MonoBehaviour:
   vehicleCollider: {fileID: 7519925572664834760}
   steeringAngle: 0
   isGrounded: 0
-  showDebugStats: 0
+  showDebugStats: 1
   debugData:
     currentSpeed: 0
     localMaxSpeed: 0

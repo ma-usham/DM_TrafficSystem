@@ -1,4 +1,4 @@
-﻿﻿using UnityEngine;
+﻿﻿﻿﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Jobs;
@@ -290,9 +290,12 @@ namespace Darkmatter.TrafficSystem
                     // Dampen horizontal velocity to simulate heavy tire friction.
                     // This lets the player push it (spiking the velocity), but quickly brings it back to a dead stop.
                     Vector3 vel = rb.linearVelocity;
-                    vel.x = Mathf.Lerp(vel.x, 0f, Time.fixedDeltaTime * 15f);
-                    vel.z = Mathf.Lerp(vel.z, 0f, Time.fixedDeltaTime * 15f);
-                    rb.linearVelocity = vel;
+                    // Preserve the suspension/gravity bounce by isolating the local Up velocity
+                    Vector3 localUpVelocity = Vector3.Project(vel, vehicle.transform.up);
+                    Vector3 planarVelocity = vel - localUpVelocity;
+                    
+                    planarVelocity = Vector3.Lerp(planarVelocity, Vector3.zero, Time.fixedDeltaTime * 15f);
+                    rb.linearVelocity = localUpVelocity + planarVelocity;
 
                     continue;
                 }
@@ -301,7 +304,11 @@ namespace Darkmatter.TrafficSystem
                     rb.constraints = RigidbodyConstraints.None;
                     // Calculate the difference between desired and current velocity
                     Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;
-                    velocityDifference.y = 0f;
+                    
+                    // Strip ONLY the local Up/Down velocity difference to preserve suspension bounce,
+                    // allowing the remaining Forward/Right forces to push the vehicle up and down slopes!
+                    velocityDifference -= Vector3.Project(velocityDifference, vehicle.transform.up);
+                    
                     // Apply the difference as a velocity change so suspension/gravity are preserved
                     rb.AddForce(velocityDifference, ForceMode.VelocityChange);
                     //rb.AddForceAtPosition(velocityDifference, vehicle.transform.position, ForceMode.VelocityChange);

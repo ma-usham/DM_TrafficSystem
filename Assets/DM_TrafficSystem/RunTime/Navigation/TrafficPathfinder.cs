@@ -48,30 +48,41 @@ namespace Darkmatter.TrafficSystem
                 // Check neighbors
                 if (current.settings.nextWaypoint != null)
                 {
-                    foreach (AIWaypoint neighbor in current.settings.nextWaypoint)
-                    {
-                        if (neighbor == null) continue;
+                    EvaluateNeighbors(current, current.settings.nextWaypoint, endNode, ref openSet, ref openSetHash, ref cameFrom, ref gScore, ref fScore);
+                }
 
-                        float tentative_gScore = gScore[current] + Vector3.Distance(current.transform.position, neighbor.transform.position);
-
-                        bool hasGScore = gScore.TryGetValue(neighbor, out float neighborGScore);
-                        if (!hasGScore || tentative_gScore < neighborGScore)
-                        {
-                            cameFrom[neighbor] = current;
-                            gScore[neighbor] = tentative_gScore;
-                            fScore[neighbor] = tentative_gScore + Vector3.Distance(neighbor.transform.position, endNode.transform.position);
-
-                            if (!openSetHash.Contains(neighbor))
-                            {
-                                openSet.Add(neighbor);
-                                openSetHash.Add(neighbor);
-                            }
-                        }
-                    }
+                // Consider lane-changing points as potential neighbors to allow pathfinding across lanes
+                if (current.settings.laneChangePoints != null)
+                {
+                    EvaluateNeighbors(current, current.settings.laneChangePoints, endNode, ref openSet, ref openSetHash, ref cameFrom, ref gScore, ref fScore);
                 }
             }
 
             return null; // Return null if route is impossible
+        }
+
+        private static void EvaluateNeighbors(AIWaypoint current, AIWaypoint[] neighbors, AIWaypoint endNode, ref List<AIWaypoint> openSet, ref HashSet<AIWaypoint> openSetHash, ref Dictionary<AIWaypoint, AIWaypoint> cameFrom, ref Dictionary<AIWaypoint, float> gScore, ref Dictionary<AIWaypoint, float> fScore)
+        {
+            foreach (AIWaypoint neighbor in neighbors)
+            {
+                if (neighbor == null) continue;
+
+                float tentative_gScore = gScore[current] + Vector3.Distance(current.transform.position, neighbor.transform.position);
+
+                bool hasGScore = gScore.TryGetValue(neighbor, out float neighborGScore);
+                if (!hasGScore || tentative_gScore < neighborGScore)
+                {
+                    cameFrom[neighbor] = current;
+                    gScore[neighbor] = tentative_gScore;
+                    fScore[neighbor] = tentative_gScore + Vector3.Distance(neighbor.transform.position, endNode.transform.position);
+
+                    if (!openSetHash.Contains(neighbor))
+                    {
+                        openSet.Add(neighbor);
+                        openSetHash.Add(neighbor);
+                    }
+                }
+            }
         }
 
         private static List<AIWaypoint> ReconstructPath(Dictionary<AIWaypoint, AIWaypoint> cameFrom, AIWaypoint current)

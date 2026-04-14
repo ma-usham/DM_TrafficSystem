@@ -138,7 +138,30 @@ namespace Darkmatter.TrafficSystem
         public AIWaypoint GetClosestWaypoint(Vector3 position)
         {
             if (!_isInitialized || spatialGrid == null) return null;
-            return spatialGrid.GetClosestWaypoint(position);
+
+            AIWaypoint closest = spatialGrid.GetClosestWaypoint(position);
+            
+            // Fallback: If spatial grid fails to find a waypoint (e.g. outside bounds), search all waypoints in map
+            if (closest == null)
+            {
+                EnsureWaypointCacheBuilt();
+                float minSqrDistance = float.MaxValue;
+                
+                for (int i = 0; i < _allWaypointsInMap.Count; i++)
+                {
+                    AIWaypoint wp = _allWaypointsInMap[i];
+                    if (wp == null) continue;
+                    
+                    float sqrDist = (wp.transform.position - position).sqrMagnitude;
+                    if (sqrDist < minSqrDistance)
+                    {
+                        minSqrDistance = sqrDist;
+                        closest = wp;
+                    }
+                }
+            }
+
+            return closest;
         }
 
         /// <summary>
@@ -147,7 +170,35 @@ namespace Darkmatter.TrafficSystem
         public AIWaypoint GetNearestWaypointInDirection(Vector3 position, Vector3 direction)
         {
             if (!_isInitialized || spatialGrid == null) return null;
-            return spatialGrid.GetNearestWaypointInDirection(position, direction);
+            AIWaypoint closest = spatialGrid.GetNearestWaypointInDirection(position, direction);
+
+            // Fallback: search all waypoints in map if spatial grid fails
+            if (closest == null)
+            {
+                EnsureWaypointCacheBuilt();
+                float minSqrDistance = float.MaxValue;
+                Vector3 normalizedDir = direction.normalized;
+
+                for (int i = 0; i < _allWaypointsInMap.Count; i++)
+                {
+                    AIWaypoint wp = _allWaypointsInMap[i];
+                    if (wp == null) continue;
+
+                    Vector3 toWaypoint = wp.transform.position - position;
+                    // Check if waypoint is roughly in the requested direction
+                    if (Vector3.Dot(toWaypoint.normalized, normalizedDir) > 0)
+                    {
+                        float sqrDist = toWaypoint.sqrMagnitude;
+                        if (sqrDist < minSqrDistance)
+                        {
+                            minSqrDistance = sqrDist;
+                            closest = wp;
+                        }
+                    }
+                }
+            }
+
+            return closest;
         }
 
         /// <summary>

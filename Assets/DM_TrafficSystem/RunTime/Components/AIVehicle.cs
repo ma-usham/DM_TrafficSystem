@@ -259,12 +259,16 @@ namespace Darkmatter.TrafficSystem
 
         private void OnCollisionEnter(Collision collision)
         {
-            Debug.Log("Collided" + collision.relativeVelocity.magnitude);
+            Debug.Log("Collided with relative velocity: " + collision.relativeVelocity.magnitude);
+
             // Only trigger on significant impacts to avoid sleeping on tiny physics jitters
-            if (collision.relativeVelocity.magnitude > 5f)
+            if (collision.gameObject.layer == DMTS_API.TrafficLayerMask || collision.gameObject.layer == DMTS_API.PlayerLayerMask)
             {
-                // Put the car to sleep for 3 seconds
-                crashSleepTimer = 5f;
+                if (collision.relativeVelocity.magnitude > 5f)
+                {
+                    // Put the car to sleep for 5 seconds
+                    crashSleepTimer = 5f;
+                }
             }
         }
 
