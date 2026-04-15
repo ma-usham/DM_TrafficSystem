@@ -297,7 +297,8 @@ namespace Darkmatter.TrafficSystem
             {
                 //Calculate the visual Steering Angle
                 Vector3 localTarget = Quaternion.Inverse(transform.rotation) * projectedDir;
-                state.steeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
+                float targetSteeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
+                state.steeringAngle = Mathf.Lerp(state.steeringAngle, targetSteeringAngle, deltaTime * config.turnSpeed);
 
                 // Scale rotation capability by the vehicle's speed ratio
                 float speedRatio = Mathf.Clamp01(state.currentSpeed / Mathf.Max(state.localMaxSpeed, 1f));

@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Jobs;
+using UnityEditorInternal;
 
 namespace Darkmatter.TrafficSystem
 {
@@ -253,7 +254,7 @@ namespace Darkmatter.TrafficSystem
                 // This checks if the car is leaning sideways (rolling) and applies a counter-torque to keep it flat,
                 // while completely ignoring pitch so the car can still drive up and down steep hills!
                 float rollAmount = vehicle.transform.right.y;
-                if (Mathf.Abs(rollAmount) > 10f)
+                if (Mathf.Abs(rollAmount) > 0.05f)
                 {
                     // Multiply by mass and a strength multiplier (50f) to dynamically push the roof back to the sky
                     Vector3 antiRollTorque = vehicle.transform.forward * (-rollAmount * rb.mass * 50f);
@@ -324,11 +325,12 @@ namespace Darkmatter.TrafficSystem
 
                 if (Mathf.Abs(angle) > 0.01f)
                 {
-                    Vector3 desiredAngularVelocity = (axis * (angle * Mathf.Deg2Rad)) / Time.fixedDeltaTime;
+                    Vector3 desiredAngularVelocity = (axis * (angle * Mathf.Deg2Rad))* config.turnSpeed*2f;
                     Vector3 angularVelocityDifference = desiredAngularVelocity - rb.angularVelocity;
 
                     rb.AddTorque(angularVelocityDifference, ForceMode.VelocityChange);
                 }
+
 
             }
         }
