@@ -89,7 +89,8 @@ namespace Darkmatter.TrafficSystem
             RightLaneBlocked = 1 << 8,
             IsChangingLanes = 1 << 9,
             IsLaneChangingVehicle = 1 << 10,
-            WantsToChangeLane = 1 << 11
+            WantsToChangeLane = 1 << 11,
+            HasMadeFarDecision = 1 << 12
         }
         
         public uint stateFlags;
@@ -169,6 +170,12 @@ namespace Darkmatter.TrafficSystem
         {
             get => (stateFlags & (uint)StateFlags.WantsToChangeLane) != 0;
             set => stateFlags = value ? (stateFlags | (uint)StateFlags.WantsToChangeLane) : (stateFlags & ~(uint)StateFlags.WantsToChangeLane);
+        }
+
+        public bool hasMadeFarDecision
+        {
+            get => (stateFlags & (uint)StateFlags.HasMadeFarDecision) != 0;
+            set => stateFlags = value ? (stateFlags | (uint)StateFlags.HasMadeFarDecision) : (stateFlags & ~(uint)StateFlags.HasMadeFarDecision);
         }
     }
 }

@@ -91,11 +91,11 @@ namespace Darkmatter.TrafficSystem
         private float _hornTimer = 0f;
         private int _turnSignalState = 0; // 0=Off, -1=Left, 1=Right
 
-        //Fake Physics
+        [Header("Fake Physics")]
         public Transform bodyTransform;
-        public float tiltAmount = 1.5f;    // strength
-        public float smooth = 5f;          // smoothing
-        public float maxTiltAngle = 2f;   // maximum degrees of tilt
+        [Range(0f, 10f)] public float tiltAmount = 1.5f;    // strength
+        [Range(1f, 20f)] public float smooth = 5f;          // smoothing
+        [Range(0f, 45f)] public float maxTiltAngle = 2f;   // maximum degrees of tilt
 
         private float currentTilt;
         private float _previousForwardSpeed;
@@ -261,8 +261,11 @@ namespace Darkmatter.TrafficSystem
         {
             Debug.Log("Collided with relative velocity: " + collision.relativeVelocity.magnitude);
 
-            // Only trigger on significant impacts to avoid sleeping on tiny physics jitters
-            if (collision.gameObject.layer == DMTS_API.TrafficLayerMask || collision.gameObject.layer == DMTS_API.PlayerLayerMask)
+            // Combine both layer masks into a single bitmask
+            int targetMasks = DMTS_API.TrafficLayerMask.value | DMTS_API.PlayerLayerMask.value;
+
+            // Check if the collided object's layer is contained within our target masks
+            if (((1 << collision.gameObject.layer) & targetMasks) != 0)
             {
                 if (collision.relativeVelocity.magnitude > 5f)
                 {
@@ -271,6 +274,8 @@ namespace Darkmatter.TrafficSystem
                 }
             }
         }
+
+
 
         private void UpdateWheelVisuals()
         {

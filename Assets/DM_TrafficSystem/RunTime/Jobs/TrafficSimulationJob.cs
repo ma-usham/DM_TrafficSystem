@@ -160,8 +160,11 @@ namespace Darkmatter.TrafficSystem
             bool isDecidingStatus = !state.isChangingLanes && state.isLaneChangingVehicle && !state.wantsToChangeLane;
 
             // --- 1. FAR ZONE ENCOUNTER: Decision Making Only ---
-            if (isDecidingStatus && !state.isApproachingStopPoint && state.detectedTrafficFar)
+            if (isDecidingStatus && !state.isApproachingStopPoint && state.detectedTrafficFar && !state.hasMadeFarDecision)
             {
+                // Mark the decision as made immediately so we don't roll again next frame for this obstacle!
+                state.hasMadeFarDecision = true;
+
                 // [FIX] Improved RNG seed via spatial hash to prevent deterministic synchronized lane-changes
                 uint seed = (uint)(index * 1337 + (timeSinceLevelLoad * 10000) + (transform.position.sqrMagnitude * 100) + 1);
                 Unity.Mathematics.Random rng = new Unity.Mathematics.Random(seed);
@@ -179,7 +182,7 @@ namespace Darkmatter.TrafficSystem
             {
                 // Smooth Braking ONLY happens inside the Normal Sensor length
                 float maxSensorRange = config.sensorSize.z;
-                // 1. Define the actual 'Target Stop Line' (20% closer than the sensor's stopping distance)
+                // 1. Define the actual 'Target Stop Line' (10% closer than the sensor's stopping distance)
                 float actualStopLine = config.stoppingDistance * 0.9f;
 
                 // 2. The braking zone length is the distance between the tip of the sensor and this stop line
@@ -190,14 +193,32 @@ namespace Darkmatter.TrafficSystem
                 // Desired speed decreases the closer we get
                 float dynamicTargetSpeed = state.localMaxSpeed * proximityRatio;
 
+                if (state.isChangingLanes || state.wantsToChangeLane)
+                {
+                    // Override braking to allow a slow creep forward during a lane change maneuver (prevents paralysis)
+                    dynamicTargetSpeed = Mathf.Max(dynamicTargetSpeed, state.localMaxSpeed * 0.3f);
+                }
+
                 // Move toward that speed gradually
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, dynamicTargetSpeed, deltaTime * config.brakingPower);
 
                 // Stop entirely if we're safely within the actual stopping distance boundary
-                if (state.obstacleDistance < config.stoppingDistance - 0.1f)
+                if (state.obstacleDistance < actualStopLine)
                 {
-                    // Normal behavior: Slam on hard brake with three times the normal braking power to ensure we stop in time and don't clip through the obstacle
-                    state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * 3f);
+                    if (state.isChangingLanes || state.wantsToChangeLane)
+                    {
+                        // During a lane change, only hard stop if the obstacle is critically close (< 2.5m).
+                        // This allows them to bypass the stopped car to pull out, but prevents ramming a new car in the next lane.
+                        if (state.obstacleDistance < 2.5f)
+                        {
+                            state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * 1.5f);
+                        }
+                    }
+                    else
+                    {
+                        // Normal behavior: Slam on hard brake to ensure we stop perfectly at the actualStopLine
+                        state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * 1.5f);
+                    }
                 }
 
                 // Re-evaluate decision status in case the Far Zone logic changed state.wantsToOvertake
@@ -210,7 +231,7 @@ namespace Darkmatter.TrafficSystem
                     {
                         // STRICT CHECK: The car must be outside the stopping distance to turn.
                         // If it has reached the stopping line, it cannot overtake and must wait.
-                        bool hasRoomToTurn = state.obstacleDistance > config.stoppingDistance + 1f;
+                        bool hasRoomToTurn = state.obstacleDistance > 5f;
                         bool sideLanesClear = !state.leftLaneBlocked || !state.rightLaneBlocked;
 
                         // ONLY trigger overtake if at least one side lane is actually clear, we have room, AND we win the probability roll
@@ -251,7 +272,7 @@ namespace Darkmatter.TrafficSystem
 
             // Default: Clear road, go fast
             AccelerateNormal(ref state, in config);
-            //only reset personality if there is absolutely nothingin front of us.
+            //only reset personality if there is absolutely nothing in front of us.
             if (!state.detectedTrafficFar)
             {
                 ResetPersonality(ref state, in config);
@@ -277,6 +298,7 @@ namespace Darkmatter.TrafficSystem
         {
             state.impatienceTimer = config.frustrationTime;
             state.wantsToChangeLane = false;
+            state.hasMadeFarDecision = false;
         }
 
         private void ProcessMovement(ref VehicleState state, in VehicleConfig config, TransformAccess transform, float distance, Vector3 dir, Vector3 targetPos)
@@ -300,9 +322,24 @@ namespace Darkmatter.TrafficSystem
                 //Calculate the visual Steering Angle
                 Vector3 localTarget = Quaternion.Inverse(transform.rotation) * projectedDir;
                 state.steeringAngle = Mathf.Atan2(localTarget.x, localTarget.z) * Mathf.Rad2Deg;
-                // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
-                Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
-                state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * config.turnSpeed);
+
+                // Scale rotation capability by the vehicle's speed ratio
+                float speedRatio = Mathf.Clamp01(state.currentSpeed / Mathf.Max(state.localMaxSpeed, 1f));
+
+                if (state.currentSpeed > 0.5f)
+                {
+                    // Make the car "look" at the waypoint, but strictly maintain its current physical pitch and roll
+                    Quaternion targetRotation = Quaternion.LookRotation(projectedDir, currentUp);
+
+                    // Multiply by speedRatio so turn speed dies out as you brake
+                    state.desiredRotation = Quaternion.Slerp(transform.rotation, targetRotation, deltaTime * (config.turnSpeed * speedRatio));
+                }
+                else
+                {
+                    // Lock rotation completely when crawling to a halt to prevent wobbling
+                    state.desiredRotation = transform.rotation;
+                    state.steeringAngle = 0f;
+                }
 
             }
             else

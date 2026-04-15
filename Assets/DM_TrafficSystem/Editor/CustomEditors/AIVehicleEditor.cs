@@ -27,6 +27,7 @@ namespace Darkmatter.TrafficSystem
         private SerializedProperty bodyTransformProp;
         private SerializedProperty tiltAmountProp;
         private SerializedProperty smoothProp;
+        private SerializedProperty maxTiltAngleProp;
 
         private void OnEnable()
         {
@@ -45,6 +46,7 @@ namespace Darkmatter.TrafficSystem
             bodyTransformProp = serializedObject.FindProperty("bodyTransform");
             tiltAmountProp = serializedObject.FindProperty("tiltAmount");
             smoothProp = serializedObject.FindProperty("smooth");
+            maxTiltAngleProp = serializedObject.FindProperty("maxTiltAngle");
         }
 
         private void OnSceneGUI()
@@ -403,6 +405,7 @@ namespace Darkmatter.TrafficSystem
             if (bodyTransformProp != null) EditorGUILayout.PropertyField(bodyTransformProp);
             if (tiltAmountProp != null) EditorGUILayout.PropertyField(tiltAmountProp);
             if (smoothProp != null) EditorGUILayout.PropertyField(smoothProp);
+            if (maxTiltAngleProp != null) EditorGUILayout.PropertyField(maxTiltAngleProp);
 
             GUILayout.Space(10);
             if (showDebugStatsProp != null) EditorGUILayout.PropertyField(showDebugStatsProp);
