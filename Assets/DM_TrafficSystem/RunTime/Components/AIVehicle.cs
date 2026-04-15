@@ -267,11 +267,8 @@ namespace Darkmatter.TrafficSystem
             // Check if the collided object's layer is contained within our target masks
             if (((1 << collision.gameObject.layer) & targetMasks) != 0)
             {
-                if (collision.relativeVelocity.magnitude > 5f)
-                {
-                    // Put the car to sleep for 5 seconds
-                    crashSleepTimer = 5f;
-                }
+                    // Put the car to sleep for 8 seconds
+                    crashSleepTimer = 8f;
             }
         }
 
@@ -338,30 +335,8 @@ namespace Darkmatter.TrafficSystem
             Gizmos.color = new Color(0f, 1f, 1f, 0.2f); // Cyan semi-transparent fill
             Gizmos.DrawCube(centerOffset, halfExtents * 2f);
 
-            // Draw filled cubes for the sensors
-            if (frontSensor != null)
-            {
-                Quaternion frontSensorRot = transform.rotation;
-                if (sensorFacesWaypoint && lookaheadWaypoints != null && activeWaypointIndex >= 0 && activeWaypointIndex < lookaheadWaypoints.Length)
-                {
-                    AIWaypoint targetWP = lookaheadWaypoints[activeWaypointIndex];
-                    if (targetWP != null)
-                    {
-                        Vector3 dir = targetWP.transform.position - transform.position;
-                        dir.y = 0;
-                        if (dir.sqrMagnitude > 0.001f)
-                        {
-                            frontSensorRot = Quaternion.LookRotation(dir.normalized, transform.rotation * Vector3.up);
-                        }
-                    }
-                }
-
-                Matrix4x4 currentMatrix = Gizmos.matrix;
-                Gizmos.matrix = Matrix4x4.TRS(transform.position, frontSensorRot, Vector3.one);
-                Gizmos.color = new Color(1.0f, 0.6f, 0.0f, 0.25f); // Orange semi-transparent fill
-                Gizmos.DrawCube(frontSensor.localPosition, new Vector3(frontSensor.localScale.x, autoHeight, frontSensor.localScale.z));
-                Gizmos.matrix = currentMatrix;
-            }
+            // Draw filled cubes for the side sensors. The front sensor is drawn below using
+            // the exact runtime Boxcast math so the Scene view matches the job behavior.
             if (leftSensor != null)
             {
                 Gizmos.color = new Color(1.0f, 0.0f, 1.0f, 0.25f); // Magenta semi-transparent fill
@@ -407,63 +382,7 @@ namespace Darkmatter.TrafficSystem
             Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.5f);
             Gizmos.DrawWireSphere(transform.position, 4.0f);
 
-            // Visualize Front Sensor
-            if (frontSensor != null)
-            {
-                Matrix4x4 oldGizmoMatrix = Gizmos.matrix;
-
-                Quaternion sensorRotation = transform.rotation;
-
-                if (sensorFacesWaypoint && lookaheadWaypoints != null && activeWaypointIndex >= 0 && activeWaypointIndex < lookaheadWaypoints.Length)
-                {
-                    AIWaypoint targetWP = lookaheadWaypoints[activeWaypointIndex];
-                    if (targetWP != null)
-                    {
-                        Vector3 dir = targetWP.transform.position - transform.position;
-                        dir.y = 0;
-                        if (dir.sqrMagnitude > 0.001f)
-                        {
-                            sensorRotation = Quaternion.LookRotation(dir.normalized, transform.rotation * Vector3.up);
-                        }
-                    }
-                }
-
-                // The Job anchors the origin to the vehicle's actual rotation, NOT the sensor look rotation
-                Vector3 worldOrigin = transform.position + transform.rotation * frontSensor.localPosition;
-
-                // Now rotate around that precise worldOrigin based on the sensor's look rotation
-                Gizmos.matrix = Matrix4x4.TRS(worldOrigin, sensorRotation, Vector3.one);
-
-                Vector3 autoFrontSize = new Vector3(frontSensor.localScale.x, autoHeight, frontSensor.localScale.z);
-
-                // Normal Sensor Box (origin is now zero because we pushed worldOrigin into the matrix)
-                Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.3f); // Semi-Transparent Orange
-                Gizmos.DrawCube(Vector3.zero, autoFrontSize);
-                Gizmos.color = new Color(1.0f, 0.5f, 0.0f, 0.8f);
-                Gizmos.DrawWireCube(Vector3.zero, autoFrontSize);
-
-                // Extended Sensor Box (5m ahead of normal sensor)
-                Vector3 extendedSize = new Vector3(autoFrontSize.x, autoFrontSize.y, 5f);
-                Vector3 extendedCenterPath = new Vector3(0, 0, autoFrontSize.z * 0.5f + extendedSize.z * 0.5f);
-
-                Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.3f); // Semi-Transparent Light Blue
-                Gizmos.DrawCube(extendedCenterPath, extendedSize);
-                Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.8f);
-                Gizmos.DrawWireCube(extendedCenterPath, extendedSize);
-
-                // Stopping Distance Box (Red)
-                // The BoxCast starts sweeping from the BACK of the normal sensor, so the gizmo must start there too
-                float zStart = -autoFrontSize.z * 0.5f;
-                Vector3 stoppingSize = new Vector3(autoFrontSize.x, autoFrontSize.y, driverBehaviour.stoppingDistance);
-                Vector3 stoppingCenter = new Vector3(0, 0, zStart + driverBehaviour.stoppingDistance * 0.5f);
-
-                Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.3f); // Semi-Transparent Red
-                Gizmos.DrawCube(stoppingCenter, stoppingSize);
-                Gizmos.color = new Color(1.0f, 0.0f, 0.0f, 0.9f);
-                Gizmos.DrawWireCube(stoppingCenter, stoppingSize);
-
-                Gizmos.matrix = oldGizmoMatrix;
-            }
+            DrawRuntimeFrontSensorBoxcast();
 
             // Visualize lookahead waypoints
             if (lookaheadWaypoints != null)
@@ -503,6 +422,7 @@ namespace Darkmatter.TrafficSystem
 
                 string debugText =
                     $"Engine Max: {debugData.engineMaxSpeed:F1}\n" +
+                    $"Target Offset: {debugData.currentTargetIndexOffset}\n" +
                     $"Local Max: {debugData.localMaxSpeed:F1}\n" +
                     $"Current Spd: {debugData.currentSpeed:F1}\n" +
                     $"Changing Lanes: {debugData.isChangingLanes}\n" +
@@ -528,6 +448,122 @@ namespace Darkmatter.TrafficSystem
                 // Draw the actual text
                 UnityEditor.Handles.Label(labelPosition, debugText, labelStyle);
             }
+        }
+
+        private void DrawRuntimeFrontSensorBoxcast()
+        {
+            if (frontSensor == null) return;
+
+            Vector3 sensorSize = frontSensor.localScale;
+            Vector3 centerOffset = frontSensor.localPosition;
+            centerOffset.z -= sensorSize.z * 0.5f;
+
+            Vector3 origin = transform.position + transform.rotation * centerOffset;
+            Vector3 direction = transform.forward;
+            Quaternion boxRotation = transform.rotation;
+
+            if (sensorFacesWaypoint && TryGetCurrentSensorTarget(out AIWaypoint targetWaypoint))
+            {
+                Vector3 waypointDirection = targetWaypoint.transform.position - transform.position;
+                waypointDirection.y = 0f;
+
+                if (waypointDirection.sqrMagnitude > 0.001f)
+                {
+                    direction = waypointDirection.normalized;
+                    boxRotation = Quaternion.LookRotation(direction, transform.up);
+                }
+            }
+
+            Vector3 halfExtents = new Vector3(sensorSize.x * 0.5f, sensorSize.y * 0.5f, 0.01f);
+            float castDistance = sensorSize.z + driverBehaviour.stoppingDistance;
+
+            DrawOrientedBox(origin, boxRotation, halfExtents, new Color(1f, 0.55f, 0f, 0.16f), new Color(1f, 0.55f, 0f, 0.9f));
+            DrawBoxcastSweep(origin, boxRotation, halfExtents, direction, castDistance, new Color(0.2f, 0.8f, 1f, 0.9f));
+
+            Vector3 stopEnd = origin + direction * driverBehaviour.stoppingDistance;
+            Gizmos.color = new Color(1f, 0f, 0f, 0.95f);
+            Gizmos.DrawLine(origin, stopEnd);
+
+            Vector3 arrowRight = Quaternion.AngleAxis(20f, transform.up) * -direction;
+            Vector3 arrowLeft = Quaternion.AngleAxis(-20f, transform.up) * -direction;
+            float arrowLength = 0.6f;
+            Gizmos.DrawLine(stopEnd, stopEnd + arrowRight * arrowLength);
+            Gizmos.DrawLine(stopEnd, stopEnd + arrowLeft * arrowLength);
+        }
+
+        private bool TryGetCurrentSensorTarget(out AIWaypoint targetWaypoint)
+        {
+            targetWaypoint = null;
+
+            if (lookaheadWaypoints == null || lookaheadWaypoints.Length == 0)
+            {
+                return false;
+            }
+
+            int targetIndex = Mathf.Clamp(debugData.currentTargetIndexOffset, 0, lookaheadWaypoints.Length - 1);
+            targetWaypoint = lookaheadWaypoints[targetIndex];
+            return targetWaypoint != null;
+        }
+
+        private void DrawBoxcastSweep(Vector3 origin, Quaternion rotation, Vector3 halfExtents, Vector3 direction, float distance, Color lineColor)
+        {
+            Vector3 endCenter = origin + direction * distance;
+
+            DrawOrientedWireBox(origin, rotation, halfExtents, lineColor);
+            DrawOrientedWireBox(endCenter, rotation, halfExtents, lineColor);
+
+            Vector3[] startCorners = GetOrientedBoxCorners(origin, rotation, halfExtents);
+            Vector3[] endCorners = GetOrientedBoxCorners(endCenter, rotation, halfExtents);
+
+            Gizmos.color = lineColor;
+            for (int i = 0; i < startCorners.Length; i++)
+            {
+                Gizmos.DrawLine(startCorners[i], endCorners[i]);
+            }
+
+            Gizmos.DrawLine(origin, endCenter);
+        }
+
+        private void DrawOrientedBox(Vector3 center, Quaternion rotation, Vector3 halfExtents, Color fillColor, Color wireColor)
+        {
+            Matrix4x4 previousMatrix = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+
+            Gizmos.color = fillColor;
+            Gizmos.DrawCube(Vector3.zero, halfExtents * 2f);
+
+            Gizmos.color = wireColor;
+            Gizmos.DrawWireCube(Vector3.zero, halfExtents * 2f);
+
+            Gizmos.matrix = previousMatrix;
+        }
+
+        private void DrawOrientedWireBox(Vector3 center, Quaternion rotation, Vector3 halfExtents, Color wireColor)
+        {
+            Matrix4x4 previousMatrix = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+            Gizmos.color = wireColor;
+            Gizmos.DrawWireCube(Vector3.zero, halfExtents * 2f);
+            Gizmos.matrix = previousMatrix;
+        }
+
+        private Vector3[] GetOrientedBoxCorners(Vector3 center, Quaternion rotation, Vector3 halfExtents)
+        {
+            Vector3 right = rotation * Vector3.right * halfExtents.x;
+            Vector3 up = rotation * Vector3.up * halfExtents.y;
+            Vector3 forward = rotation * Vector3.forward * halfExtents.z;
+
+            return new[]
+            {
+                center - right - up - forward,
+                center - right - up + forward,
+                center - right + up - forward,
+                center - right + up + forward,
+                center + right - up - forward,
+                center + right - up + forward,
+                center + right + up - forward,
+                center + right + up + forward
+            };
         }
 #endif
     }

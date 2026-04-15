@@ -200,6 +200,7 @@ namespace Darkmatter.TrafficSystem
                 vehicle.debugData.currentSpeed = state.currentSpeed;
                 vehicle.debugData.localMaxSpeed = state.localMaxSpeed;
                 vehicle.debugData.engineMaxSpeed = config.engineMaxSpeed;
+                vehicle.debugData.currentTargetIndexOffset = state.currentTargetIndexOffset;
                 vehicle.debugData.isChangingLanes = state.isChangingLanes;
                 vehicle.debugData.wantsToChangeLane = state.wantsToChangeLane;
                 vehicle.debugData.leftLaneBlocked = state.leftLaneBlocked;

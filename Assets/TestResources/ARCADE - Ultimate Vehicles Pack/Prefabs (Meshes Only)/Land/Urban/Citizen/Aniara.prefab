@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.3266015}
-  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.860421}
+  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.2412844}
+  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.68977}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -778,11 +778,11 @@ MonoBehaviour:
     acceleration: 1
     brakingPower: 3
     turnSpeed: 5
-    stoppingDistance: 4
-    willChangeLane: 0
-    frustrationTime: {x: 10, y: 15}
-    laneChangeCooldown: {x: 15, y: 20}
-    aiOvertakeProbability: 0.707
+    stoppingDistance: 6
+    willChangeLane: 1
+    frustrationTime: {x: 2, y: 5}
+    laneChangeCooldown: {x: 2, y: 5}
+    aiOvertakeProbability: 1
   wheels:
   - raycastTransform: {fileID: 4565691815504819783}
     visualMesh: {fileID: 1277289663938139567}
@@ -810,7 +810,7 @@ MonoBehaviour:
     localPosition: {x: 0, y: 0, z: 0}
   springStrength: 60000
   springDamper: 5000
-  sensorFacesWaypoint: 0
+  sensorFacesWaypoint: 1
   frontSensor: {fileID: 1997585314265276491}
   leftSensor: {fileID: 5823510284588927058}
   rightSensor: {fileID: 3071636954982558131}
@@ -831,6 +831,7 @@ MonoBehaviour:
     currentSpeed: 0
     localMaxSpeed: 0
     engineMaxSpeed: 0
+    currentTargetIndexOffset: 0
     isChangingLanes: 0
     wantsToChangeLane: 0
     leftLaneBlocked: 0

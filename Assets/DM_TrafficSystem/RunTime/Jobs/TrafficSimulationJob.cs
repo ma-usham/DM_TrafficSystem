@@ -182,43 +182,19 @@ namespace Darkmatter.TrafficSystem
             {
                 // Smooth Braking ONLY happens inside the Normal Sensor length
                 float maxSensorRange = config.sensorSize.z;
-                // 1. Define the actual 'Target Stop Line' (10% closer than the sensor's stopping distance)
-                float actualStopLine = config.stoppingDistance * 0.9f;
-
-                // 2. The braking zone length is the distance between the tip of the sensor and this stop line
-                float brakingZoneLength = maxSensorRange - actualStopLine;
-
                 // 3. Proximity ratio will reach 0.0 when obstacleDistance == actualStopLine
-                float proximityRatio = Mathf.Clamp01((state.obstacleDistance - actualStopLine) / brakingZoneLength);
+                float proximityRatio = Mathf.Clamp01((state.obstacleDistance - config.stoppingDistance) / (maxSensorRange-config.stoppingDistance));
                 // Desired speed decreases the closer we get
                 float dynamicTargetSpeed = state.localMaxSpeed * proximityRatio;
-
-                if (state.isChangingLanes || state.wantsToChangeLane)
-                {
-                    // Override braking to allow a slow creep forward during a lane change maneuver (prevents paralysis)
-                    dynamicTargetSpeed = Mathf.Max(dynamicTargetSpeed, state.localMaxSpeed * 0.3f);
-                }
 
                 // Move toward that speed gradually
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, dynamicTargetSpeed, deltaTime * config.brakingPower);
 
                 // Stop entirely if we're safely within the actual stopping distance boundary
-                if (state.obstacleDistance < actualStopLine)
+                if (state.obstacleDistance < config.stoppingDistance)
                 {
-                    if (state.isChangingLanes || state.wantsToChangeLane)
-                    {
-                        // During a lane change, only hard stop if the obstacle is critically close (< 2.5m).
-                        // This allows them to bypass the stopped car to pull out, but prevents ramming a new car in the next lane.
-                        if (state.obstacleDistance < 2.5f)
-                        {
-                            state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * 1.5f);
-                        }
-                    }
-                    else
-                    {
-                        // Normal behavior: Slam on hard brake to ensure we stop perfectly at the actualStopLine
-                        state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * 1.5f);
-                    }
+                    // This allows them to bypass the stopped car to pull out, but prevents ramming a new car in the next lane.
+                    state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * 2f);
                 }
 
                 // Re-evaluate decision status in case the Far Zone logic changed state.wantsToOvertake
@@ -231,7 +207,7 @@ namespace Darkmatter.TrafficSystem
                     {
                         // STRICT CHECK: The car must be outside the stopping distance to turn.
                         // If it has reached the stopping line, it cannot overtake and must wait.
-                        bool hasRoomToTurn = state.obstacleDistance > 5f;
+                        bool hasRoomToTurn = state.obstacleDistance > config.stoppingDistance*0.9f; // 90% of stopping distance as a safety buffer to prevent ramming
                         bool sideLanesClear = !state.leftLaneBlocked || !state.rightLaneBlocked;
 
                         // ONLY trigger overtake if at least one side lane is actually clear, we have room, AND we win the probability roll

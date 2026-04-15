@@ -8,6 +8,7 @@ namespace Darkmatter.TrafficSystem
         public float currentSpeed;
         public float localMaxSpeed;
         public float engineMaxSpeed;
+        public int currentTargetIndexOffset;
         public bool isChangingLanes;
         public bool wantsToChangeLane;
         public bool leftLaneBlocked;
