@@ -59,7 +59,7 @@ namespace Darkmatter.TrafficSystem
                 Vector3 halfExtents = new Vector3(config.sensorSize.x * 0.5f, config.sensorSize.y * 0.5f, 0.01f);
                 
                 // [FIX] Removed dangerous hardcoded padding; now bases safety sweep on driver braking profile
-                float extendedDistance = config.sensorSize.z + config.stoppingDistance;
+                float extendedDistance = config.sensorSize.z + 2f;
                 boxcastCommands[index] = new BoxcastCommand(
                     origin,
                     halfExtents,

@@ -422,7 +422,7 @@ namespace Darkmatter.TrafficSystem
             Vector3 frontCenter = origin + direction * (sensorSize.z * 0.5f);
             DrawRuntimeSensorOutline(frontCenter, boxRotation, sensorSize, FrontSensorDebugColor, Vector3.forward);
 
-            float stoppingDistance = driverBehaviour.stoppingDistance;
+            float stoppingDistance = 2f;
             if (stoppingDistance <= 0f) return;
 
             Vector3 extendedSize = new Vector3(sensorSize.x, sensorSize.y, stoppingDistance);

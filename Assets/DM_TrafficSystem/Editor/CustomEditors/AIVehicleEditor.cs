@@ -100,7 +100,7 @@ namespace Darkmatter.TrafficSystem
 
                 if (drawExtendedZone && Event.current.type == EventType.Repaint)
                 {
-                    float stoppingDistance = vehicle.driverBehaviour.stoppingDistance;
+                    float stoppingDistance = 2f;
                     if (stoppingDistance > 0f)
                     {
                         Vector3 extendedSize = new Vector3(_sensorBoundsHandle.size.x, _sensorBoundsHandle.size.y, stoppingDistance);

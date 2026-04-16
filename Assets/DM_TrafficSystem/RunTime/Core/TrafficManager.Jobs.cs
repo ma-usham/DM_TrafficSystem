@@ -88,19 +88,6 @@ namespace Darkmatter.TrafficSystem
             _trafficWaypointUpdater.UpdateWaypoint(_activeVehicles, _vehicleStates, _vehicleConfigs, _waypointBuffer, Time.fixedDeltaTime);
             _trafficWaypointUpdater.UpdateStopWaypoints(_activeVehicles, _vehicleStates, _vehicleConfigs);
 
-            // Sync the real physics speed to the Job memory
-            for (int i = 0; i < _activeVehicles.Count; i++)
-            {
-                VehicleState state = _vehicleStates[i];
-                if (_activeVehicles[i].rb != null)
-                {
-                    state.physicalSpeed = Vector3.Dot(_activeVehicles[i].rb.linearVelocity, _activeVehicles[i].transform.forward);
-                }
-                _vehicleStates[i] = state;
-            }
-
-            // --- 2. Schedule Jobs ---
-
             // Job 1: Build Boxcast Commands
             VehicleSensorJob sensorJob = new VehicleSensorJob
             {

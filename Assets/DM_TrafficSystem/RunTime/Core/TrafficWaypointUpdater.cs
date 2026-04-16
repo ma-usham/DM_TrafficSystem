@@ -90,7 +90,7 @@ namespace Darkmatter.TrafficSystem
             {
                 if (TryFindLaneChangeWaypoint(vehicle, tryLeft, tryRight, out AIWaypoint targetLaneWaypoint, out int turnDirection))
                 {
-                    ExecuteLaneSwitch(vehicle, ref state, in config, targetLaneWaypoint, waypointBuffer, turnDirection);
+                    ExecuteLaneSwitch(vehicle, ref state, targetLaneWaypoint, waypointBuffer, turnDirection);
                 }
             }
         }
@@ -144,7 +144,7 @@ namespace Darkmatter.TrafficSystem
             return false;
         }
 
-        private void ExecuteLaneSwitch(AIVehicle vehicle, ref VehicleState state, in VehicleConfig config, AIWaypoint targetLaneWaypoint, NativeArray<Vector3> waypointBuffer, int turnDirection)
+        private void ExecuteLaneSwitch(AIVehicle vehicle, ref VehicleState state, AIWaypoint targetLaneWaypoint, NativeArray<Vector3> waypointBuffer, int turnDirection)
         {
             // Regenerate the lookahead queue starting from the new lane change point
             vehicle.lookaheadWaypoints[0] = targetLaneWaypoint;
@@ -157,7 +157,6 @@ namespace Darkmatter.TrafficSystem
             state.isChangingLanes = true;
             state.currentBehavior = AIState.ChangingLanes;
             vehicle.isChangingLanes = true;
-            vehicle.laneChangeCooldownTimer = config.laneChangeCooldown; // Cooldown from personality
             
             // Turn on the blinkers!
             vehicle.SetTurnSignals(turnDirection);
@@ -277,25 +276,6 @@ namespace Darkmatter.TrafficSystem
             {
                 return nextWaypoints[Random.Range(0, nextWaypoints.Length)];
             }
-
-            // // Fallback: If no waypoints matched the specific type, we pick from any valid next waypoint.
-            // if (_validWaypoints.Count == 0)
-            // {
-            //     _fallbackWaypoints.Clear();
-            //     for (int i = 0; i < nextWaypoints.Length; i++)
-            //     {
-            //         if (nextWaypoints[i] != null) _fallbackWaypoints.Add(nextWaypoints[i]);
-            //     }
-
-            //     if (_fallbackWaypoints.Count > 0)
-            //     {
-            //         return _fallbackWaypoints[Random.Range(0, _fallbackWaypoints.Count)];
-            //     }
-            //     return null;
-            // }
-
-            // // Otherwise, pick randomly from the matched type waypoints
-            // return _validWaypoints[Random.Range(0, _validWaypoints.Count)];
         }
     }
 }

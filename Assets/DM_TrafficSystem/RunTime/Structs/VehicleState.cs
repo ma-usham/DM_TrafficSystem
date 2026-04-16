@@ -60,7 +60,6 @@ namespace Darkmatter.TrafficSystem
         public AIState currentBehavior;
 
         public float currentSpeed;
-        public float physicalSpeed; // True Rigidbody forward velocity
         public float localMaxSpeed;
         
         // Output from the job to be applied to Rigidbody

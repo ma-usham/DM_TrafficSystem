@@ -142,7 +142,6 @@ namespace Darkmatter.TrafficSystem
             {
                 currentBehavior = AIState.Cruising,
                 currentSpeed = 1f,
-                physicalSpeed = 0f,
                 localMaxSpeed = Mathf.Min(vehicle.driverBehaviour.engineMaxSpeed * randomMultiplier, wpLimit),
                 waypointBufferStartIndex = newIndex * WAYPOINT_LOOKAHEAD,
                 currentTargetIndexOffset = 0,
