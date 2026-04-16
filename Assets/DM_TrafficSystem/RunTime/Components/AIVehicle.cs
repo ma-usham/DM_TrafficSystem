@@ -52,6 +52,7 @@ namespace Darkmatter.TrafficSystem
         public Transform frontSensor;
         public Transform leftSensor;
         public Transform rightSensor;
+        public const float ExtendedSensorLength = 2f;
 
         // We'll store the actual MonoBehaviour waypoints here so the Main Thread
         // can traverse the graph and feed 'Vector3' positions to the Job System.
@@ -422,12 +423,12 @@ namespace Darkmatter.TrafficSystem
             Vector3 frontCenter = origin + direction * (sensorSize.z * 0.5f);
             DrawRuntimeSensorOutline(frontCenter, boxRotation, sensorSize, FrontSensorDebugColor, Vector3.forward);
 
-            float stoppingDistance = 2f;
-            if (stoppingDistance <= 0f) return;
-
-            Vector3 extendedSize = new Vector3(sensorSize.x, sensorSize.y, stoppingDistance);
-            Vector3 extendedCenter = origin + direction * (sensorSize.z + (stoppingDistance * 0.5f));
+            Vector3 extendedSize = new Vector3(sensorSize.x, sensorSize.y, ExtendedSensorLength);
+            Vector3 extendedCenter = origin + direction * (sensorSize.z + (ExtendedSensorLength * 0.5f));
             DrawRuntimeSensorOutline(extendedCenter, boxRotation, extendedSize, ExtendedSensorDebugColor, Vector3.forward, true);
+
+            float stoppingDistance = driverBehaviour.stoppingDistance;
+            if (stoppingDistance <= 0f) return;
 
             Vector3 stoppingDistanceCenter = origin + direction * (stoppingDistance * 0.5f);
             Vector3 stoppingDistanceSize = new Vector3(sensorSize.x, sensorSize.y, stoppingDistance);

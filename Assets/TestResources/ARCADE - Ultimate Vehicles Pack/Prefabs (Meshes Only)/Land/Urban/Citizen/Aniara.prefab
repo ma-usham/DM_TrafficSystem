@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.518991}
-  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.671269}
+  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.52749}
+  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.688268}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -775,10 +775,10 @@ MonoBehaviour:
   driverBehaviour:
     engineMaxSpeed: 10
     speedMultiplierRange: {x: 0.7, y: 1.3}
-    acceleration: 1
-    brakingPower: 5
+    acceleration: 0.3
+    brakingPower: 100
     turnSpeed: 8
-    stoppingDistance: 6
+    stoppingDistance: 7
     willChangeLane: 1
     frustrationTime: {x: 2, y: 5}
     laneChangeCooldown: {x: 2, y: 5}
@@ -842,10 +842,10 @@ MonoBehaviour:
   laneChangeCooldownTimer: 0
   isChangingLanes: 0
   crashSleepTimer: 0
-  spawnPadding: 4.5
+  spawnPadding: 4
   bodyTransform: {fileID: 3610515905274031898}
-  tiltAmount: 5
-  smooth: 5
+  tiltAmount: 10
+  smooth: 10
   maxTiltAngle: 5
 --- !u!1 &8414287651470153809
 GameObject:

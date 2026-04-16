@@ -100,20 +100,16 @@ namespace Darkmatter.TrafficSystem
 
                 if (drawExtendedZone && Event.current.type == EventType.Repaint)
                 {
-                    float stoppingDistance = 2f;
-                    if (stoppingDistance > 0f)
-                    {
-                        Vector3 extendedSize = new Vector3(_sensorBoundsHandle.size.x, _sensorBoundsHandle.size.y, stoppingDistance);
-                        Vector3 extendedCenter = _sensorBoundsHandle.center;
-                        extendedCenter.z += (_sensorBoundsHandle.size.z * 0.5f) + (stoppingDistance * 0.5f);
+                    Vector3 extendedSize = new Vector3(_sensorBoundsHandle.size.x, _sensorBoundsHandle.size.y, AIVehicle.ExtendedSensorLength);
+                    Vector3 extendedCenter = _sensorBoundsHandle.center;
+                    extendedCenter.z += (_sensorBoundsHandle.size.z * 0.5f) + (AIVehicle.ExtendedSensorLength * 0.5f);
 
-                        DrawSensorOutline(
-                            extendedCenter,
-                            extendedSize,
-                            ExtendedSensorColor,
-                            Vector3.forward,
-                            true);
-                    }
+                    DrawSensorOutline(
+                        extendedCenter,
+                        extendedSize,
+                        ExtendedSensorColor,
+                        Vector3.forward,
+                        true);
                 }
 
                 // Hide the bounds handle's internal wireframe so only the custom border is visible.

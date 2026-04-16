@@ -14,6 +14,42 @@ namespace Darkmatter.TrafficSystem.Editor
         private static readonly AIWaypoint[] EmptyWaypointLinks = System.Array.Empty<AIWaypoint>();
 
         /// <summary>
+        /// Returns the compact terminal name used in connection object names and editor labels.
+        /// </summary>
+        public static string BuildConnectionTerminalName(Road road, int laneIndex)
+        {
+            return $"{BuildRoadToken(road)}_{BuildLaneToken(laneIndex)}";
+        }
+
+        /// <summary>
+        /// Returns the compact terminal name for the provided waypoint's road and lane.
+        /// </summary>
+        public static string BuildConnectionTerminalName(AIWaypoint waypoint)
+        {
+            if (!TryGetWaypointLaneInfo(waypoint, out Road road, out int laneIndex))
+                return waypoint != null ? waypoint.name : "Waypoint";
+
+            return BuildConnectionTerminalName(road, laneIndex);
+        }
+
+        /// <summary>
+        /// Renames one connection object so it matches the current source and target road/lane endpoints.
+        /// </summary>
+        public static void SyncConnectionObjectName(AIWaypointConnection connection, string undoLabel)
+        {
+            if (connection == null)
+                return;
+
+            string expectedName = BuildConnectionObjectName(connection.sourceWaypoint, connection.targetWaypoint);
+            if (connection.gameObject.name == expectedName)
+                return;
+
+            Undo.RecordObject(connection.gameObject, undoLabel);
+            connection.gameObject.name = expectedName;
+            EditorUtility.SetDirty(connection.gameObject);
+        }
+
+        /// <summary>
         /// Creates a new connection object, seeds a default spline, and generates its transition waypoints.
         /// </summary>
         public static AIWaypointConnection CreateConnection(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
@@ -24,13 +60,11 @@ namespace Darkmatter.TrafficSystem.Editor
             GameObject connectionObject = new GameObject(BuildConnectionObjectName(sourceWaypoint, targetWaypoint));
             Undo.RegisterCreatedObjectUndo(connectionObject, "Create Road Connection");
 
-            GameObject rootObject = GetOrCreateConnectionRoot();
-            connectionObject.transform.SetParent(rootObject.transform);
-            connectionObject.transform.position = sourceWaypoint.transform.position;
-
             AIWaypointConnection connection = Undo.AddComponent<AIWaypointConnection>(connectionObject);
             connection.sourceWaypoint = sourceWaypoint;
             connection.targetWaypoint = targetWaypoint;
+            TrafficSystemHierarchyUtility.ParentConnection(connectionObject, sourceWaypoint, "Create Road Connection");
+            connectionObject.transform.position = sourceWaypoint.transform.position;
             connection.SetDefaultControlPoints(
                 GetSourceForward(sourceWaypoint, targetWaypoint),
                 GetTargetForward(targetWaypoint, sourceWaypoint));
@@ -50,6 +84,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connection == null)
                 return;
 
+            SyncConnectionObjectName(connection, undoLabel);
+            TrafficSystemHierarchyUtility.ParentConnection(connection.gameObject, undoLabel);
             connection.SyncEndpointControlPoints();
 
             RemoveConnectionLinks(connection, undoLabel);
@@ -76,9 +112,11 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connection == null)
                 return;
 
+            Transform connectionGroup = connection.transform.parent;
             RemoveConnectionLinks(connection, undoLabel);
             ClearGeneratedWaypoints(connection, undoLabel);
             Undo.DestroyObjectImmediate(connection.gameObject);
+            TrafficSystemHierarchyUtility.CleanupEmptyConnectionGroup(connectionGroup, undoLabel);
         }
 
         /// <summary>
@@ -683,17 +721,90 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private static string BuildConnectionObjectName(AIWaypoint sourceWaypoint, AIWaypoint targetWaypoint)
         {
-            string sourceName = sourceWaypoint != null ? sourceWaypoint.transform.parent.name : "Source";
-            string targetName = targetWaypoint != null ? targetWaypoint.transform.parent.name : "Target";
+            string sourceName = BuildConnectionTerminalName(sourceWaypoint);
+            string targetName = BuildConnectionTerminalName(targetWaypoint);
             return $"{sourceName}_To_{targetName}_Connection";
         }
 
         /// <summary>
-        /// Returns the shared scene root used for all editable connection objects.
+        /// Returns whether the waypoint can be resolved back to a generated road lane.
         /// </summary>
-        private static GameObject GetOrCreateConnectionRoot()
+        private static bool TryGetWaypointLaneInfo(AIWaypoint waypoint, out Road road, out int laneIndex)
         {
-            return TrafficSystemHierarchyUtility.GetOrCreateConnectionsRoot("Create Road Connection Root").gameObject;
+            road = waypoint != null ? waypoint.GetComponentInParent<Road>() : null;
+            laneIndex = -1;
+
+            if (waypoint == null)
+                return false;
+
+            AILane lane = waypoint.GetComponentInParent<AILane>();
+            if (lane == null)
+                return road != null;
+
+            if (road != null && road.laneObjects != null)
+            {
+                for (int i = 0; i < road.laneObjects.Count; i++)
+                {
+                    if (road.laneObjects[i] == lane)
+                    {
+                        laneIndex = i;
+                        return true;
+                    }
+                }
+            }
+
+            laneIndex = ExtractTrailingNumber(lane.name);
+            return road != null || laneIndex >= 0;
+        }
+
+        /// <summary>
+        /// Converts a road name such as Road_1 into the compact R1 token used in connection names.
+        /// </summary>
+        private static string BuildRoadToken(Road road)
+        {
+            string roadName = road != null ? road.name : string.Empty;
+            if (string.IsNullOrWhiteSpace(roadName))
+                return "R?";
+
+            string compactRoadName = roadName.Replace(" ", string.Empty).Replace("_", string.Empty);
+            if (compactRoadName.StartsWith("Road", System.StringComparison.OrdinalIgnoreCase))
+            {
+                string suffix = compactRoadName.Substring(4);
+                return !string.IsNullOrEmpty(suffix) ? $"R{suffix}" : "R?";
+            }
+
+            return compactRoadName;
+        }
+
+        /// <summary>
+        /// Returns the compact lane token used in connection names.
+        /// </summary>
+        private static string BuildLaneToken(int laneIndex)
+        {
+            return laneIndex >= 0 ? $"L{laneIndex}" : "L?";
+        }
+
+        /// <summary>
+        /// Extracts the last numeric run from an object name, returning -1 when none exists.
+        /// </summary>
+        private static int ExtractTrailingNumber(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return -1;
+
+            int endIndex = value.Length - 1;
+            while (endIndex >= 0 && !char.IsDigit(value[endIndex]))
+                endIndex--;
+
+            if (endIndex < 0)
+                return -1;
+
+            int startIndex = endIndex;
+            while (startIndex >= 0 && char.IsDigit(value[startIndex]))
+                startIndex--;
+
+            string numericPortion = value.Substring(startIndex + 1, endIndex - startIndex);
+            return int.TryParse(numericPortion, out int parsedNumber) ? parsedNumber : -1;
         }
     }
 }

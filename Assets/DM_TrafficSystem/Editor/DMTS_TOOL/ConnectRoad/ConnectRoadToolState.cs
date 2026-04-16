@@ -683,9 +683,7 @@ namespace Darkmatter.TrafficSystem.Editor
             public LaneTerminal(Road road, int laneIndex, AIWaypoint waypoint)
             {
                 this.waypoint = waypoint;
-                string roadName = road != null && !string.IsNullOrEmpty(road.name) ? road.name : "road";
-                roadName = roadName.Replace(' ', '_');
-                connectionName = $"{roadName}_lane_{laneIndex}";
+                connectionName = WaypointConnectionBuilder.BuildConnectionTerminalName(road, laneIndex);
             }
         }
 

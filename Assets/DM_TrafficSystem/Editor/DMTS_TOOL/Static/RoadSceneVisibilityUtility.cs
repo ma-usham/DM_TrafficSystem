@@ -134,7 +134,8 @@ namespace Darkmatter.TrafficSystem.Editor
             Transform trafficLightIntersectionsRoot = GetOrCreateChild(intersectionsRoot, TrafficLightIntersectionsRootName, undoLabel);
 
             ParentObjects(Object.FindObjectsByType<Road>(FindObjectsInactive.Include), roadsRoot, undoLabel);
-            ParentObjects(Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Include), connectionsRoot, undoLabel);
+            ParentConnections(Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Include), undoLabel);
+            CleanupEmptyConnectionGroups(connectionsRoot, undoLabel);
             ParentObjects(Object.FindObjectsByType<PriorityIntersection>(FindObjectsInactive.Include), priorityIntersectionsRoot, undoLabel);
             ParentObjects(Object.FindObjectsByType<TrafficLightIntersection>(FindObjectsInactive.Include), trafficLightIntersectionsRoot, undoLabel);
             ParentObjects(Object.FindObjectsByType<TrafficManager>(FindObjectsInactive.Include), systemRoot, undoLabel);
@@ -161,7 +162,37 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connectionObject == null)
                 return;
 
-            SetParentIfNeeded(connectionObject.transform, GetOrCreateConnectionsRoot(GetOrCreateRoadNetworkRoot(undoLabel), undoLabel), undoLabel);
+            AIWaypointConnection connection = connectionObject.GetComponent<AIWaypointConnection>();
+            ParentConnection(connectionObject, connection != null ? connection.sourceWaypoint : null, undoLabel);
+        }
+
+        /// <summary>
+        /// Parents one connection object under the source road folder inside the shared Connections container.
+        /// </summary>
+        public static void ParentConnection(GameObject connectionObject, AIWaypoint sourceWaypoint, string undoLabel)
+        {
+            if (connectionObject == null)
+                return;
+
+            AIWaypointConnection connection = connectionObject.GetComponent<AIWaypointConnection>();
+            if (connection != null)
+                WaypointConnectionBuilder.SyncConnectionObjectName(connection, undoLabel);
+
+            Transform previousParent = connectionObject.transform.parent;
+            Transform targetParent = GetOrCreateConnectionGroupRoot(sourceWaypoint, undoLabel);
+            SetParentIfNeeded(connectionObject.transform, targetParent, undoLabel);
+            CleanupEmptyConnectionGroup(previousParent, undoLabel);
+        }
+
+        /// <summary>
+        /// Deletes an empty per-road connection folder when it no longer contains any connections.
+        /// </summary>
+        public static void CleanupEmptyConnectionGroup(Transform candidateGroup, string undoLabel)
+        {
+            if (!IsEmptyConnectionGroup(candidateGroup))
+                return;
+
+            Undo.DestroyObjectImmediate(candidateGroup.gameObject);
         }
 
         /// <summary>
@@ -302,6 +333,24 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
+        /// Reparents all connections under folders named after their source road.
+        /// </summary>
+        private static void ParentConnections(AIWaypointConnection[] connections, string undoLabel)
+        {
+            if (connections == null)
+                return;
+
+            for (int i = 0; i < connections.Length; i++)
+            {
+                AIWaypointConnection connection = connections[i];
+                if (connection == null)
+                    continue;
+
+                ParentConnection(connection.gameObject, connection.sourceWaypoint, undoLabel);
+            }
+        }
+
+        /// <summary>
         /// Reparents a transform only when it is not already under the requested parent.
         /// </summary>
         private static void SetParentIfNeeded(Transform child, Transform parent, string undoLabel)
@@ -324,6 +373,70 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 Undo.SetTransformParent(source.GetChild(0), target, undoLabel);
             }
+        }
+
+        /// <summary>
+        /// Returns the folder used to store connections for one source road.
+        /// </summary>
+        private static Transform GetOrCreateConnectionGroupRoot(AIWaypoint sourceWaypoint, string undoLabel)
+        {
+            Transform connectionsRoot = GetOrCreateConnectionsRoot(GetOrCreateRoadNetworkRoot(undoLabel), undoLabel);
+            return GetOrCreateChild(connectionsRoot, GetConnectionSourceRoadName(sourceWaypoint), undoLabel);
+        }
+
+        /// <summary>
+        /// Returns the source road name used for one connection folder.
+        /// </summary>
+        private static string GetConnectionSourceRoadName(AIWaypoint sourceWaypoint)
+        {
+            if (sourceWaypoint == null)
+                return "Unknown Road";
+
+            Road road = sourceWaypoint.GetComponentInParent<Road>();
+            if (road == null || string.IsNullOrWhiteSpace(road.name))
+                return "Unknown Road";
+
+            return SanitizeHierarchyName(road.name);
+        }
+
+        /// <summary>
+        /// Removes path separator characters so the road name can be used safely in Transform.Find lookups.
+        /// </summary>
+        private static string SanitizeHierarchyName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "Unknown Road";
+
+            return value.Replace('/', '_').Replace('\\', '_');
+        }
+
+        /// <summary>
+        /// Removes empty per-road folders that no longer contain any connection objects.
+        /// </summary>
+        private static void CleanupEmptyConnectionGroups(Transform connectionsRoot, string undoLabel)
+        {
+            if (connectionsRoot == null)
+                return;
+
+            for (int i = connectionsRoot.childCount - 1; i >= 0; i--)
+            {
+                CleanupEmptyConnectionGroup(connectionsRoot.GetChild(i), undoLabel);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether the provided transform is an empty connection-group folder.
+        /// </summary>
+        private static bool IsEmptyConnectionGroup(Transform candidateGroup)
+        {
+            if (candidateGroup == null || candidateGroup.parent == null || candidateGroup.parent.name != ConnectionsRootName)
+                return false;
+
+            if (candidateGroup.childCount > 0 || candidateGroup.TryGetComponent<AIWaypointConnection>(out _))
+                return false;
+
+            Component[] components = candidateGroup.GetComponents<Component>();
+            return components.Length == 1;
         }
 
         /// <summary>
