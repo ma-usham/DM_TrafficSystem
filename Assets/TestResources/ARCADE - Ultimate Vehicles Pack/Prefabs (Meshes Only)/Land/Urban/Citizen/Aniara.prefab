@@ -58,7 +58,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 531688233303019299}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -270,7 +270,7 @@ Transform:
   m_GameObject: {fileID: 2378815492253563076}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.2068841, y: 0.8398553, z: 0}
+  m_LocalPosition: {x: 3.224689, y: 0.8398553, z: 0}
   m_LocalScale: {x: 4.2575746, y: 1.2414672, z: 30.798498}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 12.72207}
-  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 22.077429}
+  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 8.541531}
+  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 13.716352}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -668,7 +668,7 @@ Transform:
   m_GameObject: {fileID: 6441267291102839488}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.2068841, y: 0.8398553, z: 0}
+  m_LocalPosition: {x: -3.1919758, y: 0.8398553, z: 0}
   m_LocalScale: {x: 4.2575746, y: 1.2414672, z: 30.798498}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -719,7 +719,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6546079053465512612}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 1000
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -771,17 +771,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ea63022ef80bc0469029f379db36389, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
-  vehicleType: 1
+  vehicleType: 0
   driverBehaviour:
-    engineMaxSpeed: 15
-    speedMultiplierRange: {x: 0.85, y: 1.15}
-    acceleration: 5
-    brakingPower: 10
-    turnSpeed: 5
-    stoppingDistance: 5
+    engineMaxSpeed: 10
+    speedMultiplierRange: {x: 0.7, y: 1.3}
+    acceleration: 1
+    brakingPower: 5
+    turnSpeed: 8
+    stoppingDistance: 6
     willChangeLane: 1
-    frustrationTime: {x: 5, y: 15}
-    laneChangeCooldown: {x: 5, y: 10}
+    frustrationTime: {x: 2, y: 5}
+    laneChangeCooldown: {x: 2, y: 5}
     aiOvertakeProbability: 0.5
   wheels:
   - raycastTransform: {fileID: 4565691815504819783}
@@ -808,8 +808,8 @@ MonoBehaviour:
     radius: 0.37674612
     restLength: 0.39972204
     localPosition: {x: 0, y: 0, z: 0}
-  springStrength: 30000
-  springDamper: 3000
+  springStrength: 50000
+  springDamper: 4000
   sensorFacesWaypoint: 1
   frontSensor: {fileID: 1997585314265276491}
   leftSensor: {fileID: 5823510284588927058}
@@ -822,8 +822,8 @@ MonoBehaviour:
   - {fileID: 0}
   activeWaypointIndex: 0
   arrayIndex: -1
-  rb: {fileID: 0}
-  vehicleCollider: {fileID: 0}
+  rb: {fileID: 7379394654388687308}
+  vehicleCollider: {fileID: 1359498107988204791}
   steeringAngle: 0
   isGrounded: 0
   showDebugStats: 0
@@ -842,11 +842,11 @@ MonoBehaviour:
   laneChangeCooldownTimer: 0
   isChangingLanes: 0
   crashSleepTimer: 0
-  spawnPadding: 2
+  spawnPadding: 4.5
   bodyTransform: {fileID: 3610515905274031898}
-  tiltAmount: 1.5
+  tiltAmount: 5
   smooth: 5
-  maxTiltAngle: 2
+  maxTiltAngle: 5
 --- !u!1 &8414287651470153809
 GameObject:
   m_ObjectHideFlags: 0
