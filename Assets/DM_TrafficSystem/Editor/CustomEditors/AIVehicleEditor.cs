@@ -54,7 +54,7 @@ namespace Darkmatter.TrafficSystem
             AIVehicle vehicle = (AIVehicle)target;
 
             DrawWheelHandles(vehicle);
-            DrawSensorHandle(vehicle, vehicle.frontSensor, new Color(1.0f, 0.6f, 0.0f, 1.0f), "Change Front Sensor Bounds", null, false, true, false);
+            DrawSensorHandle(vehicle, vehicle.frontSensor, new Color(1.0f, 0.6f, 0.0f, 1.0f), "Change Front Sensor Bounds", null, false, true, false, vehicle.driverBehaviour.stoppingDistance);
             
             // Draw left and right sensors with identical colors (Magenta) and pass mirror reference
             DrawSensorHandle(vehicle, vehicle.leftSensor, Color.magenta, "Change Left Sensor Bounds", vehicle.rightSensor, true, false, true);
@@ -64,7 +64,7 @@ namespace Darkmatter.TrafficSystem
             DrawSpawnPaddingHandle(vehicle);
         }
 
-        private void DrawSensorHandle(AIVehicle vehicle, Transform sensorT, Color drawColor, string undoMessage, Transform mirrorSensorT = null, bool mirrorInvertX = false, bool forceSymmetricX = false, bool forceSymmetricZ = false)
+        private void DrawSensorHandle(AIVehicle vehicle, Transform sensorT, Color drawColor, string undoMessage, Transform mirrorSensorT = null, bool mirrorInvertX = false, bool forceSymmetricX = false, bool forceSymmetricZ = false, float minZScale = 0.01f)
         {
             if (sensorT == null) return;
 
@@ -82,6 +82,19 @@ namespace Darkmatter.TrafficSystem
 
             using (new Handles.DrawingScope(handleMatrix))
             {
+                // Draw the filled block with less transparency
+                if (Event.current.type == EventType.Repaint)
+                {
+                    Color fillColor = drawColor;
+                    fillColor.a = 0.45f; // Decreased transparency (higher opacity)
+                    Handles.color = fillColor;
+                    
+                    Matrix4x4 oldMatrix = Handles.matrix;
+                    Handles.matrix = oldMatrix * Matrix4x4.TRS(_sensorBoundsHandle.center, Quaternion.identity, _sensorBoundsHandle.size);
+                    Handles.CubeHandleCap(0, Vector3.zero, Quaternion.identity, 1f, EventType.Repaint);
+                    Handles.matrix = oldMatrix;
+                }
+
                 // Draw the handle
                 _sensorBoundsHandle.SetColor(drawColor);
                 _sensorBoundsHandle.DrawHandle();
@@ -126,7 +139,7 @@ namespace Darkmatter.TrafficSystem
                 // Keep scale positive
                 newSize.x = Mathf.Max(0.01f, newSize.x);
                 newSize.y = Mathf.Max(0.01f, newSize.y);
-                newSize.z = Mathf.Max(0.01f, newSize.z);
+                newSize.z = Mathf.Max(minZScale, newSize.z);
                 sensorT.localScale = newSize;
 
                 // Apply mirroring to opposite side sensor
@@ -157,6 +170,23 @@ namespace Darkmatter.TrafficSystem
             Vector3 handleLocalPos = new Vector3(0, 0, zStart + currentDist);
             Vector3 handleWorldPos = worldOrigin + vehicle.transform.rotation * handleLocalPos;
 
+            // Draw the filled block for stopping distance with less transparency
+            if (Event.current.type == EventType.Repaint)
+            {
+                Color stopFillColor = Color.red;
+                stopFillColor.a = 0.45f; // Decreased transparency (higher opacity)
+                Handles.color = stopFillColor;
+
+                Vector3 boxSize = new Vector3(vehicle.frontSensor.localScale.x, vehicle.frontSensor.localScale.y, currentDist);
+                Vector3 boxCenter = new Vector3(0, 0, zStart + (currentDist * 0.5f));
+                
+                Matrix4x4 baseMatrix = Matrix4x4.TRS(worldOrigin, vehicle.transform.rotation, Vector3.one);
+                Matrix4x4 oldMatrix = Handles.matrix;
+                Handles.matrix = baseMatrix * Matrix4x4.TRS(boxCenter, Quaternion.identity, boxSize);
+                Handles.CubeHandleCap(0, Vector3.zero, Quaternion.identity, 1f, EventType.Repaint);
+                Handles.matrix = oldMatrix;
+            }
+
             Handles.color = Color.red;
             EditorGUI.BeginChangeCheck();
 
@@ -166,7 +196,7 @@ namespace Darkmatter.TrafficSystem
             if (EditorGUI.EndChangeCheck())
             {
                 float delta = Vector3.Dot(newWorldPos - handleWorldPos, vehicle.transform.forward);
-                float newDist = Mathf.Max(0.1f, currentDist + delta);
+                float newDist = Mathf.Clamp(currentDist + delta, 0.1f, vehicle.frontSensor.localScale.z);
 
                 // Modify through SerializedProperty to correctly support prefabs and Undo
                 serializedObject.Update();

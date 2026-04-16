@@ -637,8 +637,8 @@ Transform:
   m_GameObject: {fileID: 6316662867075644843}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.2412844}
-  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.68977}
+  m_LocalPosition: {x: 0.016356587, y: 0.85537636, z: 7.2034116}
+  m_LocalScale: {x: 2.1590903, y: 1.2422304, z: 11.916255}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4106161634547386811}
@@ -683,9 +683,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3473094262560720282}
-  - component: {fileID: 7519925572664834760}
-  - component: {fileID: 5287100366868719794}
-  - component: {fileID: 4248949257216819404}
+  - component: {fileID: 7379394654388687308}
+  - component: {fileID: 1359498107988204791}
+  - component: {fileID: 2790259339705140348}
   m_Layer: 7
   m_Name: Aniara
   m_TagString: Untagged
@@ -711,7 +711,34 @@ Transform:
   - {fileID: 4106161634547386811}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &7519925572664834760
+--- !u!54 &7379394654388687308
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6546079053465512612}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!65 &1359498107988204791
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -730,36 +757,9 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.9073938, y: 1.2507896, z: 4.597736}
-  m_Center: {x: 0.023878753, y: 0.8456757, z: -0.015919447}
---- !u!54 &5287100366868719794
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6546079053465512612}
-  serializedVersion: 5
-  m_Mass: 1500
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 0
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 1
-  m_Constraints: 0
-  m_CollisionDetection: 1
---- !u!114 &4248949257216819404
+  m_Size: {x: 1.814766, y: 1.2628276, z: 4.469327}
+  m_Center: {x: -0.013141453, y: 0.81476605, z: -0.00000047683716}
+--- !u!114 &2790259339705140348
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -771,45 +771,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ea63022ef80bc0469029f379db36389, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Darkmatter.TrafficSystem::Darkmatter.TrafficSystem.AIVehicle
-  vehicleType: 0
+  vehicleType: 1
   driverBehaviour:
     engineMaxSpeed: 15
-    speedMultiplierRange: {x: 0.8, y: 1.3}
-    acceleration: 1
-    brakingPower: 8
-    turnSpeed: 10
-    stoppingDistance: 6
+    speedMultiplierRange: {x: 0.85, y: 1.15}
+    acceleration: 5
+    brakingPower: 10
+    turnSpeed: 5
+    stoppingDistance: 5.5154896
     willChangeLane: 1
-    frustrationTime: {x: 2, y: 5}
-    laneChangeCooldown: {x: 2, y: 5}
-    aiOvertakeProbability: 1
+    frustrationTime: {x: 5, y: 15}
+    laneChangeCooldown: {x: 5, y: 10}
+    aiOvertakeProbability: 0.5
   wheels:
   - raycastTransform: {fileID: 4565691815504819783}
     visualMesh: {fileID: 1277289663938139567}
     isFrontWheel: 1
     radius: 0.37674612
-    restLength: 0.38
+    restLength: 0.40307587
     localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 4881855343964104100}
     visualMesh: {fileID: 4794382752735696153}
     isFrontWheel: 1
     radius: 0.37674612
-    restLength: 0.38
+    restLength: 0.40307587
     localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 507745478127205945}
     visualMesh: {fileID: 6237217901199794556}
     isFrontWheel: 0
     radius: 0.37674612
-    restLength: 0.38
+    restLength: 0.39972207
     localPosition: {x: 0, y: 0, z: 0}
   - raycastTransform: {fileID: 4659767193756277940}
     visualMesh: {fileID: 2480291060529105190}
     isFrontWheel: 0
     radius: 0.37674612
-    restLength: 0.38
+    restLength: 0.39972204
     localPosition: {x: 0, y: 0, z: 0}
-  springStrength: 60000
-  springDamper: 5000
+  springStrength: 30000
+  springDamper: 3000
   sensorFacesWaypoint: 1
   frontSensor: {fileID: 1997585314265276491}
   leftSensor: {fileID: 5823510284588927058}
@@ -823,10 +823,10 @@ MonoBehaviour:
   activeWaypointIndex: 0
   arrayIndex: -1
   rb: {fileID: 0}
-  vehicleCollider: {fileID: 7519925572664834760}
+  vehicleCollider: {fileID: 0}
   steeringAngle: 0
   isGrounded: 0
-  showDebugStats: 1
+  showDebugStats: 0
   debugData:
     currentSpeed: 0
     localMaxSpeed: 0
@@ -842,11 +842,11 @@ MonoBehaviour:
   laneChangeCooldownTimer: 0
   isChangingLanes: 0
   crashSleepTimer: 0
-  spawnPadding: 3
+  spawnPadding: 2
   bodyTransform: {fileID: 3610515905274031898}
-  tiltAmount: 0.2
+  tiltAmount: 1.5
   smooth: 5
-  maxTiltAngle: 50
+  maxTiltAngle: 2
 --- !u!1 &8414287651470153809
 GameObject:
   m_ObjectHideFlags: 0
