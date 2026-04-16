@@ -103,6 +103,32 @@ namespace Darkmatter.TrafficSystem.Editor
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
 
+            if (GUILayout.Button("Clean Invalid Connections", GUILayout.Width(180)))
+            {
+                int removedCount = WaypointConnectionBuilder.RemoveInvalidConnections("Clean Invalid Road Connections");
+                toolState.RefreshLaneTerminalCache();
+
+                if (toolState.ActiveConnection != null && !toolState.IsActiveConnectionStillAvailable())
+                {
+                    toolState.SetMissingActiveConnectionStatus();
+                }
+                else if (toolState.SelectedEndingWaypoint != null && !toolState.IsSelectedEndingStillAvailable())
+                {
+                    toolState.SetMissingSelectedEndingStatus();
+                }
+                else
+                {
+                    toolState.UpdateStatusForCurrentSelection();
+                }
+
+                string cleanupMessage = removedCount > 0
+                    ? $"Removed {removedCount} invalid road connection{(removedCount == 1 ? string.Empty : "s")}."
+                    : "No invalid road connections were found.";
+                toolState.SetStatusMessage(cleanupMessage);
+                toolState.RepaintViews();
+                return;
+            }
+
             EditorGUILayout.Space(10);
             ConnectRoadConnectionsPanel.Draw(
                 toolState,

@@ -13,6 +13,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private static readonly Color LaneChangeLineColor = new Color(1f, 0.45f, 0.1f, 0.9f);
         private const float LaneChangeLineScreenSize = 4f;
         private const float ConnectionGizmoScreenSize = 5f;
+        private const float LaneLabelVerticalOffset = 0.35f;
 
         /// <summary>
         /// Draws the road spline using the provided color and line width.
@@ -76,6 +77,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 Vector3 lastPoint = road.controlPointsList[road.controlPointsList.Count - 1];
                 Handles.Label(lastPoint, roadName, EditorStyles.whiteMiniLabel);
             }
+
+            DrawLaneLabels(road);
         }
 
         /// <summary>
@@ -340,6 +343,66 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             return ((ulong)firstId << 32) | secondId;
+        }
+
+        /// <summary>
+        /// Draws one label for each lane at its generated terminal waypoints.
+        /// </summary>
+        private static void DrawLaneLabels(Road road)
+        {
+            if (road == null || road.laneObjects == null)
+                return;
+
+            for (int laneIndex = 0; laneIndex < road.laneObjects.Count; laneIndex++)
+            {
+                AILane lane = road.laneObjects[laneIndex];
+                if (lane == null || lane.waypoints == null || lane.waypoints.Count == 0)
+                    continue;
+
+                string laneLabel = $"L{laneIndex}";
+                AIWaypoint firstWaypoint = GetFirstNonNullWaypoint(lane.waypoints);
+                AIWaypoint lastWaypoint = GetLastNonNullWaypoint(lane.waypoints);
+
+                if (firstWaypoint != null)
+                    Handles.Label(firstWaypoint.transform.position + Vector3.up * LaneLabelVerticalOffset, laneLabel, EditorStyles.whiteMiniLabel);
+
+                if (lastWaypoint != null && lastWaypoint != firstWaypoint)
+                    Handles.Label(lastWaypoint.transform.position + Vector3.up * LaneLabelVerticalOffset, laneLabel, EditorStyles.whiteMiniLabel);
+            }
+        }
+
+        /// <summary>
+        /// Returns the first valid waypoint from a lane list.
+        /// </summary>
+        private static AIWaypoint GetFirstNonNullWaypoint(IReadOnlyList<AIWaypoint> waypoints)
+        {
+            if (waypoints == null)
+                return null;
+
+            for (int i = 0; i < waypoints.Count; i++)
+            {
+                if (waypoints[i] != null)
+                    return waypoints[i];
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the last valid waypoint from a lane list.
+        /// </summary>
+        private static AIWaypoint GetLastNonNullWaypoint(IReadOnlyList<AIWaypoint> waypoints)
+        {
+            if (waypoints == null)
+                return null;
+
+            for (int i = waypoints.Count - 1; i >= 0; i--)
+            {
+                if (waypoints[i] != null)
+                    return waypoints[i];
+            }
+
+            return null;
         }
     }
 

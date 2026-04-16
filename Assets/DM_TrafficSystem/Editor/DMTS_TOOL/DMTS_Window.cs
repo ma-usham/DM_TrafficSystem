@@ -136,12 +136,14 @@ namespace Darkmatter.TrafficSystem.Editor
                 ConnectRoadPage.isActive = activePage is ConnectRoadPage;
                 DrawGlobalSceneGizmos(sceneView);
                 activePage.OnSceneGUI(sceneView, this);
+                TrySelectWaypointFromScene();
             }
             else
             {
                 CreateRoadPage.isActive = false;
                 ConnectRoadPage.isActive = false;
                 DrawGlobalSceneGizmos(sceneView);
+                TrySelectWaypointFromScene();
             }
         }
 
@@ -173,6 +175,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     globalSceneGizmoState.drawControlPoints = EditorGUILayout.ToggleLeft("Control points", globalSceneGizmoState.drawControlPoints);
                     globalSceneGizmoState.drawRoadNames = EditorGUILayout.ToggleLeft("Road labels", globalSceneGizmoState.drawRoadNames);
                     globalSceneGizmoState.drawWaypoints = EditorGUILayout.ToggleLeft("Generated waypoints", globalSceneGizmoState.drawWaypoints);
+                    globalSceneGizmoState.selectWaypointOnClick = EditorGUILayout.ToggleLeft("Select waypoint on click", globalSceneGizmoState.selectWaypointOnClick);
                     globalSceneGizmoState.drawLaneChangeLinks = EditorGUILayout.ToggleLeft("Lane-change links", globalSceneGizmoState.drawLaneChangeLinks);
                     globalSceneGizmoState.drawConnections = EditorGUILayout.ToggleLeft("Road connections", globalSceneGizmoState.drawConnections);
                     globalSceneGizmoState.drawIntersectionState = EditorGUILayout.ToggleLeft("Intersection status (Green/Red)", globalSceneGizmoState.drawIntersectionState);
@@ -269,6 +272,37 @@ namespace Darkmatter.TrafficSystem.Editor
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Selects a waypoint object from the Scene view when the optional global toggle is enabled.
+        /// </summary>
+        private void TrySelectWaypointFromScene()
+        {
+            if (globalSceneGizmoState == null
+                || !globalSceneGizmoState.enabled
+                || !globalSceneGizmoState.selectWaypointOnClick)
+            {
+                return;
+            }
+
+            Event currentEvent = Event.current;
+            if (currentEvent == null
+                || currentEvent.type != EventType.MouseDown
+                || currentEvent.button != 0
+                || currentEvent.modifiers != EventModifiers.None
+                || GUIUtility.hotControl != 0)
+            {
+                return;
+            }
+
+            AIWaypoint clickedWaypoint = IntersectionSceneUtility.FindWaypointAtMouse(currentEvent.mousePosition);
+            if (clickedWaypoint == null)
+                return;
+
+            Selection.activeGameObject = clickedWaypoint.gameObject;
+            Repaint();
+            currentEvent.Use();
         }
 
         /// <summary>

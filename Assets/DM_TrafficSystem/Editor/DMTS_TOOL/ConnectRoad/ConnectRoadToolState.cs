@@ -425,6 +425,14 @@ namespace Darkmatter.TrafficSystem.Editor
         }
 
         /// <summary>
+        /// Overrides the current page status with a one-off message.
+        /// </summary>
+        public void SetStatusMessage(string message)
+        {
+            statusMessage = message;
+        }
+
+        /// <summary>
         /// Repaints the editor window and Scene view after state changes.
         /// </summary>
         public void RepaintViews()

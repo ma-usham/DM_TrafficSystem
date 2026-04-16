@@ -15,6 +15,7 @@ namespace Darkmatter.TrafficSystem.Editor
         public bool drawControlPoints;
         public bool drawRoadNames=true;
         public bool drawWaypoints = true;
+        public bool selectWaypointOnClick;
         public bool drawLaneChangeLinks = true;
         public bool drawConnections = true;
         public bool drawIntersectionState = true;

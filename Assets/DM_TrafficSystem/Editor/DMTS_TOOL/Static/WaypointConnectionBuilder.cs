@@ -87,21 +87,39 @@ namespace Darkmatter.TrafficSystem.Editor
         public static void RemoveConnectionsForWaypoints(IEnumerable<AIWaypoint> waypoints, string undoLabel)
         {
             HashSet<AIWaypoint> affectedWaypoints = BuildWaypointSet(waypoints);
-            if (affectedWaypoints.Count == 0)
-                return;
-
-            AIWaypointConnection[] connectionObjects = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Exclude);
+            AIWaypointConnection[] connectionObjects = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Include);
             for (int i = 0; i < connectionObjects.Length; i++)
             {
                 AIWaypointConnection connection = connectionObjects[i];
                 if (connection == null)
                     continue;
 
-                if (affectedWaypoints.Contains(connection.sourceWaypoint) || affectedWaypoints.Contains(connection.targetWaypoint))
+                if (ShouldDeleteConnection(connection, affectedWaypoints))
                     DeleteConnection(connection, undoLabel);
             }
 
-            RemoveWaypointReferences(affectedWaypoints, undoLabel);
+            if (affectedWaypoints.Count > 0)
+                RemoveWaypointReferences(affectedWaypoints, undoLabel);
+        }
+
+        /// <summary>
+        /// Deletes orphaned or otherwise invalid connection objects from the scene.
+        /// </summary>
+        public static int RemoveInvalidConnections(string undoLabel)
+        {
+            int removedCount = 0;
+            AIWaypointConnection[] connectionObjects = Object.FindObjectsByType<AIWaypointConnection>(FindObjectsInactive.Include);
+            for (int i = 0; i < connectionObjects.Length; i++)
+            {
+                AIWaypointConnection connection = connectionObjects[i];
+                if (connection == null || !IsConnectionInvalid(connection))
+                    continue;
+
+                DeleteConnection(connection, undoLabel);
+                removedCount++;
+            }
+
+            return removedCount;
         }
 
         /// <summary>
@@ -130,6 +148,64 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             return uniqueWaypoints;
+        }
+
+        /// <summary>
+        /// Returns whether one connection should be deleted because it is invalid or touches the affected waypoint set.
+        /// </summary>
+        private static bool ShouldDeleteConnection(AIWaypointConnection connection, HashSet<AIWaypoint> affectedWaypoints)
+        {
+            if (connection == null)
+                return false;
+
+            if (IsConnectionInvalid(connection))
+                return true;
+
+            return affectedWaypoints != null
+                && affectedWaypoints.Count > 0
+                && (affectedWaypoints.Contains(connection.sourceWaypoint) || affectedWaypoints.Contains(connection.targetWaypoint));
+        }
+
+        /// <summary>
+        /// Returns whether one connection no longer references valid lane-end and lane-start waypoints.
+        /// </summary>
+        private static bool IsConnectionInvalid(AIWaypointConnection connection)
+        {
+            return connection == null
+                || connection.sourceWaypoint == null
+                || connection.targetWaypoint == null
+                || connection.sourceWaypoint == connection.targetWaypoint
+                || !IsLaneTerminalWaypoint(connection.sourceWaypoint, expectLaneEnd: true)
+                || !IsLaneTerminalWaypoint(connection.targetWaypoint, expectLaneEnd: false);
+        }
+
+        /// <summary>
+        /// Returns whether the waypoint is still the current lane start or lane end of some road lane.
+        /// </summary>
+        private static bool IsLaneTerminalWaypoint(AIWaypoint waypoint, bool expectLaneEnd)
+        {
+            if (waypoint == null)
+                return false;
+
+            Road road = waypoint.GetComponentInParent<Road>();
+            if (road == null || road.laneObjects == null)
+                return false;
+
+            for (int laneIndex = 0; laneIndex < road.laneObjects.Count; laneIndex++)
+            {
+                AILane lane = road.laneObjects[laneIndex];
+                if (lane == null || lane.waypoints == null || lane.waypoints.Count == 0)
+                    continue;
+
+                AIWaypoint terminalWaypoint = expectLaneEnd
+                    ? lane.waypoints[lane.waypoints.Count - 1]
+                    : lane.waypoints[0];
+
+                if (terminalWaypoint == waypoint)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
