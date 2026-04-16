@@ -86,7 +86,7 @@ namespace Darkmatter.TrafficSystem
                 if (Event.current.type == EventType.Repaint)
                 {
                     Color fillColor = drawColor;
-                    fillColor.a = 0.45f; // Decreased transparency (higher opacity)
+                    fillColor.a = 0.3f; // Decreased transparency (higher opacity)
                     Handles.color = fillColor;
                     
                     Matrix4x4 oldMatrix = Handles.matrix;
@@ -133,13 +133,33 @@ namespace Darkmatter.TrafficSystem
                     }
                 }
 
-                // Apply changes from the handle back to the sensor transform
-                sensorT.localPosition = newCenter;
+                // Keep scale positive and prevent center drifting when clamped
+                if (newSize.x < 0.01f)
+                {
+                    float diff = 0.01f - newSize.x;
+                    newSize.x = 0.01f;
+                    if (newCenter.x > originalCenter.x) newCenter.x -= diff / 2f;
+                    else if (newCenter.x < originalCenter.x) newCenter.x += diff / 2f;
+                }
                 
-                // Keep scale positive
-                newSize.x = Mathf.Max(0.01f, newSize.x);
-                newSize.y = Mathf.Max(0.01f, newSize.y);
-                newSize.z = Mathf.Max(minZScale, newSize.z);
+                if (newSize.y < 0.01f)
+                {
+                    float diff = 0.01f - newSize.y;
+                    newSize.y = 0.01f;
+                    if (newCenter.y > originalCenter.y) newCenter.y -= diff / 2f;
+                    else if (newCenter.y < originalCenter.y) newCenter.y += diff / 2f;
+                }
+                
+                if (newSize.z < minZScale)
+                {
+                    float diff = minZScale - newSize.z;
+                    newSize.z = minZScale;
+                    if (newCenter.z > originalCenter.z) newCenter.z -= diff / 2f;
+                    else if (newCenter.z < originalCenter.z) newCenter.z += diff / 2f;
+                }
+
+                // Apply corrected changes from the handle back to the sensor transform
+                sensorT.localPosition = newCenter;
                 sensorT.localScale = newSize;
 
                 // Apply mirroring to opposite side sensor
@@ -174,7 +194,7 @@ namespace Darkmatter.TrafficSystem
             if (Event.current.type == EventType.Repaint)
             {
                 Color stopFillColor = Color.red;
-                stopFillColor.a = 0.45f; // Decreased transparency (higher opacity)
+                stopFillColor.a = 0.3f; // Decreased transparency (higher opacity)
                 Handles.color = stopFillColor;
 
                 Vector3 boxSize = new Vector3(vehicle.frontSensor.localScale.x, vehicle.frontSensor.localScale.y, currentDist);
@@ -276,31 +296,54 @@ namespace Darkmatter.TrafficSystem
         {
             if (vehicle.wheels == null) return;
 
-            // Give the handle a nice color
-            Handles.color = Color.cyan;
-
             for (int i = 0; i < vehicle.wheels.Length; i++)
             {
-                if (vehicle.wheels[i] == null || vehicle.wheels[i].raycastTransform == null) continue;
+                SuspensionWheel wheel = vehicle.wheels[i];
+                if (wheel == null || wheel.raycastTransform == null) continue;
 
+                // Use visual mesh position if available, otherwise calculate from rest length
+                Vector3 wheelCenter;
+                if (wheel.visualMesh != null)
+                {
+                    wheelCenter = wheel.visualMesh.position;
+                }
+                else
+                {
+                    Vector3 origin = wheel.raycastTransform.position;
+                    wheelCenter = origin - vehicle.transform.up * wheel.restLength;
+                }
+
+                Transform wheelTransform = wheel.raycastTransform;
+                float radius = wheel.radius;
+
+                // The axle is the local right vector of the wheel transform
+                Vector3 axle = wheelTransform.right;
+                // A vector pointing from the center to the bottom of the circumference, used for the slider
+                Vector3 radiusVector = -wheelTransform.up;
+
+                Handles.color = Color.cyan;
+
+                // Draw the circle representing the wheel
+                Handles.DrawWireDisc(wheelCenter, axle, radius);
+
+                // Create a slider handle on the circumference to adjust the radius
                 EditorGUI.BeginChangeCheck();
+                Vector3 handlePosition = wheelCenter + radiusVector * radius;
+                float size = HandleUtility.GetHandleSize(handlePosition) * 0.03f;
 
-                // The physics wheel rests at origin - up * restLength
-                Vector3 origin = vehicle.wheels[i].raycastTransform.position;
-                Vector3 wheelRestPosition = origin - vehicle.transform.up * vehicle.wheels[i].restLength;
-
-                // Draw a radius handle aligned with the wheel
-                float handleValue = Handles.RadiusHandle(vehicle.transform.rotation, wheelRestPosition, vehicle.wheels[i].radius);
+                // Use a dot cap for a cleaner look
+                Vector3 newHandlePosition = Handles.Slider(handlePosition, radiusVector, size, Handles.DotHandleCap, 0.01f);
 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    // Register the undo state so Ctrl+Z works in the Editor
                     Undo.RecordObject(vehicle, $"Change Wheel {i} Radius");
 
-                    // Apply the new radius just to this specific tire
-                    vehicle.wheels[i].radius = handleValue;
+                    // Calculate the new radius from the handle's new position
+                    float newRadius = Vector3.Dot(newHandlePosition - wheelCenter, radiusVector);
+                    
+                    // Apply the new radius, ensuring it's not negative or zero
+                    wheel.radius = Mathf.Max(0.01f, newRadius);
 
-                    // Ensure the scene view repaints to reflect the new size in OnDrawGizmos
                     SceneView.RepaintAll();
                 }
             }
