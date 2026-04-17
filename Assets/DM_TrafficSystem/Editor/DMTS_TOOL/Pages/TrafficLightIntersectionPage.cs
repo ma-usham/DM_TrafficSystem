@@ -87,7 +87,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 {
                     if (GUILayout.Button("Disable Violation", GUILayout.Width(120)))
                     {
-                        Undo.DestroyObjectImmediate(existingDetector);
+                        //Undo.DestroyObjectImmediate(existingDetector);
+                        Object.DestroyImmediate(existingDetector);
                     }
                 }
                 else
@@ -205,7 +206,7 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private void ToggleStopPoint(AIWaypoint wp)
         {
-            Undo.RecordObject(targetIntersection, "Toggle Stop Point");
+            //Undo.RecordObject(targetIntersection, "Toggle Stop Point");
             TrafficLightRoad road = targetIntersection.trafficLightRoads[activeRoadIndex];
             if (road.stopPoints.Contains(wp))
                 road.stopPoints.Remove(wp);
@@ -256,8 +257,9 @@ namespace Darkmatter.TrafficSystem.Editor
             if (interRoot == null)
             {
                 GameObject iObj = new GameObject("Intersections");
-                Undo.RegisterCreatedObjectUndo(iObj, "Create Intersections");
-                Undo.SetTransformParent(iObj.transform, roadNetworkRoot, "Parent Intersections");
+               // Undo.RegisterCreatedObjectUndo(iObj, "Create Intersections");
+               // Undo.SetTransformParent(iObj.transform, roadNetworkRoot, "Parent Intersections");
+                iObj.transform.parent = roadNetworkRoot;
                 interRoot = iObj.transform;
             }
 
@@ -265,8 +267,9 @@ namespace Darkmatter.TrafficSystem.Editor
             if (violsRoot == null)
             {
                 GameObject rvObj = new GameObject("Intersection Violations");
-                Undo.RegisterCreatedObjectUndo(rvObj, "Create Intersection Violations Root");
-                Undo.SetTransformParent(rvObj.transform, interRoot, "Parent Intersection Violations Root");
+                // Undo.RegisterCreatedObjectUndo(rvObj, "Create Intersection Violations Root");
+                // Undo.SetTransformParent(rvObj.transform, interRoot, "Parent Intersection Violations Root");
+                rvObj.transform.parent = interRoot;
                 violsRoot = rvObj.transform;
             }
 
@@ -274,8 +277,9 @@ namespace Darkmatter.TrafficSystem.Editor
             if (interParent == null)
             {
                 GameObject ipObj = new GameObject(intersection.intersectionName);
-                Undo.RegisterCreatedObjectUndo(ipObj, "Create Intersection Violations Group");
-                Undo.SetTransformParent(ipObj.transform, violsRoot, "Parent Intersection Violations");
+                // Undo.RegisterCreatedObjectUndo(ipObj, "Create Intersection Violations Group");
+                // Undo.SetTransformParent(ipObj.transform, violsRoot, "Parent Intersection Violations");
+                ipObj.transform.parent = violsRoot;
                 interParent = ipObj.transform;
             }
 
@@ -302,8 +306,9 @@ namespace Darkmatter.TrafficSystem.Editor
             else averageForward.Normalize();
 
             GameObject detectorObj = new GameObject($"Violation_R{roadIndex}");
-            Undo.RegisterCreatedObjectUndo(detectorObj, "Create Violation Detector");
-            Undo.SetTransformParent(detectorObj.transform, interParent, "Parent Violation Detector");
+            // Undo.RegisterCreatedObjectUndo(detectorObj, "Create Violation Detector");
+            // Undo.SetTransformParent(detectorObj.transform, interParent, "Parent Violation Detector");
+            detectorObj.transform.parent = interParent;
 
             detectorObj.transform.position = centerPos;
             detectorObj.transform.rotation = Quaternion.LookRotation(averageForward, Vector3.up);

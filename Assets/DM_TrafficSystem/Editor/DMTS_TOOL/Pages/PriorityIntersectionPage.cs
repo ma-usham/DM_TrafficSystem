@@ -198,7 +198,7 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private void ToggleStopPoint(AIWaypoint wp)
         {
-            Undo.RecordObject(targetIntersection, "Toggle Stop Point");
+            //Undo.RecordObject(targetIntersection, "Toggle Stop Point");
             PriorityStopRoad road = targetIntersection.priorityStopRoads[activeRoadIndex];
 
             if (road.stopPoints.Contains(wp))

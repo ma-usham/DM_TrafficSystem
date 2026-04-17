@@ -34,7 +34,7 @@ namespace Darkmatter.TrafficSystem.Editor
         {
             GameObject go = new GameObject("TrafficManager");
             trafficManager = go.AddComponent<TrafficManager>();
-            Undo.RegisterCreatedObjectUndo(go, "Create TrafficManager");
+                //Undo.RegisterCreatedObjectUndo(go, "Create TrafficManager");
             TrafficSystemHierarchyUtility.ParentTrafficManager(go, "Create TrafficManager");
             Selection.activeGameObject = go;
         }
@@ -224,7 +224,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
-            Undo.RecordObject(manager, "Bake Waypoint Grid");
+            //Undo.RecordObject(manager, "Bake Waypoint Grid");
             Dictionary<Vector2Int, WaypointGridCell> tempGrid = new Dictionary<Vector2Int, WaypointGridCell>();
 
             // 1. Process Lanes (True = Eligible for Spawning)

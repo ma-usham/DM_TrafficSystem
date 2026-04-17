@@ -36,7 +36,7 @@ namespace Darkmatter.TrafficSystem.Editor
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Change Direction", GUILayout.Width(130)))
             {
-                Undo.RecordObject(lane, "Change Lane Direction");
+                //Undo.RecordObject(lane, "Change Lane Direction");
                 
                 ReverseLaneWaypoints(lane);
                 
@@ -83,7 +83,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (lane == null || lane.waypoints == null)
                 return;
 
-            Undo.RecordObject(lane, "Apply Lane Settings");
+            //Undo.RecordObject(lane, "Apply Lane Settings");
 
             for (int i = 0; i < lane.waypoints.Count; i++)
             {
@@ -91,7 +91,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 if (waypoint == null)
                     continue;
 
-                Undo.RecordObject(waypoint, "Apply Lane Settings");
+                //Undo.RecordObject(waypoint, "Apply Lane Settings");
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = lane.laneSpeedLimit;
                 settings.vehicleType = lane.laneVehicleType;
@@ -130,7 +130,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (lane == null || lane.waypoints == null || lane.waypoints.Count == 0)
                 return;
 
-            Undo.RecordObject(lane, "Reverse Lane Direction");
+            //Undo.RecordObject(lane, "Reverse Lane Direction");
 
             System.Collections.Generic.HashSet<AIWaypoint> internalWaypoints = 
                 new System.Collections.Generic.HashSet<AIWaypoint>(lane.waypoints);
@@ -151,7 +151,7 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 if (extWp == null || internalWaypoints.Contains(extWp)) continue;
 
-                Undo.RecordObject(extWp, "Reverse Lane Direction");
+                //Undo.RecordObject(extWp, "Reverse Lane Direction");
                 WaypointSettings extSettings = extWp.settings;
                 
                 extSettings.nextWaypoint = FilterOutWaypoints(extSettings.nextWaypoint, internalWaypoints);
@@ -169,9 +169,9 @@ namespace Darkmatter.TrafficSystem.Editor
                 AIWaypoint waypoint = lane.waypoints[i];
                 if (waypoint == null) continue;
 
-                Undo.RecordObject(waypoint, "Reverse Lane Direction");
-                Undo.RecordObject(waypoint.gameObject, "Reverse Lane Direction");
-                Undo.RecordObject(waypoint.transform, "Reverse Lane Direction");
+                //Undo.RecordObject(waypoint, "Reverse Lane Direction");
+                //Undo.RecordObject(waypoint.gameObject, "Reverse Lane Direction");
+                //Undo.RecordObject(waypoint.transform, "Reverse Lane Direction");
 
                 waypoint.gameObject.name = $"Waypoint_{i}";
 

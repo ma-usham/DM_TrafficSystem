@@ -170,11 +170,11 @@ namespace Darkmatter.TrafficSystem
                 bool syncSensorHeight = Mathf.Abs(newSize.y - originalSize.y) > 0.001f ||
                                         Mathf.Abs(newCenter.y - originalCenter.y) > 0.001f;
 
-                var undoTargets = new System.Collections.Generic.List<Object>();
-                AddUniqueTransform(undoTargets, vehicle.frontSensor);
-                AddUniqueTransform(undoTargets, vehicle.leftSensor);
-                AddUniqueTransform(undoTargets, vehicle.rightSensor);
-                Undo.RecordObjects(undoTargets.ToArray(), undoMessage);
+                // var undoTargets = new System.Collections.Generic.List<Object>();
+                // AddUniqueTransform(undoTargets, vehicle.frontSensor);
+                // AddUniqueTransform(undoTargets, vehicle.leftSensor);
+                // AddUniqueTransform(undoTargets, vehicle.rightSensor);
+                //Undo.RecordObjects(undoTargets.ToArray(), undoMessage);
 
                 // Apply corrected changes from the handle back to the sensor transform
                 sensorT.localPosition = newCenter;
@@ -567,7 +567,7 @@ namespace Darkmatter.TrafficSystem
 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(vehicle, $"Change Wheel {i} Radius");
+                    //Undo.RecordObject(vehicle, $"Change Wheel {i} Radius");
 
                     // Calculate the new radius from the handle's new position
                     float newRadius = Vector3.Dot(newHandlePosition - wheelCenter, radiusVector);
@@ -617,7 +617,7 @@ namespace Darkmatter.TrafficSystem
             GUI.backgroundColor = new Color(0.2f, 0.8f, 0.2f);
             if (GUILayout.Button("Auto Setup Vehicle", GUILayout.Height(35)))
             {
-                Undo.RegisterFullObjectHierarchyUndo(vehicle.gameObject, "Auto Setup Vehicle");
+                //Undo.RegisterFullObjectHierarchyUndo(vehicle.gameObject, "Auto Setup Vehicle");
                 AutoSetup(vehicle);
                 EditorUtility.SetDirty(vehicle);
             }
@@ -779,7 +779,7 @@ namespace Darkmatter.TrafficSystem
                 sensorsObj.transform.localPosition = Vector3.zero;
                 sensorsObj.transform.localRotation = Quaternion.identity;
                 sensorsObj.transform.localScale = Vector3.one;
-                Undo.RegisterCreatedObjectUndo(sensorsObj, "Create Sensors Root");
+                //Undo.RegisterCreatedObjectUndo(sensorsObj, "Create Sensors Root");
                 sensorsRoot = sensorsObj.transform;
                 Debug.Log("Auto Setup: Created 'Sensors' root object.");
             }
@@ -793,7 +793,7 @@ namespace Darkmatter.TrafficSystem
                 GameObject fsObj = new GameObject("FrontSensor");
                 fsObj.transform.SetParent(sensorsRoot);
                 fsObj.transform.localRotation = Quaternion.identity;
-                Undo.RegisterCreatedObjectUndo(fsObj, "Create FrontSensor");
+                //Undo.RegisterCreatedObjectUndo(fsObj, "Create FrontSensor");
                 frontSensorT = fsObj.transform;
                 Debug.Log("Auto Setup: Created 'FrontSensor'.");
             }
@@ -805,7 +805,7 @@ namespace Darkmatter.TrafficSystem
                 GameObject lsObj = new GameObject("LeftSensor");
                 lsObj.transform.SetParent(sensorsRoot);
                 lsObj.transform.localRotation = Quaternion.identity;
-                Undo.RegisterCreatedObjectUndo(lsObj, "Create LeftSensor");
+                //Undo.RegisterCreatedObjectUndo(lsObj, "Create LeftSensor");
                 leftSensorT = lsObj.transform;
                 Debug.Log("Auto Setup: Created 'LeftSensor'.");
             }
@@ -817,7 +817,7 @@ namespace Darkmatter.TrafficSystem
                 GameObject rsObj = new GameObject("RightSensor");
                 rsObj.transform.SetParent(sensorsRoot);
                 rsObj.transform.localRotation = Quaternion.identity;
-                Undo.RegisterCreatedObjectUndo(rsObj, "Create RightSensor");
+                //Undo.RegisterCreatedObjectUndo(rsObj, "Create RightSensor");
                 rightSensorT = rsObj.transform;
                 Debug.Log("Auto Setup: Created 'RightSensor'.");
             }

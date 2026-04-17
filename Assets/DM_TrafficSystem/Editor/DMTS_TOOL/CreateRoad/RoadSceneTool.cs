@@ -60,7 +60,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             GameObject roadObject = new GameObject(GetNextRoadName());
-            Undo.RegisterCreatedObjectUndo(roadObject, "Create Road");
+            //Undo.RegisterCreatedObjectUndo(roadObject, "Create Road");
             roadObject.transform.position = firstClickPosition;
             TrafficSystemHierarchyUtility.ParentRoad(roadObject, "Create Road");
 
@@ -276,7 +276,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             Vector3 worldPosition = GetWorldPosition(currentEvent.mousePosition);
-            Undo.RecordObject(road, "Add Control Point");
+            //Undo.RecordObject(road, "Add Control Point");
             road.AddControlPoint(worldPosition);
             EditorUtility.SetDirty(road);
 
@@ -296,7 +296,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             Vector3 newPosition = GetWorldPosition(currentEvent.mousePosition);
-            Undo.RecordObject(road, "Move Control Point");
+            //Undo.RecordObject(road, "Move Control Point");
             road.controlPointsList[dragIndex] = newPosition;
             EditorUtility.SetDirty(road);
             GUI.changed = true;
@@ -317,7 +317,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (nearestPoint < 0 || distance > DMTSPrefs.EndpointScreenRadius)
                 return;
 
-            Undo.RecordObject(road, "Delete Control Point");
+            //Undo.RecordObject(road, "Delete Control Point");
             road.RemoveControlPoint(nearestPoint);
             EditorUtility.SetDirty(road);
 
@@ -340,7 +340,7 @@ namespace Darkmatter.TrafficSystem.Editor
             SplineMathUtils.GetSegmentHandles(road.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
             Vector3 insertPosition = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, segmentT);
 
-            Undo.RecordObject(road, "Insert Control Point");
+            //Undo.RecordObject(road, "Insert Control Point");
             road.InsertControlPoint(segmentIndex + 1, insertPosition);
             EditorUtility.SetDirty(road);
             ctx.Repaint();
@@ -437,7 +437,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (!EditorGUI.EndChangeCheck())
                 return;
 
-            Undo.RecordObject(road, "Move Control Point");
+            //Undo.RecordObject(road, "Move Control Point");
             road.controlPointsList[index] = newPosition;
             EditorUtility.SetDirty(road);
             GUI.changed = true;

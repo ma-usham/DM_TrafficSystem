@@ -222,8 +222,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
             }
 
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Create Road Connection");
+            //int undoGroup = Undo.GetCurrentGroup();
+            //Undo.SetCurrentGroupName("Create Road Connection");
 
             AIWaypointConnection connection = WaypointConnectionBuilder.CreateConnection(selectedEndingWaypoint, laneStart.waypoint);
 
@@ -238,7 +238,7 @@ namespace Darkmatter.TrafficSystem.Editor
             selectedEndingWaypoint = null;
             selectedEndingConnectionName = null;
 
-            Undo.CollapseUndoOperations(undoGroup);
+            //Undo.CollapseUndoOperations(undoGroup);
             RepaintViews();
         }
 
@@ -287,8 +287,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 return;
 
             string deletedLabel = GetConnectionLabel(activeConnection.sourceWaypoint, activeConnection.targetWaypoint);
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Delete Road Connection");
+            //int undoGroup = Undo.GetCurrentGroup();
+            //Undo.SetCurrentGroupName("Delete Road Connection");
 
             WaypointConnectionBuilder.DeleteConnection(activeConnection, "Delete Road Connection");
 
@@ -299,7 +299,7 @@ namespace Darkmatter.TrafficSystem.Editor
             selectedEndingConnectionName = null;
 
             statusMessage = $"Deleted {deletedLabel}";
-            Undo.CollapseUndoOperations(undoGroup);
+            //Undo.CollapseUndoOperations(undoGroup);
             RepaintViews();
         }
 
@@ -311,8 +311,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connection.sourceWaypoint == null || connection.targetWaypoint == null)
                 return;
 
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Delete Road Connection");
+            //int undoGroup = Undo.GetCurrentGroup();
+            //Undo.SetCurrentGroupName("Delete Road Connection");
 
             if (connection.connection != null)
             {
@@ -335,7 +335,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             statusMessage = $"Deleted {connection.label}";
-            Undo.CollapseUndoOperations(undoGroup);
+            //Undo.CollapseUndoOperations(undoGroup);
             RepaintViews();
         }
 
@@ -556,7 +556,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (WaypointArraysEqual(currentLinks, updatedLinks))
                 return false;
 
-            Undo.RecordObject(ownerWaypoint, "Delete Road Connection");
+            //Undo.RecordObject(ownerWaypoint, "Delete Road Connection");
 
             if (useNextWaypoint)
             {

@@ -106,7 +106,7 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private static void ApplyGlobalSpeedLimit(Road road, float speedLimit)
         {
-            Undo.RegisterFullObjectHierarchyUndo(road.gameObject, "Apply Global Speed Limit");
+            //Undo.RegisterFullObjectHierarchyUndo(road.gameObject, "Apply Global Speed Limit");
             road.speedLimitForAllLanes = speedLimit;
             EditorUtility.SetDirty(road);
 

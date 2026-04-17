@@ -157,7 +157,7 @@ namespace Darkmatter.TrafficSystem.Editor
             int linkOffset = EditorGUILayout.IntField(sceneTool.Road.laneChangeLinkOffset, GUILayout.Width(45));
             if (EditorGUI.EndChangeCheck())
             {
-                Undo.RecordObject(sceneTool.Road, "Change Link Offset");
+                //Undo.RecordObject(sceneTool.Road, "Change Link Offset");
                 sceneTool.Road.laneChangeLinkOffset = Mathf.Max(1, linkOffset);
                 EditorUtility.SetDirty(sceneTool.Road);
             }
@@ -170,7 +170,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 GUILayout.Width(45));
             if (EditorGUI.EndChangeCheck())
             {
-                Undo.RecordObject(sceneTool.Road, "Change Max Lane Change Turn Angle");
+                //Undo.RecordObject(sceneTool.Road, "Change Max Lane Change Turn Angle");
                 sceneTool.Road.laneChangeMaxTurnAngle = Mathf.Max(1f, maxTurnAngle);
                 EditorUtility.SetDirty(sceneTool.Road);
             }

@@ -23,7 +23,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("Create Priority Intersection", GUILayout.Height(30)))
             {
                 GameObject newIntersection = new GameObject("New Priority Intersection");
-                Undo.RegisterCreatedObjectUndo(newIntersection, "Create Priority Intersection");
+               // Undo.RegisterCreatedObjectUndo(newIntersection, "Create Priority Intersection");
                 TrafficSystemHierarchyUtility.ParentPriorityIntersection(newIntersection, "Create Priority Intersection");
                 newIntersection.AddComponent<PriorityIntersection>();
                 Selection.activeGameObject = newIntersection;
@@ -35,7 +35,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (GUILayout.Button("Create Traffic Light Intersection", GUILayout.Height(30)))
             {
                 GameObject newIntersection = new GameObject("New Traffic Light Intersection");
-                Undo.RegisterCreatedObjectUndo(newIntersection, "Create Traffic Light Intersection");
+                // Undo.RegisterCreatedObjectUndo(newIntersection, "Create Traffic Light Intersection");
                 TrafficSystemHierarchyUtility.ParentTrafficLightIntersection(newIntersection, "Create Traffic Light Intersection");
                 newIntersection.AddComponent<TrafficLightIntersection>();
                 Selection.activeGameObject = newIntersection;
@@ -84,7 +84,8 @@ namespace Darkmatter.TrafficSystem.Editor
                     {
                         if (EditorUtility.DisplayDialog("Delete Intersection", $"Are you sure you want to delete {displayName}?", "Yes", "No"))
                         {
-                            Undo.DestroyObjectImmediate(intersection.gameObject);
+                            //Undo.DestroyObjectImmediate(intersection.gameObject);
+                            Object.DestroyImmediate(intersection.gameObject);
                             GUIUtility.ExitGUI(); // Prevent layout errors during GUI loops
                         }
                     }
@@ -135,7 +136,8 @@ namespace Darkmatter.TrafficSystem.Editor
                     {
                         if (EditorUtility.DisplayDialog("Delete Intersection", $"Are you sure you want to delete {displayName}?", "Yes", "No"))
                         {
-                            Undo.DestroyObjectImmediate(intersection.gameObject);
+                            //Undo.DestroyObjectImmediate(intersection.gameObject);
+                            Object.DestroyImmediate(intersection.gameObject);
                             GUIUtility.ExitGUI();
                         }
                     }

@@ -38,7 +38,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(waypoint.transform, "Move AIWaypoint");
+                    //Undo.RecordObject(waypoint.transform, "Move AIWaypoint");
 
                     // Raycast down to always snap it perfectly on the ground mesh/terrain
                     newPos.y = currentPos.y; 

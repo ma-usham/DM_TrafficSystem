@@ -192,7 +192,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (!IsEmptyConnectionGroup(candidateGroup))
                 return;
 
-            Undo.DestroyObjectImmediate(candidateGroup.gameObject);
+            //Undo.DestroyObjectImmediate(candidateGroup.gameObject);
+            Object.DestroyImmediate(candidateGroup.gameObject);
         }
 
         /// <summary>
@@ -258,7 +259,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 return existingRoot.transform;
 
             GameObject rootObject = new GameObject(SystemRootName);
-            Undo.RegisterCreatedObjectUndo(rootObject, undoLabel);
+            //Undo.RegisterCreatedObjectUndo(rootObject, undoLabel);
             return rootObject.transform;
         }
 
@@ -275,10 +276,11 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             GameObject childObject = new GameObject(childName);
-            Undo.RegisterCreatedObjectUndo(childObject, undoLabel);
+            //Undo.RegisterCreatedObjectUndo(childObject, undoLabel);
 
             if (parent != null)
-                Undo.SetTransformParent(childObject.transform, parent, undoLabel);
+               // Undo.SetTransformParent(childObject.transform, parent, undoLabel);
+                childObject.transform.SetParent(parent);
 
             return childObject.transform;
         }
@@ -293,7 +295,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             if (connectionsRoot == null && legacyRootObject != null)
             {
-                Undo.RecordObject(legacyRootObject, undoLabel);
+                //Undo.RecordObject(legacyRootObject, undoLabel);
                 legacyRootObject.name = ConnectionsRootName;
                 connectionsRoot = legacyRootObject.transform;
             }
@@ -308,7 +310,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 MoveChildren(legacyRootObject.transform, connectionsRoot, undoLabel);
 
                 if (legacyRootObject.transform.childCount == 0)
-                    Undo.DestroyObjectImmediate(legacyRootObject);
+                    //Undo.DestroyObjectImmediate(legacyRootObject);
+                    Object.DestroyImmediate(legacyRootObject);
             }
 
             return connectionsRoot;
@@ -358,7 +361,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (child == null || parent == null || child.parent == parent)
                 return;
 
-            Undo.SetTransformParent(child, parent, undoLabel);
+            //Undo.SetTransformParent(child, parent, undoLabel);
+            child.SetParent(parent);
         }
 
         /// <summary>
@@ -371,7 +375,8 @@ namespace Darkmatter.TrafficSystem.Editor
 
             while (source.childCount > 0)
             {
-                Undo.SetTransformParent(source.GetChild(0), target, undoLabel);
+                //Undo.SetTransformParent(source.GetChild(0), target, undoLabel);
+                source.GetChild(0).SetParent(target);
             }
         }
 

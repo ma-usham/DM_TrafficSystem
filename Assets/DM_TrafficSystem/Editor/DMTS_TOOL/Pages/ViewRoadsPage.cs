@@ -127,7 +127,8 @@ namespace Darkmatter.TrafficSystem.Editor
                         "Delete", "Cancel"))
                 {
                     _roadsWithGizmoDisabled.Remove(road);
-                    Undo.DestroyObjectImmediate(road.gameObject);
+                   // Undo.DestroyObjectImmediate(road.gameObject);
+                    Object.DestroyImmediate(road.gameObject);
                 }
             }
 

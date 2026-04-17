@@ -233,7 +233,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 // Project the point down to the mesh/road to keep it from floating or going under
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(connection, "Move Connection Control Point");
+                    //Undo.RecordObject(connection, "Move Connection Control Point");
                     
                     // Raycast down from slightly above the new position to find the ground
                     Ray downwardRay = new Ray(newPosition + Vector3.up * 50f, Vector3.down);
@@ -340,7 +340,7 @@ namespace Darkmatter.TrafficSystem.Editor
             SplineMathUtils.GetSegmentHandles(connection.controlPointsList, segmentIndex, out Vector3 handleA, out Vector3 handleB);
             Vector3 insertPosition = SplineMathUtils.EvaluateCubicBezier(startPoint, handleA, handleB, endPoint, segmentT);
 
-            Undo.RecordObject(connection, "Insert Connection Control Point");
+            //Undo.RecordObject(connection, "Insert Connection Control Point");
             connection.InsertControlPoint(segmentIndex + 1, insertPosition);
             toolState.RebuildActiveConnection("Insert Connection Control Point");
             return true;
@@ -358,7 +358,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (nearestPointIndex < 0 || distance > DMTSPrefs.EndpointScreenRadius)
                 return false;
 
-            Undo.RecordObject(connection, "Delete Connection Control Point");
+            //Undo.RecordObject(connection, "Delete Connection Control Point");
             connection.RemoveControlPoint(nearestPointIndex);
             toolState.RebuildActiveConnection("Delete Connection Control Point");
             return true;

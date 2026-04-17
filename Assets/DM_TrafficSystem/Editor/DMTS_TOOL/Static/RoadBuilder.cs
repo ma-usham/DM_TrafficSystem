@@ -26,7 +26,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             EnsureCollections(road);
             RemoveAttachedConnections(road, "Clear Road Waypoints");
-            Undo.RecordObject(road, "Clear Road Waypoints");
+            //Undo.RecordObject(road, "Clear Road Waypoints");
 
             road.generatedLanes.Clear();
 
@@ -53,15 +53,15 @@ namespace Darkmatter.TrafficSystem.Editor
             if (road == null || road.controlPointsList == null || road.controlPointsList.Count < 2)
                 return;
 
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Generate Road Waypoints");
-            Undo.RecordObject(road, "Generate Road Waypoints");
+            //int undoGroup = Undo.GetCurrentGroup();
+            //Undo.SetCurrentGroupName("Generate Road Waypoints");
+            //Undo.RecordObject(road, "Generate Road Waypoints");
 
             ClearGeneratedWaypoints(road);
 
             if (!TryBuildCenterlineSamples(road, out List<Vector3> centerPositions, out List<Vector3> tangents))
             {
-                Undo.CollapseUndoOperations(undoGroup);
+                //Undo.CollapseUndoOperations(undoGroup);
                 return;
             }
 
@@ -73,7 +73,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             EditorUtility.SetDirty(road);
-            Undo.CollapseUndoOperations(undoGroup);
+            //Undo.CollapseUndoOperations(undoGroup);
         }
 
         /// <summary>
@@ -84,8 +84,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (road == null || road.laneObjects == null || road.laneObjects.Count < 2)
                 return;
 
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Link Lanes");
+            //int undoGroup = Undo.GetCurrentGroup();
+            //Undo.SetCurrentGroupName("Link Lanes");
 
             ClearLaneChangeLinks(road, "Link Lanes");
 
@@ -103,7 +103,7 @@ namespace Darkmatter.TrafficSystem.Editor
             }
 
             EditorUtility.SetDirty(road);
-            Undo.CollapseUndoOperations(undoGroup);
+            //Undo.CollapseUndoOperations(undoGroup);
         }
 
         /// <summary>
@@ -114,13 +114,13 @@ namespace Darkmatter.TrafficSystem.Editor
             if (road == null)
                 return;
 
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Unlink Lanes");
+            //int undoGroup = Undo.GetCurrentGroup();
+            //Undo.SetCurrentGroupName("Unlink Lanes");
 
             ClearLaneChangeLinks(road, "Unlink Lanes");
 
             EditorUtility.SetDirty(road);
-            Undo.CollapseUndoOperations(undoGroup);
+            //Undo.CollapseUndoOperations(undoGroup);
         }
 
         /// <summary>
@@ -238,11 +238,12 @@ namespace Darkmatter.TrafficSystem.Editor
         private static AILane CreateLaneObject(Road road, int laneIndex)
         {
             GameObject laneObject = new GameObject($"Lane_{laneIndex}");
-            Undo.RegisterCreatedObjectUndo(laneObject, "Generate Road Waypoints");
+            //Undo.RegisterCreatedObjectUndo(laneObject, "Generate Road Waypoints");
             laneObject.transform.SetParent(road.transform);
             laneObject.transform.localPosition = Vector3.zero;
 
-            AILane lane = Undo.AddComponent<AILane>(laneObject);
+            //AILane lane = Undo.AddComponent<AILane>(laneObject);
+            AILane lane = laneObject.AddComponent<AILane>();
             lane.laneSpeedLimit = road.speedLimitForAllLanes;
             EditorUtility.SetDirty(lane);
             return lane;
@@ -253,7 +254,7 @@ namespace Darkmatter.TrafficSystem.Editor
         /// </summary>
         private static List<Transform> CreateWaypoints(AILane lane, IReadOnlyList<Vector3> lanePositions, float laneWidth)
         {
-            Undo.RecordObject(lane, "Generate Road Waypoints");
+            //Undo.RecordObject(lane, "Generate Road Waypoints");
 
             lane.waypoints.Clear();
 
@@ -263,7 +264,7 @@ namespace Darkmatter.TrafficSystem.Editor
             for (int waypointIndex = 0; waypointIndex < lanePositions.Count; waypointIndex++)
             {
                 GameObject waypointObject = new GameObject($"Waypoint_{waypointIndex}");
-                Undo.RegisterCreatedObjectUndo(waypointObject, "Generate Road Waypoints");
+                //Undo.RegisterCreatedObjectUndo(waypointObject, "Generate Road Waypoints");
                 waypointObject.transform.SetParent(lane.transform);
                 waypointObject.transform.position = lanePositions[waypointIndex];
                 
@@ -286,7 +287,8 @@ namespace Darkmatter.TrafficSystem.Editor
                     }
                 }
 
-                AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
+                //AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
+                AIWaypoint waypoint = waypointObject.AddComponent<AIWaypoint>();
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = lane.laneSpeedLimit;
                 settings.vehicleType = lane.laneVehicleType;
@@ -375,7 +377,7 @@ namespace Darkmatter.TrafficSystem.Editor
         private static void ClearLaneChangeLinks(Road road, string undoLabel)
         {
             EnsureCollections(road);
-            Undo.RecordObject(road, undoLabel);
+            //Undo.RecordObject(road, undoLabel);
 
             for (int laneIndex = 0; laneIndex < road.laneObjects.Count; laneIndex++)
             {
@@ -389,7 +391,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     if (waypoint == null)
                         continue;
 
-                    Undo.RecordObject(waypoint, undoLabel);
+                    //Undo.RecordObject(waypoint, undoLabel);
                     WaypointSettings settings = waypoint.settings;
                     settings.laneChangePoints = EmptyWaypointLinks;
                     waypoint.settings = settings;
@@ -660,7 +662,7 @@ namespace Darkmatter.TrafficSystem.Editor
 
             laneChangePoints[existingCount] = laneChangeTarget;
 
-            Undo.RecordObject(waypoint, "Link Lanes");
+            //Undo.RecordObject(waypoint, "Link Lanes");
             settings.laneChangePoints = laneChangePoints;
             waypoint.settings = settings;
             EditorUtility.SetDirty(waypoint);
@@ -691,20 +693,22 @@ namespace Darkmatter.TrafficSystem.Editor
             if (lane == null)
                 return;
 
-            Undo.RecordObject(lane, "Clear Road Waypoints");
+            //Undo.RecordObject(lane, "Clear Road Waypoints");
 
             for (int i = lane.waypoints.Count - 1; i >= 0; i--)
             {
                 AIWaypoint waypoint = lane.waypoints[i];
                 if (waypoint != null)
-                    Undo.DestroyObjectImmediate(waypoint.gameObject);
+                    //Undo.DestroyObjectImmediate(waypoint.gameObject);
+                    Object.DestroyImmediate(waypoint.gameObject);
             }
 
             for (int i = lane.transform.childCount - 1; i >= 0; i--)
             {
                 Transform child = lane.transform.GetChild(i);
                 if (child != null && child.TryGetComponent<AIWaypoint>(out _))
-                    Undo.DestroyObjectImmediate(child.gameObject);
+                    //Undo.DestroyObjectImmediate(child.gameObject);
+                    Object.DestroyImmediate(child.gameObject);
             }
 
             lane.waypoints.Clear();
@@ -750,7 +754,8 @@ namespace Darkmatter.TrafficSystem.Editor
             if (lane != null)
             {
                 ClearLaneWaypoints(lane);
-                Undo.DestroyObjectImmediate(lane.gameObject);
+                //Undo.DestroyObjectImmediate(lane.gameObject);
+                Object.DestroyImmediate(lane.gameObject);
             }
 
             road.laneObjects.RemoveAt(laneIndex);

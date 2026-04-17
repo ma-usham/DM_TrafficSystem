@@ -44,7 +44,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connection.gameObject.name == expectedName)
                 return;
 
-            Undo.RecordObject(connection.gameObject, undoLabel);
+           // Undo.RecordObject(connection.gameObject, undoLabel);
             connection.gameObject.name = expectedName;
             EditorUtility.SetDirty(connection.gameObject);
         }
@@ -58,9 +58,10 @@ namespace Darkmatter.TrafficSystem.Editor
                 return null;
 
             GameObject connectionObject = new GameObject(BuildConnectionObjectName(sourceWaypoint, targetWaypoint));
-            Undo.RegisterCreatedObjectUndo(connectionObject, "Create Road Connection");
+           // Undo.RegisterCreatedObjectUndo(connectionObject, "Create Road Connection");
 
-            AIWaypointConnection connection = Undo.AddComponent<AIWaypointConnection>(connectionObject);
+           // AIWaypointConnection connection = Undo.AddComponent<AIWaypointConnection>(connectionObject);
+            AIWaypointConnection connection = connectionObject.AddComponent<AIWaypointConnection>();
             connection.sourceWaypoint = sourceWaypoint;
             connection.targetWaypoint = targetWaypoint;
             TrafficSystemHierarchyUtility.ParentConnection(connectionObject, sourceWaypoint, "Create Road Connection");
@@ -115,7 +116,8 @@ namespace Darkmatter.TrafficSystem.Editor
             Transform connectionGroup = connection.transform.parent;
             RemoveConnectionLinks(connection, undoLabel);
             ClearGeneratedWaypoints(connection, undoLabel);
-            Undo.DestroyObjectImmediate(connection.gameObject);
+            //Undo.DestroyObjectImmediate(connection.gameObject);
+            Object.DestroyImmediate(connection.gameObject);
             TrafficSystemHierarchyUtility.CleanupEmptyConnectionGroup(connectionGroup, undoLabel);
         }
 
@@ -216,7 +218,7 @@ namespace Darkmatter.TrafficSystem.Editor
                     continue;
                 }
 
-                Undo.RecordObject(waypoint, undoLabel);
+                //Undo.RecordObject(waypoint, undoLabel);
                 settings.previousWaypoint = previousWaypoint;
                 settings.nextWaypoint = nextWaypoint;
                 settings.laneChangePoints = laneChangePoints;
@@ -233,7 +235,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connection == null)
                 return;
 
-            Undo.RecordObject(connection, undoLabel);
+            //Undo.RecordObject(connection, undoLabel);
 
             if (connection.transitionWaypoints != null)
             {
@@ -241,7 +243,11 @@ namespace Darkmatter.TrafficSystem.Editor
                 {
                     AIWaypoint transitionWaypoint = connection.transitionWaypoints[i];
                     if (transitionWaypoint != null)
-                        Undo.DestroyObjectImmediate(transitionWaypoint.gameObject);
+                    {
+                        // Undo.DestroyObjectImmediate(transitionWaypoint.gameObject);
+                        Object.DestroyImmediate(transitionWaypoint.gameObject);
+                    }
+                       
                 }
             }
 
@@ -249,7 +255,10 @@ namespace Darkmatter.TrafficSystem.Editor
             {
                 Transform child = connection.transform.GetChild(i);
                 if (child != null && child.TryGetComponent<AIWaypoint>(out _))
-                    Undo.DestroyObjectImmediate(child.gameObject);
+                {
+                    // Undo.DestroyObjectImmediate(child.gameObject);
+                     Object.DestroyImmediate(child.gameObject);
+                }
             }
 
             connection.transitionWaypoints ??= new List<AIWaypoint>();
@@ -336,7 +345,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (connection == null)
                 return;
 
-            Undo.RecordObject(connection, undoLabel);
+            //Undo.RecordObject(connection, undoLabel);
             connection.transitionWaypoints ??= new List<AIWaypoint>();
             connection.transitionWaypoints.Clear();
 
@@ -347,7 +356,7 @@ namespace Darkmatter.TrafficSystem.Editor
             for (int i = 0; i < positions.Count; i++)
             {
                 GameObject waypointObject = new GameObject($"ConnectionWaypoint_{i}");
-                Undo.RegisterCreatedObjectUndo(waypointObject, undoLabel);
+                //Undo.RegisterCreatedObjectUndo(waypointObject, undoLabel);
                 waypointObject.transform.SetParent(connection.transform);
                 waypointObject.transform.position = positions[i];
 
@@ -379,7 +388,8 @@ namespace Darkmatter.TrafficSystem.Editor
                     }
                 }
 
-                AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
+              //  AIWaypoint waypoint = Undo.AddComponent<AIWaypoint>(waypointObject);
+                AIWaypoint waypoint = waypointObject.AddComponent<AIWaypoint>();
                 WaypointSettings settings = waypoint.settings;
                 settings.speed = speedLimit;
                 settings.vehicleType = vehicleTypes;
@@ -423,7 +433,7 @@ namespace Darkmatter.TrafficSystem.Editor
                 AIWaypoint previousWaypoint = i > 0 ? generatedWaypoints[i - 1] : connection.sourceWaypoint;
                 AIWaypoint nextWaypoint = i < generatedCount - 1 ? generatedWaypoints[i + 1] : connection.targetWaypoint;
 
-                Undo.RecordObject(waypoint, undoLabel);
+               // Undo.RecordObject(waypoint, undoLabel);
                 WaypointSettings settings = waypoint.settings;
                 settings.previousWaypoint = previousWaypoint != null ? new[] { previousWaypoint } : EmptyWaypointLinks;
                 settings.nextWaypoint = nextWaypoint != null ? new[] { nextWaypoint } : EmptyWaypointLinks;
@@ -455,7 +465,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (WaypointArraysEqual(currentLinks, updatedLinks))
                 return false;
 
-            Undo.RecordObject(ownerWaypoint, undoLabel);
+            //Undo.RecordObject(ownerWaypoint, undoLabel);
 
             if (useNextWaypoint)
             {
@@ -490,7 +500,7 @@ namespace Darkmatter.TrafficSystem.Editor
             if (WaypointArraysEqual(currentLinks, updatedLinks))
                 return false;
 
-            Undo.RecordObject(ownerWaypoint, undoLabel);
+            //Undo.RecordObject(ownerWaypoint, undoLabel);
 
             if (useNextWaypoint)
             {
