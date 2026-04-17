@@ -13,7 +13,7 @@ namespace Darkmatter.TrafficSystem
         public List<Vector3> controlPointsList = new List<Vector3>();
         public SplineMoveMode splineMoveMode = SplineMoveMode.Move2D;
         [Range(1, 8)] public int lanes = 1;
-        [Range(1, 20)] public int waypointDistance = 4;
+        [Range(1, 20)] public int waypointDistance = 5;
         public float laneWidth = 5f;
         public float speedLimitForAllLanes = 30f;
         [FormerlySerializedAs("laneChangeLinkRoadDistance")]

@@ -98,7 +98,8 @@ namespace Darkmatter.TrafficSystem
         [Range(1f, 10f)] public float smooth = 5f;          // smoothing
         [Range(0f, 10f)] public float maxTiltAngle = 5f;   // maximum degrees of tilt
 
-        private float currentTilt;
+        private float currentForwardTilt;
+        private float currentSideTilt;
         private float _previousForwardSpeed;
 
         // Visibility Caching
@@ -177,22 +178,22 @@ namespace Darkmatter.TrafficSystem
         {
             // Forward velocity (local space)
             float forwardSpeed = transform.InverseTransformDirection(rb.linearVelocity).z;
-
             // Calculate acceleration (change in speed over time)
             float acceleration = Time.deltaTime > 0f ? (forwardSpeed - _previousForwardSpeed) / Time.deltaTime : 0f;
             _previousForwardSpeed = forwardSpeed;
 
-            // Target tilt (negative = tilt backward on accel, positive = tilt forward on brake)
-            float targetTilt = -acceleration * tiltAmount;
+            // Target Forward tilt (negative = tilt backward on accel, positive = tilt forward on brake)
+            float targetForwardTilt = -acceleration * tiltAmount;
+            targetForwardTilt = Mathf.Clamp(targetForwardTilt, -maxTiltAngle, maxTiltAngle);
+            currentForwardTilt = Mathf.Lerp(currentForwardTilt, targetForwardTilt, Time.deltaTime * smooth);
 
-            // Clamp the target tilt to prevent extreme spikes (especially on the first frame of spawning)
-            targetTilt = Mathf.Clamp(targetTilt, -maxTiltAngle, maxTiltAngle);
-
-            // Smooth (Use Time.deltaTime in Update, not fixedDeltaTime)
-            currentTilt = Mathf.Lerp(currentTilt, targetTilt, Time.deltaTime * smooth);
+            // Target Side tilt (negative = turning left, positive = turning right)
+            float targetSideTilt = steeringAngle * forwardSpeed * tiltAmount*0.002f;
+            targetSideTilt = Mathf.Clamp(targetSideTilt, -maxTiltAngle, maxTiltAngle);
+            currentSideTilt = Mathf.Lerp(currentSideTilt, targetSideTilt, Time.deltaTime * smooth);
 
             // Apply (X axis = forward/back tilt)
-            bodyTransform.localRotation = Quaternion.Euler(currentTilt, 0f, 0f);
+            bodyTransform.localRotation = Quaternion.Euler(currentForwardTilt, 0f, currentSideTilt);
         }
 
         private bool IsVisibleToCamera()
