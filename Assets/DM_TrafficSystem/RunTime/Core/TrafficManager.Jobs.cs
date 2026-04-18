@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using UnityEngine;
+﻿﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Jobs;
@@ -215,7 +215,10 @@ namespace Darkmatter.TrafficSystem
                         Vector3 origin = cmd.from;
                         Vector3 springDir = -cmd.direction; // Inverse of down is up
 
-                        if (state.currentSpeed < 0.1f)
+                        // Parking brake hack: Push straight up against gravity if stopped normally or crashed.
+                        // SAFETY CHECK: Dot product ensures we only push UP if the car is mostly upright. 
+                        // If the car flips upside down in a crash, we don't want it flying into space!
+                        if ((state.currentSpeed < 0.1f || vehicle.crashSleepTimer > 0f) && Vector3.Dot(vehicle.transform.up, Vector3.up) > 0.2f)
                         {
                             springDir = Vector3.up;
                         }
@@ -237,11 +240,8 @@ namespace Darkmatter.TrafficSystem
                 vehicle.steeringAngle = state.steeringAngle;
 
                 // --- ANTI-ROLL / STABILIZATION ---
-                // Because we raised the Center of Mass, the car is top-heavy.
-                // This checks if the car is leaning sideways (rolling) and applies a counter-torque to keep it flat,
-                // while completely ignoring pitch so the car can still drive up and down steep hills!
                 float rollAmount = vehicle.transform.right.y;
-                if (Mathf.Abs(rollAmount) > 0.05f)
+                if (Mathf.Abs(rollAmount) > 30f)
                 {
                     // Multiply by mass and a strength multiplier (50f) to dynamically push the roof back to the sky
                     Vector3 antiRollTorque = vehicle.transform.forward * (-rollAmount * rb.mass * 50f);
@@ -258,53 +258,26 @@ namespace Darkmatter.TrafficSystem
                 // If the vehicle recently collided, skip AI movement and let physics/gravity take over
                 if (vehicle.crashSleepTimer > 0f)
                 {
-                    // Dampen horizontal velocity to simulate friction while crashed, keeping gravity active
-                    Vector3 crashVel = rb.linearVelocity;
-                    crashVel.x = Mathf.Lerp(crashVel.x, 0f, Time.fixedDeltaTime * 2f);
-                    crashVel.z = Mathf.Lerp(crashVel.z, 0f, Time.fixedDeltaTime * 2f);
-                    rb.linearVelocity = crashVel;
-                    
-                    // Dampen angular velocity so it doesn't spin endlessly
-                    rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, Vector3.zero, Time.fixedDeltaTime * 4f);
-
+                    rb.constraints = RigidbodyConstraints.FreezeRotationY;
+                    rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.fixedDeltaTime * 5f);
+                    rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, Vector3.zero, Time.fixedDeltaTime * 5f);
                     continue;
                 }
 
-                //Anti-Roll/ Braking
+                //Anti-Slip/ Braking
                 if (state.currentSpeed < 0.1f)
                 {
-                    // Freeze rotation so uneven suspension doesn't spin it
                     rb.constraints = RigidbodyConstraints.FreezeRotationY;
-
-                    // Dampen horizontal velocity to simulate heavy tire friction.
-                    // This lets the player push it (spiking the velocity), but quickly brings it back to a dead stop.
-                    Vector3 vel = rb.linearVelocity;
-                    // Preserve the suspension/gravity bounce by isolating the local Up velocity
-                    Vector3 localUpVelocity = Vector3.Project(vel, vehicle.transform.up);
-                    Vector3 planarVelocity = vel - localUpVelocity;
-                    
-                    planarVelocity = Vector3.Lerp(planarVelocity, Vector3.zero, Time.fixedDeltaTime * 15f);
-                    rb.linearVelocity = localUpVelocity + planarVelocity;
-
+                    rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.fixedDeltaTime * 5f);
                     continue;
                 }
                 else
                 {
                     rb.constraints = RigidbodyConstraints.None;
-                    // Calculate the difference between desired and current velocity
-                    Vector3 velocityDifference = state.desiredVelocity - rb.linearVelocity;
-                    
-                    // Strip ONLY the local Up/Down velocity difference to preserve suspension bounce,
-                    // allowing the remaining Forward/Right forces to push the vehicle up and down slopes!
-                    velocityDifference -= Vector3.Project(velocityDifference, vehicle.transform.up);
-                    
-                    // Apply the difference as a velocity change so suspension/gravity are preserved
-                    rb.AddForce(velocityDifference, ForceMode.VelocityChange);
-                    //rb.AddForceAtPosition(velocityDifference, vehicle.transform.position, ForceMode.VelocityChange);
+                    rb.linearVelocity = state.desiredVelocity; // Directly set velocity for responsive control at higher speeds
 
                 }
-
-                // Calculate the rotation difference to use AddTorque instead of MoveRotation (stops physics fighting)
+                // Calculate the rotation difference to use angular velocity (stops physics fighting)
                 Quaternion rotDifference = state.desiredRotation * Quaternion.Inverse(rb.rotation);
                 rotDifference.ToAngleAxis(out float angle, out Vector3 axis);
 
@@ -312,10 +285,14 @@ namespace Darkmatter.TrafficSystem
 
                 if (Mathf.Abs(angle) > 0.01f)
                 {
-                    Vector3 desiredAngularVelocity = (axis * (angle * Mathf.Deg2Rad))* config.turnSpeed*2f;
-                    Vector3 angularVelocityDifference = desiredAngularVelocity - rb.angularVelocity;
-
-                    rb.AddTorque(angularVelocityDifference, ForceMode.VelocityChange);
+                    // The Job System calculated exactly where the car should look this frame (state.desiredRotation).
+                    // To reach that exact rotation in exactly one physics frame, we divide Distance (Angle) by Time (fixedDeltaTime).
+                    Vector3 desiredAngularVelocity = (axis * (angle * Mathf.Deg2Rad)) / Time.fixedDeltaTime;
+                    rb.angularVelocity = desiredAngularVelocity; // Directly set angular velocity (Vector3)
+                }
+                else
+                {
+                    rb.angularVelocity = Vector3.zero; // Stop spinning if we are perfectly aligned
                 }
 
 
