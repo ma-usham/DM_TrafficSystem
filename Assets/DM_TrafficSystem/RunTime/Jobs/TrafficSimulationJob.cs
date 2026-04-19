@@ -239,7 +239,7 @@ namespace Darkmatter.TrafficSystem
             }
 
             // Early Return 4: Traffic Light / Stop Point Braking
-            if (state.isApproachingStopPoint && distance < config.stoppingDistance * 3f)
+            if (state.isApproachingStopPoint && distance < config.stoppingDistance * 5f)
             {
                 BrakeHalt(ref state, in config, 1f);
                 ResetPersonality(ref state, in config);

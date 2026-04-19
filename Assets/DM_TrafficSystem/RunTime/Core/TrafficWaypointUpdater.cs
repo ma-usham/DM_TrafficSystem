@@ -24,6 +24,7 @@ namespace Darkmatter.TrafficSystem
                 VehicleConfig config = vehicleConfigs[vehicle.arrayIndex];
 
                 UpdateCooldowns(vehicle, deltaTime);
+                UpdateStopWaypoint(vehicle, ref state, in config);
 
                 switch (state.currentBehavior)
                 {
@@ -197,16 +198,6 @@ namespace Darkmatter.TrafficSystem
                 // Turn off the blinkers!
                 vehicle.SetTurnSignals(0);
             }
-
-            // Update stop state for the new target
-            if (vehicle.lookaheadWaypoints[0] != null)
-            {
-                state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
-                float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
-                float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * config.speedMultiplier) : config.engineMaxSpeed;
-                state.localMaxSpeed = Mathf.Min(config.engineMaxSpeed, adjustedWpSpeed);
-            }
-
             // 4. Write back to Native Memory so jobs can read the newly queued target
             WriteLookaheadToBuffer(vehicle, state.waypointBufferStartIndex, waypointBuffer);
         }
@@ -224,24 +215,36 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
-        public void UpdateStopWaypoints(List<AIVehicle> activeVehicles, NativeArray<VehicleState> vehicleStates, NativeArray<VehicleConfig> vehicleConfigs)
+        private void UpdateStopWaypoint(AIVehicle vehicle, ref VehicleState state, in VehicleConfig config)
         {
-            // Poll dynamic stop states so we can toggle lights in real-time in the Inspector
-            for (int i = 0; i < activeVehicles.Count; i++)
+            if (vehicle.lookaheadWaypoints[0] != null)
             {
-                AIVehicle vehicle = activeVehicles[i];
-                if (vehicle.lookaheadWaypoints[0] != null)
+                state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
+
+                float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
+                float baseWpSpeed = wpSpeed > 0 ? (wpSpeed * config.speedMultiplier) : config.engineMaxSpeed;
+                float targetMaxSpeed = Mathf.Min(config.engineMaxSpeed, baseWpSpeed);
+
+                // Anticipation Logic: Coast down if a stop point is coming up in the lookahead buffer
+                if (!state.isApproachingStopPoint)
                 {
-                    VehicleState state = vehicleStates[vehicle.arrayIndex];
-                    VehicleConfig config = vehicleConfigs[vehicle.arrayIndex];
-                    state.isApproachingStopPoint = vehicle.lookaheadWaypoints[0].settings.isStopPoint;
-
-                    float wpSpeed = vehicle.lookaheadWaypoints[0].settings.speed;
-                    float adjustedWpSpeed = wpSpeed > 0 ? (wpSpeed * config.speedMultiplier) : config.engineMaxSpeed;
-                    state.localMaxSpeed = Mathf.Min(config.engineMaxSpeed, adjustedWpSpeed);
-
-                    vehicleStates[vehicle.arrayIndex] = state;
+                    for (int j = 1; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
+                    {
+                        if (vehicle.lookaheadWaypoints[j] != null && vehicle.lookaheadWaypoints[j].settings.isStopPoint)
+                        {
+                            float distanceRatio = (float)j / TrafficManager.WAYPOINT_LOOKAHEAD;
+                            float speedMultiplier = Mathf.Clamp(distanceRatio , 0.2f, 1f); 
+                            targetMaxSpeed *= speedMultiplier;
+                            break; 
+                        }
+                    }
                 }
+                else
+                {
+                    targetMaxSpeed = 0f; 
+                }
+
+                state.localMaxSpeed = targetMaxSpeed;
             }
         }
 

@@ -86,7 +86,6 @@ namespace Darkmatter.TrafficSystem
 
             // 1. Route Management System processes completed waypoints and reads stop points
             _trafficWaypointUpdater.UpdateWaypoint(_activeVehicles, _vehicleStates, _vehicleConfigs, _waypointBuffer, Time.fixedDeltaTime);
-            _trafficWaypointUpdater.UpdateStopWaypoints(_activeVehicles, _vehicleStates, _vehicleConfigs);
 
             // Job 1: Build Boxcast Commands
             VehicleSensorJob sensorJob = new VehicleSensorJob
