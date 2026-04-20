@@ -353,14 +353,14 @@ namespace Darkmatter.TrafficSystem.Editor
             VehicleType[] vehicleTypes = GetConnectionVehicleTypes(connection);
             float laneWidth = connection.sourceWaypoint != null ? connection.sourceWaypoint.settings.LaneWidth : 4f;
 
-            int intent = 0;
+            TurnSignalState intent = TurnSignalState.None;
             if (connection.sourceWaypoint != null && connection.targetWaypoint != null)
             {
                 Vector3 sourceFwd = GetSourceForward(connection.sourceWaypoint, connection.targetWaypoint);
                 Vector3 targetFwd = GetTargetForward(connection.targetWaypoint, connection.sourceWaypoint);
                 float turnAngle = Vector3.SignedAngle(sourceFwd, targetFwd, Vector3.up);
-                if (turnAngle > 30f) intent = 1;
-                else if (turnAngle < -30f) intent = -1;
+                if (turnAngle > 30f) intent = TurnSignalState.Right;
+                else if (turnAngle < -30f) intent = TurnSignalState.Left;
             }
 
             for (int i = 0; i < positions.Count; i++)

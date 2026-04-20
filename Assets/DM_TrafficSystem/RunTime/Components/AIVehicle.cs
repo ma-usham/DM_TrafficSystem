@@ -47,11 +47,11 @@ namespace Darkmatter.TrafficSystem
         public float springDamper = 3000f;
 
         [Header("Lights")]
-        [Tooltip("Assign the mesh renderer used for brake lights. Ensure it uses a shared material for batching.")]
-        public Renderer brakeLightRenderer;
-        public Renderer leftTurnSignalRenderer;
-        public Renderer rightTurnSignalRenderer;
-        public Renderer headlightRenderer;
+        [Tooltip("Assign the mesh renderers used for brake lights. Ensure they use a shared material for batching.")]
+        public Renderer[] brakeLightRenderers;
+        public Renderer[] leftTurnSignalRenderers;
+        public Renderer[] rightTurnSignalRenderers;
+        public Renderer[] headlightRenderers;
 
         [Header("Sensors")]
         [Tooltip("If true, the front sensor rotates to face the next waypoint")]
@@ -97,9 +97,9 @@ namespace Darkmatter.TrafficSystem
 
         // Event timers
         private float _hornTimer = 0f;
-        private int _turnSignalState = 0; // 0=Off, -1=Left, 1=Right
+        private TurnSignalState _turnSignalState = TurnSignalState.None;
         private Coroutine _turnSignalCoroutine;
-        private Coroutine _flashCoroutine;
+        private Coroutine _headLightFlashCoroutine;
 
         [Header("Fake Physics")]
         public Transform bodyTransform;
@@ -247,15 +247,16 @@ namespace Darkmatter.TrafficSystem
             }
             _turnSignalCoroutine = null;
             
-            if (_flashCoroutine != null && gameObject.activeInHierarchy)
+            if (_headLightFlashCoroutine != null && gameObject.activeInHierarchy)
             {
-                StopCoroutine(_flashCoroutine);
+                StopCoroutine(_headLightFlashCoroutine);
             }
-            _flashCoroutine = null;
-            _turnSignalState = 0;
-            if (leftTurnSignalRenderer != null) leftTurnSignalRenderer.enabled = false;
-            if (rightTurnSignalRenderer != null) rightTurnSignalRenderer.enabled = false;
-            if(headlightRenderer != null) headlightRenderer.enabled = false;
+            _headLightFlashCoroutine = null;
+            _turnSignalState = TurnSignalState.None;
+            
+            ToggleRenderers(leftTurnSignalRenderers, false);
+            ToggleRenderers(rightTurnSignalRenderers, false);
+            ToggleRenderers(headlightRenderers, false);
             
             crashSleepTimer = 0f;
             SetBrakeLights(false);
@@ -276,36 +277,46 @@ namespace Darkmatter.TrafficSystem
 
             // TODO: Play AudioSource clip here
             
-            if (gameObject.activeInHierarchy && headlightRenderer != null)
+            if (gameObject.activeInHierarchy && headlightRenderers != null && headlightRenderers.Length > 0)
             {
-                if (_flashCoroutine != null) StopCoroutine(_flashCoroutine);
-                _flashCoroutine = StartCoroutine(FlashHeadlightsRoutine());
+                if (_headLightFlashCoroutine != null) StopCoroutine(_headLightFlashCoroutine);
+                _headLightFlashCoroutine = StartCoroutine(FlashHeadlightsRoutine());
             }
         }
 
         private IEnumerator FlashHeadlightsRoutine()
         {
-            bool originalState = headlightRenderer.enabled;
+            bool originalState = false;
+            if (headlightRenderers != null && headlightRenderers.Length > 0 && headlightRenderers[0] != null)
+            {
+                originalState = headlightRenderers[0].enabled;
+            }
 
             // Flash the lights rapidly 3 times
             for (int i = 0; i < 3; i++)
             {
-                headlightRenderer.enabled = !originalState;
+                ToggleRenderers(headlightRenderers, !originalState);
                 yield return new WaitForSeconds(0.15f);
-                headlightRenderer.enabled = originalState;
+                ToggleRenderers(headlightRenderers, originalState);
                 yield return new WaitForSeconds(0.15f);
+            }
+        }
+
+        private void ToggleRenderers(Renderer[] renderers, bool state)
+        {
+            if (renderers == null) return;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null) renderers[i].enabled = state;
             }
         }
 
         public void SetBrakeLights(bool active)
         {
-            if (brakeLightRenderer != null)
-            {
-                brakeLightRenderer.enabled = active;
-            }
+            ToggleRenderers(brakeLightRenderers, active);
         }
 
-        public void SetTurnSignals(int direction)
+        public void SetTurnSignals(TurnSignalState direction)
         {
             if (_turnSignalState == direction) return;
             _turnSignalState = direction;
@@ -316,10 +327,10 @@ namespace Darkmatter.TrafficSystem
             }
             
             // Ensure both are off initially when switching or stopping
-            if (leftTurnSignalRenderer != null) leftTurnSignalRenderer.enabled = false;
-            if (rightTurnSignalRenderer != null) rightTurnSignalRenderer.enabled = false;
+            ToggleRenderers(leftTurnSignalRenderers, false);
+            ToggleRenderers(rightTurnSignalRenderers, false);
 
-            if (_turnSignalState != 0 && gameObject.activeInHierarchy)
+            if (_turnSignalState != TurnSignalState.None && gameObject.activeInHierarchy)
             {
                 _turnSignalCoroutine = StartCoroutine(BlinkTurnSignals());
             }
@@ -328,16 +339,16 @@ namespace Darkmatter.TrafficSystem
         private IEnumerator BlinkTurnSignals()
         {
             bool isOn = false;
-            while (_turnSignalState != 0)
+            while (_turnSignalState != TurnSignalState.None)
             {
                 isOn = !isOn;
-                if (_turnSignalState == -1 && leftTurnSignalRenderer != null)
+                if (_turnSignalState == TurnSignalState.Left)
                 {
-                    leftTurnSignalRenderer.enabled = isOn;
+                    ToggleRenderers(leftTurnSignalRenderers, isOn);
                 }
-                else if (_turnSignalState == 1 && rightTurnSignalRenderer != null)
+                else if (_turnSignalState == TurnSignalState.Right)
                 {
-                    rightTurnSignalRenderer.enabled = isOn;
+                    ToggleRenderers(rightTurnSignalRenderers, isOn);
                 }
                 yield return new WaitForSeconds(0.5f); // Blinker interval
             }

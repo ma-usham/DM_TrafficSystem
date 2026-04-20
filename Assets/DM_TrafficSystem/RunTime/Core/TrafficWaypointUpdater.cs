@@ -75,10 +75,10 @@ namespace Darkmatter.TrafficSystem
 
         private void ProcessTurnSignalIntent(AIVehicle vehicle)
         {
-            int upcomingIntent = 0;
+            TurnSignalState upcomingIntent = TurnSignalState.None;
             for (int j = 0; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
             {
-                if (vehicle.lookaheadWaypoints[j] != null && vehicle.lookaheadWaypoints[j].settings.turnSignalIntent != 0)
+                if (vehicle.lookaheadWaypoints[j] != null && vehicle.lookaheadWaypoints[j].settings.turnSignalIntent != TurnSignalState.None)
                 {
                     upcomingIntent = vehicle.lookaheadWaypoints[j].settings.turnSignalIntent;
                     break; // Use the first turn intent we find in the lookahead buffer
@@ -103,17 +103,17 @@ namespace Darkmatter.TrafficSystem
 
             if (tryLeft || tryRight)
             {
-                if (TryFindLaneChangeWaypoint(vehicle, tryLeft, tryRight, out AIWaypoint targetLaneWaypoint, out int turnDirection))
+                if (TryFindLaneChangeWaypoint(vehicle, tryLeft, tryRight, out AIWaypoint targetLaneWaypoint, out TurnSignalState turnDirection))
                 {
                     ExecuteLaneSwitch(vehicle, ref state, targetLaneWaypoint, waypointBuffer, turnDirection);
                 }
             }
         }
 
-        private bool TryFindLaneChangeWaypoint(AIVehicle vehicle, bool tryLeft, bool tryRight, out AIWaypoint targetLaneWaypoint, out int turnDirection)
+        private bool TryFindLaneChangeWaypoint(AIVehicle vehicle, bool tryLeft, bool tryRight, out AIWaypoint targetLaneWaypoint, out TurnSignalState turnDirection)
         {
             targetLaneWaypoint = null;
-            turnDirection = 0;
+            turnDirection = TurnSignalState.None;
             AIWaypoint currentTarget = vehicle.lookaheadWaypoints[0];
 
             if (currentTarget == null || currentTarget.settings.laneChangePoints == null || currentTarget.settings.laneChangePoints.Length == 0)
@@ -146,20 +146,20 @@ namespace Darkmatter.TrafficSystem
                 if (tryLeft && lateralSignedAngle < -5f)
                 {
                     targetLaneWaypoint = lp;
-                    turnDirection = -1; // Left
+                    turnDirection = TurnSignalState.Left;
                     return true;
                 }
                 if (tryRight && lateralSignedAngle > 5f)
                 {
                     targetLaneWaypoint = lp;
-                    turnDirection = 1; // Right
+                    turnDirection = TurnSignalState.Right;
                     return true;
                 }
             }
             return false;
         }
 
-        private void ExecuteLaneSwitch(AIVehicle vehicle, ref VehicleState state, AIWaypoint targetLaneWaypoint, NativeArray<Vector3> waypointBuffer, int turnDirection)
+        private void ExecuteLaneSwitch(AIVehicle vehicle, ref VehicleState state, AIWaypoint targetLaneWaypoint, NativeArray<Vector3> waypointBuffer, TurnSignalState turnDirection)
         {
             // Regenerate the lookahead queue starting from the new lane change point
             vehicle.lookaheadWaypoints[0] = targetLaneWaypoint;
@@ -210,7 +210,7 @@ namespace Darkmatter.TrafficSystem
                 vehicle.laneChangeCooldownTimer = config.laneChangeCooldown; // Cooldown before changing again
                 
                 // Turn off the blinkers!
-                vehicle.SetTurnSignals(0);
+                vehicle.SetTurnSignals(TurnSignalState.None);
             }
             
             // Check for upcoming intersection turns now that the queue has shifted with new waypoints
