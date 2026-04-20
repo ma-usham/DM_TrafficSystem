@@ -227,6 +227,8 @@ namespace Darkmatter.TrafficSystem
                         // If they didn't decide to overtake (lanes blocked, no room, or failed probability), reset the retry timer
                         if (!state.wantsToChangeLane)
                         {
+                            // Stuck behind traffic/player! Throw a Honk/Flash event to the main thread.
+                            eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = VehicleEventType.HonkHorn });
                             state.impatienceTimer = 5f; // Wait 5 seconds before getting impatient again.(retry time)
                         }
                     }

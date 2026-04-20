@@ -51,6 +51,7 @@ namespace Darkmatter.TrafficSystem
         public Renderer brakeLightRenderer;
         public Renderer leftTurnSignalRenderer;
         public Renderer rightTurnSignalRenderer;
+        public Renderer headlightRenderer;
 
         [Header("Sensors")]
         [Tooltip("If true, the front sensor rotates to face the next waypoint")]
@@ -98,6 +99,7 @@ namespace Darkmatter.TrafficSystem
         private float _hornTimer = 0f;
         private int _turnSignalState = 0; // 0=Off, -1=Left, 1=Right
         private Coroutine _turnSignalCoroutine;
+        private Coroutine _flashCoroutine;
 
         [Header("Fake Physics")]
         public Transform bodyTransform;
@@ -244,9 +246,16 @@ namespace Darkmatter.TrafficSystem
                 StopCoroutine(_turnSignalCoroutine);
             }
             _turnSignalCoroutine = null;
+            
+            if (_flashCoroutine != null && gameObject.activeInHierarchy)
+            {
+                StopCoroutine(_flashCoroutine);
+            }
+            _flashCoroutine = null;
             _turnSignalState = 0;
             if (leftTurnSignalRenderer != null) leftTurnSignalRenderer.enabled = false;
             if (rightTurnSignalRenderer != null) rightTurnSignalRenderer.enabled = false;
+            if(headlightRenderer != null) headlightRenderer.enabled = false;
             
             crashSleepTimer = 0f;
             SetBrakeLights(false);
@@ -265,9 +274,27 @@ namespace Darkmatter.TrafficSystem
             if (_hornTimer > 0f) return;
             _hornTimer = 2f; // Cooldown
 
-            Debug.Log($"Vehicle {gameObject.name} is HONKING and FLASHING LIGHTS!");
             // TODO: Play AudioSource clip here
-            // TODO: Enable Headlight GameObject here, and use a Coroutine to turn it off after 0.5s
+            
+            if (gameObject.activeInHierarchy && headlightRenderer != null)
+            {
+                if (_flashCoroutine != null) StopCoroutine(_flashCoroutine);
+                _flashCoroutine = StartCoroutine(FlashHeadlightsRoutine());
+            }
+        }
+
+        private IEnumerator FlashHeadlightsRoutine()
+        {
+            bool originalState = headlightRenderer.enabled;
+
+            // Flash the lights rapidly 3 times
+            for (int i = 0; i < 3; i++)
+            {
+                headlightRenderer.enabled = !originalState;
+                yield return new WaitForSeconds(0.15f);
+                headlightRenderer.enabled = originalState;
+                yield return new WaitForSeconds(0.15f);
+            }
         }
 
         public void SetBrakeLights(bool active)

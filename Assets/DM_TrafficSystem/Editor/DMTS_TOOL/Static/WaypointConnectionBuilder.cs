@@ -359,8 +359,8 @@ namespace Darkmatter.TrafficSystem.Editor
                 Vector3 sourceFwd = GetSourceForward(connection.sourceWaypoint, connection.targetWaypoint);
                 Vector3 targetFwd = GetTargetForward(connection.targetWaypoint, connection.sourceWaypoint);
                 float turnAngle = Vector3.SignedAngle(sourceFwd, targetFwd, Vector3.up);
-                if (turnAngle > 20f) intent = 1;
-                else if (turnAngle < -20f) intent = -1;
+                if (turnAngle > 30f) intent = 1;
+                else if (turnAngle < -30f) intent = -1;
             }
 
             for (int i = 0; i < positions.Count; i++)

@@ -38,6 +38,7 @@ namespace Darkmatter.TrafficSystem
         private SerializedProperty brakeLightRendererProp;
         private SerializedProperty leftTurnSignalRendererProp;
         private SerializedProperty rightTurnSignalRendererProp;
+        private SerializedProperty headlightRendererProp;
 
         private void OnEnable()
         {
@@ -60,6 +61,7 @@ namespace Darkmatter.TrafficSystem
             brakeLightRendererProp = serializedObject.FindProperty("brakeLightRenderer");
             leftTurnSignalRendererProp = serializedObject.FindProperty("leftTurnSignalRenderer");
             rightTurnSignalRendererProp = serializedObject.FindProperty("rightTurnSignalRenderer");
+            headlightRendererProp = serializedObject.FindProperty("headlightRenderer");
         }
 
         private void OnSceneGUI()
@@ -698,6 +700,7 @@ namespace Darkmatter.TrafficSystem
             if (brakeLightRendererProp != null) EditorGUILayout.PropertyField(brakeLightRendererProp);
             if (leftTurnSignalRendererProp != null) EditorGUILayout.PropertyField(leftTurnSignalRendererProp);
             if (rightTurnSignalRendererProp != null) EditorGUILayout.PropertyField(rightTurnSignalRendererProp);
+            if (headlightRendererProp != null) EditorGUILayout.PropertyField(headlightRendererProp);
             
             GUILayout.Space(10);
             
