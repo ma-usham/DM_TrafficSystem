@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace Darkmatter.TrafficSystem
@@ -45,6 +46,11 @@ namespace Darkmatter.TrafficSystem
         public float springStrength = 30000f;
         public float springDamper = 3000f;
 
+        [Header("Lights")]
+        [Tooltip("Assign the mesh renderer used for brake lights. Ensure it uses a shared material for batching.")]
+        public Renderer brakeLightRenderer;
+        public Renderer leftTurnSignalRenderer;
+        public Renderer rightTurnSignalRenderer;
 
         [Header("Sensors")]
         [Tooltip("If true, the front sensor rotates to face the next waypoint")]
@@ -91,6 +97,7 @@ namespace Darkmatter.TrafficSystem
         // Event timers
         private float _hornTimer = 0f;
         private int _turnSignalState = 0; // 0=Off, -1=Left, 1=Right
+        private Coroutine _turnSignalCoroutine;
 
         [Header("Fake Physics")]
         public Transform bodyTransform;
@@ -231,8 +238,18 @@ namespace Darkmatter.TrafficSystem
             laneChangeCooldownTimer = 0f;
             isChangingLanes = false;
             _hornTimer = 0f;
+            
+            if (_turnSignalCoroutine != null && gameObject.activeInHierarchy)
+            {
+                StopCoroutine(_turnSignalCoroutine);
+            }
+            _turnSignalCoroutine = null;
             _turnSignalState = 0;
+            if (leftTurnSignalRenderer != null) leftTurnSignalRenderer.enabled = false;
+            if (rightTurnSignalRenderer != null) rightTurnSignalRenderer.enabled = false;
+            
             crashSleepTimer = 0f;
+            SetBrakeLights(false);
 
             if (rb != null)
             {
@@ -255,16 +272,48 @@ namespace Darkmatter.TrafficSystem
 
         public void SetBrakeLights(bool active)
         {
-            // TODO: Toggle red brake light materials/GameObjects
+            if (brakeLightRenderer != null)
+            {
+                brakeLightRenderer.enabled = active;
+            }
         }
 
         public void SetTurnSignals(int direction)
         {
+            if (_turnSignalState == direction) return;
             _turnSignalState = direction;
-            // direction == -1 (Left), 1 (Right), 0 (Off)
-            // TODO: Start a Coroutine that blinks the respective yellow light GameObjects
-            if (direction == 0) Debug.Log($"Vehicle {gameObject.name} turned signals OFF");
-            else Debug.Log($"Vehicle {gameObject.name} turned {(direction == -1 ? "LEFT" : "RIGHT")} signal ON");
+            
+            if (_turnSignalCoroutine != null)
+            {
+                StopCoroutine(_turnSignalCoroutine);
+            }
+            
+            // Ensure both are off initially when switching or stopping
+            if (leftTurnSignalRenderer != null) leftTurnSignalRenderer.enabled = false;
+            if (rightTurnSignalRenderer != null) rightTurnSignalRenderer.enabled = false;
+
+            if (_turnSignalState != 0 && gameObject.activeInHierarchy)
+            {
+                _turnSignalCoroutine = StartCoroutine(BlinkTurnSignals());
+            }
+        }
+
+        private IEnumerator BlinkTurnSignals()
+        {
+            bool isOn = false;
+            while (_turnSignalState != 0)
+            {
+                isOn = !isOn;
+                if (_turnSignalState == -1 && leftTurnSignalRenderer != null)
+                {
+                    leftTurnSignalRenderer.enabled = isOn;
+                }
+                else if (_turnSignalState == 1 && rightTurnSignalRenderer != null)
+                {
+                    rightTurnSignalRenderer.enabled = isOn;
+                }
+                yield return new WaitForSeconds(0.5f); // Blinker interval
+            }
         }
 
         private void OnCollisionEnter(Collision collision)

@@ -107,7 +107,7 @@ namespace Darkmatter.TrafficSystem
             GetTargetWaypointData(ref state, transform, out float distance, out Vector3 dir, out Vector3 targetPos);
 
             // Hard halt logic while waiting at a red light or stop sign
-            BrakeHalt(ref state, in config, 2f);
+            BrakeHalt(index, ref state, in config, 2f);
             ResetPersonality(ref state, in config);
 
             // Keep wheels aligned to the stop line
@@ -190,6 +190,8 @@ namespace Darkmatter.TrafficSystem
                 // Move toward that speed gradually
                 state.currentSpeed = Mathf.Lerp(state.currentSpeed, dynamicTargetSpeed, deltaTime * config.brakingPower);
 
+                SetBrakingState(index, ref state, true);
+
                 // Stop entirely if we're safely within the actual stopping distance boundary
                 if (state.obstacleDistance < config.stoppingDistance)
                 {
@@ -241,13 +243,13 @@ namespace Darkmatter.TrafficSystem
             // Early Return 4: Traffic Light / Stop Point Braking
             if (state.isApproachingStopPoint && distance < config.stoppingDistance * 5f)
             {
-                BrakeHalt(ref state, in config, 1f);
+                BrakeHalt(index, ref state, in config, 1f);
                 ResetPersonality(ref state, in config);
                 return;
             }
 
             // Default: Clear road, go fast
-            AccelerateNormal(ref state, in config);
+            AccelerateNormal(index, ref state, in config);
             //only reset personality if there is absolutely nothing in front of us.
             if (!state.detectedTrafficFar)
             {
@@ -257,16 +259,29 @@ namespace Darkmatter.TrafficSystem
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void BrakeHalt(ref VehicleState state, in VehicleConfig config, float brakeMultiplier)
+        private void BrakeHalt(int index, ref VehicleState state, in VehicleConfig config, float brakeMultiplier)
         {
             state.currentSpeed = Mathf.Lerp(state.currentSpeed, 0f, deltaTime * config.brakingPower * brakeMultiplier);
             if (state.currentSpeed < 0.1f) state.currentSpeed = 0f;
+            
+            SetBrakingState(index, ref state, true);
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private void AccelerateNormal(ref VehicleState state, in VehicleConfig config)
+        private void AccelerateNormal(int index, ref VehicleState state, in VehicleConfig config)
         {
             state.currentSpeed = Mathf.Lerp(state.currentSpeed, state.localMaxSpeed, deltaTime * config.acceleration);
+            SetBrakingState(index, ref state, false);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private void SetBrakingState(int index, ref VehicleState state, bool isBraking)
+        {
+            if (state.isBraking != isBraking)
+            {
+                state.isBraking = isBraking;
+                eventQueue.Enqueue(new VehicleEvent { vehicleIndex = index, eventType = isBraking ? VehicleEventType.BrakesApplied : VehicleEventType.BrakesReleased });
+            }
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]

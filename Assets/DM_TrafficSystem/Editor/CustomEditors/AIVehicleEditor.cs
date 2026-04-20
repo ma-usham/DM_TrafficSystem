@@ -17,7 +17,7 @@ namespace Darkmatter.TrafficSystem
         private const float DashedSensorFillAlpha = 0.035f;
 
         private int _currentTab = 0;
-        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors" };
+        private string[] _tabs = new string[] { "Driver Behaviour", "Suspension & Sensors", "Lights & Audio" };
 
         private SerializedProperty vehicleTypeProp;
         private SerializedProperty behaviorProp;
@@ -35,6 +35,9 @@ namespace Darkmatter.TrafficSystem
         private SerializedProperty tiltAmountProp;
         private SerializedProperty smoothProp;
         private SerializedProperty maxTiltAngleProp;
+        private SerializedProperty brakeLightRendererProp;
+        private SerializedProperty leftTurnSignalRendererProp;
+        private SerializedProperty rightTurnSignalRendererProp;
 
         private void OnEnable()
         {
@@ -54,6 +57,9 @@ namespace Darkmatter.TrafficSystem
             tiltAmountProp = serializedObject.FindProperty("tiltAmount");
             smoothProp = serializedObject.FindProperty("smooth");
             maxTiltAngleProp = serializedObject.FindProperty("maxTiltAngle");
+            brakeLightRendererProp = serializedObject.FindProperty("brakeLightRenderer");
+            leftTurnSignalRendererProp = serializedObject.FindProperty("leftTurnSignalRenderer");
+            rightTurnSignalRendererProp = serializedObject.FindProperty("rightTurnSignalRenderer");
         }
 
         private void OnSceneGUI()
@@ -610,6 +616,10 @@ namespace Darkmatter.TrafficSystem
             {
                 DrawSuspensionAndSensors();
             }
+            else if (_currentTab == 2)
+            {
+                DrawLightsAndAudio();
+            }
 
             serializedObject.ApplyModifiedProperties();
 
@@ -680,6 +690,20 @@ namespace Darkmatter.TrafficSystem
                 EditorGUILayout.PropertyField(behaviorProp.FindPropertyRelative("aiOvertakeProbability"));
                 EditorGUI.indentLevel--;
             }
+        }
+
+        private void DrawLightsAndAudio()
+        {
+            EditorGUILayout.LabelField("Lights", EditorStyles.boldLabel);
+            if (brakeLightRendererProp != null) EditorGUILayout.PropertyField(brakeLightRendererProp);
+            if (leftTurnSignalRendererProp != null) EditorGUILayout.PropertyField(leftTurnSignalRendererProp);
+            if (rightTurnSignalRendererProp != null) EditorGUILayout.PropertyField(rightTurnSignalRendererProp);
+            
+            GUILayout.Space(10);
+            
+            EditorGUILayout.LabelField("Audio", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Audio settings will be added here.", MessageType.Info);
+            // Future audio properties like engine sound, horn sound, etc., will go here.
         }
 
         private void DrawSuspensionAndSensors()
