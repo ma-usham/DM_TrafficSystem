@@ -73,6 +73,20 @@ namespace Darkmatter.TrafficSystem
             }
         }
 
+        private void ProcessTurnSignalIntent(AIVehicle vehicle)
+        {
+            int upcomingIntent = 0;
+            for (int j = 0; j < TrafficManager.WAYPOINT_LOOKAHEAD; j++)
+            {
+                if (vehicle.lookaheadWaypoints[j] != null && vehicle.lookaheadWaypoints[j].settings.turnSignalIntent != 0)
+                {
+                    upcomingIntent = vehicle.lookaheadWaypoints[j].settings.turnSignalIntent;
+                    break; // Use the first turn intent we find in the lookahead buffer
+                }
+            }
+            vehicle.SetTurnSignals(upcomingIntent);
+        }
+
         private void ProcessLaneChangeIntent(AIVehicle vehicle, ref VehicleState state, in VehicleConfig config, NativeArray<Vector3> waypointBuffer)
         {
             // 1. Check if we have the intent, the cooldown is ready, and the vehicle is allowed to change lanes
@@ -198,6 +212,13 @@ namespace Darkmatter.TrafficSystem
                 // Turn off the blinkers!
                 vehicle.SetTurnSignals(0);
             }
+            
+            // Check for upcoming intersection turns now that the queue has shifted with new waypoints
+            if (!state.isChangingLanes)
+            {
+                ProcessTurnSignalIntent(vehicle);
+            }
+
             // 4. Write back to Native Memory so jobs can read the newly queued target
             WriteLookaheadToBuffer(vehicle, state.waypointBufferStartIndex, waypointBuffer);
         }

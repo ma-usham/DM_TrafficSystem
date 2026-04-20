@@ -28,6 +28,12 @@ namespace Darkmatter.TrafficSystem
         public VehicleType[] vehicleType;
 
         /// <summary>
+        /// Baked intent for turn signals. 0 = Straight/Off, -1 = Left, 1 = Right.
+        /// </summary>
+        [UnityEngine.Tooltip("0 = Straight, -1 = Left, 1 = Right")]
+        public int turnSignalIntent;
+
+        /// <summary>
         /// Stores the previous waypoint links that can arrive at this waypoint.
         /// </summary>
         public AIWaypoint[] previousWaypoint;
