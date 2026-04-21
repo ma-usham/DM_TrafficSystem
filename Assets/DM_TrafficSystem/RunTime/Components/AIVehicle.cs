@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Darkmatter.TrafficSystem
 {
@@ -47,11 +48,11 @@ namespace Darkmatter.TrafficSystem
         public float springDamper = 3000f;
 
         [Header("Lights")]
-        [Tooltip("Assign the mesh renderers used for brake lights. Ensure they use a shared material for batching.")]
-        public Renderer[] brakeLightRenderers;
-        public Renderer[] leftTurnSignalRenderers;
-        public Renderer[] rightTurnSignalRenderers;
-        public Renderer[] headlightRenderers;
+        [Tooltip("Assign the parent GameObject containing the mesh renderers used for brake lights. Ensure they use a shared material for batching.")]
+        public GameObject brakeLightRenderers;
+        public GameObject leftTurnSignalRenderers;
+        public GameObject rightTurnSignalRenderers;
+        public GameObject headlightRenderers;
 
         [Header("Sensors")]
         [Tooltip("If true, the front sensor rotates to face the next waypoint")]
@@ -197,7 +198,7 @@ namespace Darkmatter.TrafficSystem
             currentForwardTilt = Mathf.Lerp(currentForwardTilt, targetForwardTilt, Time.deltaTime * smooth);
 
             // Target Side tilt (negative = turning left, positive = turning right)
-            float targetSideTilt = steeringAngle * forwardSpeed * tiltAmount*0.002f;
+            float targetSideTilt = steeringAngle * forwardSpeed * tiltAmount * 0.002f;
             targetSideTilt = Mathf.Clamp(targetSideTilt, -maxTiltAngle, maxTiltAngle);
             currentSideTilt = Mathf.Lerp(currentSideTilt, targetSideTilt, Time.deltaTime * smooth);
 
@@ -227,10 +228,7 @@ namespace Darkmatter.TrafficSystem
 
         public void ResetRuntimeState()
         {
-            if (lookaheadWaypoints != null)
-            {
-                Array.Clear(lookaheadWaypoints, 0, lookaheadWaypoints.Length);
-            }
+            if (lookaheadWaypoints != null) Array.Clear(lookaheadWaypoints, 0, lookaheadWaypoints.Length);
 
             activeWaypointIndex = 0;
             arrayIndex = -1;
@@ -240,26 +238,21 @@ namespace Darkmatter.TrafficSystem
             laneChangeCooldownTimer = 0f;
             isChangingLanes = false;
             _hornTimer = 0f;
-            
-            if (_turnSignalCoroutine != null && gameObject.activeInHierarchy)
-            {
-                StopCoroutine(_turnSignalCoroutine);
-            }
+
+            if (_turnSignalCoroutine != null && gameObject.activeInHierarchy) StopCoroutine(_turnSignalCoroutine);
             _turnSignalCoroutine = null;
-            
-            if (_headLightFlashCoroutine != null && gameObject.activeInHierarchy)
-            {
-                StopCoroutine(_headLightFlashCoroutine);
-            }
+
+            if (_headLightFlashCoroutine != null && gameObject.activeInHierarchy) StopCoroutine(_headLightFlashCoroutine);
             _headLightFlashCoroutine = null;
+
             _turnSignalState = TurnSignalState.None;
-            
-            ToggleRenderers(leftTurnSignalRenderers, false);
-            ToggleRenderers(rightTurnSignalRenderers, false);
-            ToggleRenderers(headlightRenderers, false);
-            
+
+            ToggleGameObject(headlightRenderers, false);
+            ToggleGameObject(brakeLightRenderers, false);
+            ToggleGameObject(leftTurnSignalRenderers, false);
+            ToggleGameObject(rightTurnSignalRenderers, false);
+
             crashSleepTimer = 0f;
-            SetBrakeLights(false);
 
             if (rb != null)
             {
@@ -276,59 +269,68 @@ namespace Darkmatter.TrafficSystem
             _hornTimer = 2f; // Cooldown
 
             // TODO: Play AudioSource clip here
-            
-            if (gameObject.activeInHierarchy && headlightRenderers != null && headlightRenderers.Length > 0)
+
+            if (gameObject.activeInHierarchy && headlightRenderers != null)
             {
-                if (_headLightFlashCoroutine != null) StopCoroutine(_headLightFlashCoroutine);
-                _headLightFlashCoroutine = StartCoroutine(FlashHeadlightsRoutine());
+                // Calculate a box that starts at the back of the sensor and extends forward to the stopping distance
+                Vector3 backEdge = frontSensor.position - frontSensor.forward * (frontSensor.lossyScale.z * 0.5f);
+                float maxDistance = driverBehaviour.stoppingDistance*1.2f; // Slightly longer than stopping distance to give a bit of lead time
+                
+                Vector3 checkCenter = backEdge + frontSensor.forward * (maxDistance * 0.5f);
+                Vector3 checkHalfExtents = new Vector3(frontSensor.lossyScale.x, frontSensor.lossyScale.y, maxDistance) * 0.5f;
+
+                if (Physics.CheckBox(checkCenter, checkHalfExtents, frontSensor.rotation, DMTS_API.PlayerLayerMask))
+                {
+                    if (_headLightFlashCoroutine != null) StopCoroutine(_headLightFlashCoroutine);
+                    _headLightFlashCoroutine = StartCoroutine(FlashHeadlightsRoutine());
+                }
             }
         }
 
         private IEnumerator FlashHeadlightsRoutine()
         {
             bool originalState = false;
-            if (headlightRenderers != null && headlightRenderers.Length > 0 && headlightRenderers[0] != null)
+            if (headlightRenderers != null)
             {
-                originalState = headlightRenderers[0].enabled;
+                originalState = headlightRenderers.activeSelf;
             }
 
             // Flash the lights rapidly 3 times
             for (int i = 0; i < 3; i++)
             {
-                ToggleRenderers(headlightRenderers, !originalState);
+                ToggleGameObject(headlightRenderers, !originalState);
                 yield return new WaitForSeconds(0.15f);
-                ToggleRenderers(headlightRenderers, originalState);
+                ToggleGameObject(headlightRenderers, originalState);
                 yield return new WaitForSeconds(0.15f);
             }
         }
 
-        private void ToggleRenderers(Renderer[] renderers, bool state)
+        private void ToggleGameObject(GameObject obj, bool state)
         {
-            if (renderers == null) return;
-            for (int i = 0; i < renderers.Length; i++)
+            if (obj != null && obj.activeSelf != state)
             {
-                if (renderers[i] != null) renderers[i].enabled = state;
+                obj.SetActive(state);
             }
         }
 
         public void SetBrakeLights(bool active)
         {
-            ToggleRenderers(brakeLightRenderers, active);
+            ToggleGameObject(brakeLightRenderers, active);
         }
 
         public void SetTurnSignals(TurnSignalState direction)
         {
             if (_turnSignalState == direction) return;
             _turnSignalState = direction;
-            
+
             if (_turnSignalCoroutine != null)
             {
                 StopCoroutine(_turnSignalCoroutine);
             }
-            
+
             // Ensure both are off initially when switching or stopping
-            ToggleRenderers(leftTurnSignalRenderers, false);
-            ToggleRenderers(rightTurnSignalRenderers, false);
+            ToggleGameObject(leftTurnSignalRenderers, false);
+            ToggleGameObject(rightTurnSignalRenderers, false);
 
             if (_turnSignalState != TurnSignalState.None && gameObject.activeInHierarchy)
             {
@@ -344,11 +346,11 @@ namespace Darkmatter.TrafficSystem
                 isOn = !isOn;
                 if (_turnSignalState == TurnSignalState.Left)
                 {
-                    ToggleRenderers(leftTurnSignalRenderers, isOn);
+                    ToggleGameObject(leftTurnSignalRenderers, isOn);
                 }
                 else if (_turnSignalState == TurnSignalState.Right)
                 {
-                    ToggleRenderers(rightTurnSignalRenderers, isOn);
+                    ToggleGameObject(rightTurnSignalRenderers, isOn);
                 }
                 yield return new WaitForSeconds(0.5f); // Blinker interval
             }
@@ -415,6 +417,7 @@ namespace Darkmatter.TrafficSystem
         private static readonly Color SideSensorDebugColor = new Color(0.78f, 0.35f, 1f, 1f);
         private static readonly Color ExtendedSensorDebugColor = new Color(0.35f, 0.9f, 1f, 1f);
         private static readonly Color StoppingDistanceDebugColor = new Color(1f, 0.25f, 0.25f, 1f);
+        private static readonly Color PlayerSensorDebugColor = new Color(0.2f, 1f, 0.2f, 1f); // Lime green for player box
         private const float RuntimeDashedLineScreenSize = 4f;
         private const float RuntimeSolidSensorFillAlpha = 0.05f;
         private const float RuntimeDashedSensorFillAlpha = 0.035f;
@@ -422,6 +425,8 @@ namespace Darkmatter.TrafficSystem
         private void OnDrawGizmosSelected()
         {
             DrawRuntimeSensorDebug();
+            DrawPlayerHonkSensorDebug();
+            
             if (lookaheadWaypoints != null)
             {
                 for (int i = 0; i < lookaheadWaypoints.Length; i++)
@@ -500,6 +505,19 @@ namespace Darkmatter.TrafficSystem
 
             Vector3 worldCenter = transform.position + transform.rotation * sensorTransform.localPosition;
             DrawRuntimeSensorOutline(worldCenter, transform.rotation, sensorTransform.localScale, sensorColor);
+        }
+
+        private void DrawPlayerHonkSensorDebug()
+        {
+            if (frontSensor == null) return;
+            
+            Vector3 backEdge = frontSensor.position - frontSensor.forward * (frontSensor.lossyScale.z * 0.5f);
+            float maxDistance = driverBehaviour.stoppingDistance;
+            
+            Vector3 checkCenter = backEdge + frontSensor.forward * (maxDistance * 0.5f);
+            Vector3 checkSize = new Vector3(frontSensor.lossyScale.x, frontSensor.lossyScale.y, maxDistance*1.2f);
+
+            DrawRuntimeSensorOutline(checkCenter, frontSensor.rotation, checkSize, PlayerSensorDebugColor, Vector3.forward, true);
         }
 
         private void DrawRuntimeFrontSensorDebug()

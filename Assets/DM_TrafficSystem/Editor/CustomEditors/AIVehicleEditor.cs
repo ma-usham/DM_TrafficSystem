@@ -35,10 +35,10 @@ namespace Darkmatter.TrafficSystem
         private SerializedProperty tiltAmountProp;
         private SerializedProperty smoothProp;
         private SerializedProperty maxTiltAngleProp;
-        private SerializedProperty brakeLightRendererProp;
-        private SerializedProperty leftTurnSignalRendererProp;
-        private SerializedProperty rightTurnSignalRendererProp;
-        private SerializedProperty headlightRendererProp;
+        private SerializedProperty brakeLightRenderersProp;
+        private SerializedProperty leftTurnSignalRenderersProp;
+        private SerializedProperty rightTurnSignalRenderersProp;
+        private SerializedProperty headlightRenderersProp;
 
         private void OnEnable()
         {
@@ -58,10 +58,10 @@ namespace Darkmatter.TrafficSystem
             tiltAmountProp = serializedObject.FindProperty("tiltAmount");
             smoothProp = serializedObject.FindProperty("smooth");
             maxTiltAngleProp = serializedObject.FindProperty("maxTiltAngle");
-            brakeLightRendererProp = serializedObject.FindProperty("brakeLightRenderer");
-            leftTurnSignalRendererProp = serializedObject.FindProperty("leftTurnSignalRenderer");
-            rightTurnSignalRendererProp = serializedObject.FindProperty("rightTurnSignalRenderer");
-            headlightRendererProp = serializedObject.FindProperty("headlightRenderer");
+            brakeLightRenderersProp = serializedObject.FindProperty("brakeLightRenderers");
+            leftTurnSignalRenderersProp = serializedObject.FindProperty("leftTurnSignalRenderers");
+            rightTurnSignalRenderersProp = serializedObject.FindProperty("rightTurnSignalRenderers");
+            headlightRenderersProp = serializedObject.FindProperty("headlightRenderers");
         }
 
         private void OnSceneGUI()
@@ -697,10 +697,10 @@ namespace Darkmatter.TrafficSystem
         private void DrawLightsAndAudio()
         {
             EditorGUILayout.LabelField("Lights", EditorStyles.boldLabel);
-            if (brakeLightRendererProp != null) EditorGUILayout.PropertyField(brakeLightRendererProp);
-            if (leftTurnSignalRendererProp != null) EditorGUILayout.PropertyField(leftTurnSignalRendererProp);
-            if (rightTurnSignalRendererProp != null) EditorGUILayout.PropertyField(rightTurnSignalRendererProp);
-            if (headlightRendererProp != null) EditorGUILayout.PropertyField(headlightRendererProp);
+            if (brakeLightRenderersProp != null) EditorGUILayout.PropertyField(brakeLightRenderersProp);
+            if (leftTurnSignalRenderersProp != null) EditorGUILayout.PropertyField(leftTurnSignalRenderersProp);
+            if (rightTurnSignalRenderersProp != null) EditorGUILayout.PropertyField(rightTurnSignalRenderersProp);
+            if (headlightRenderersProp != null) EditorGUILayout.PropertyField(headlightRenderersProp);
             
             GUILayout.Space(10);
             
