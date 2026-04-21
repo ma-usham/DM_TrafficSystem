@@ -5256,6 +5256,63 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1001 &171526728
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 790.96
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 463.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (5)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &175777334
 GameObject:
   m_ObjectHideFlags: 0
@@ -11390,6 +11447,63 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1001 &370275745
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 796.59
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 463.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (7)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &371556824
 GameObject:
   m_ObjectHideFlags: 0
@@ -14324,6 +14438,75 @@ Transform:
   m_Children: []
   m_Father: {fileID: 35246323}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &472266947
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 791.31
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 469.34082
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4255727118083569964, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5071101417607801242, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6145339038347493234, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (2)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &474570816
 GameObject:
   m_ObjectHideFlags: 0
@@ -35015,6 +35198,75 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1001 &1095247842
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 788.49
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 469.34082
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4255727118083569964, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5071101417607801242, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6145339038347493234, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (3)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &1095593406
 GameObject:
   m_ObjectHideFlags: 0
@@ -42925,6 +43177,63 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1001 &1326597164
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 793.86
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 463.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (6)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &1329427924
 GameObject:
   m_ObjectHideFlags: 0
@@ -48889,6 +49198,63 @@ MonoBehaviour:
     - {fileID: 606946760}
     laneChangePoints:
     - {fileID: 250733488}
+--- !u!1001 &1483570611
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 788.49
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 463.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (4)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &1483585850
 GameObject:
   m_ObjectHideFlags: 0
@@ -51156,6 +51522,75 @@ MonoBehaviour:
     - {fileID: 559007938}
     laneChangePoints:
     - {fileID: 1663885609}
+--- !u!1001 &1544378885
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 793.86
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 469.34082
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4255727118083569964, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5071101417607801242, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6145339038347493234, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara (1)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &1547998462
 GameObject:
   m_ObjectHideFlags: 0
@@ -60711,6 +61146,75 @@ MonoBehaviour:
     nextWaypoint:
     - {fileID: 860471773}
     laneChangePoints: []
+--- !u!1001 &1866347730
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 796.39404
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.0000013156932
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 469.34082
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3473094262560720282, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4255727118083569964, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5071101417607801242, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6145339038347493234, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6546079053465512612, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
+      propertyPath: m_Name
+      value: Aniara
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 88cf434fcd51aba4c97bb3619e67a338, type: 3}
 --- !u!1 &1866913494
 GameObject:
   m_ObjectHideFlags: 0
@@ -72687,3 +73191,11 @@ SceneRoots:
   - {fileID: 222954386}
   - {fileID: 850569432}
   - {fileID: 2051692293}
+  - {fileID: 1866347730}
+  - {fileID: 1544378885}
+  - {fileID: 472266947}
+  - {fileID: 1095247842}
+  - {fileID: 1483570611}
+  - {fileID: 171526728}
+  - {fileID: 1326597164}
+  - {fileID: 370275745}
